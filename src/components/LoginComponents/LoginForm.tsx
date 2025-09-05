@@ -1,6 +1,15 @@
+// components/LoginComponents/LoginForm.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
+import {
+  signInWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "firebase/auth";
+import { auth } from "./firebaseSetup";
+import toast from "react-hot-toast";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -10,23 +19,61 @@ const LoginForm: React.FC = () => {
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // simple error state (opsional tapi membantu UX)
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-    {}
-  );
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    form?: string;
+  }>({});
+  const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const mapFirebaseError = (code: string) => {
+    switch (code) {
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+        return "Email atau password salah.";
+      case "auth/user-not-found":
+        return "Akun tidak ditemukan.";
+      case "auth/too-many-requests":
+        return "Terlalu banyak percobaan. Coba lagi nanti.";
+      case "auth/invalid-email":
+        return "Format email tidak valid.";
+      default:
+        return "Gagal masuk. Coba lagi.";
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const nextErr: typeof errors = {};
     if (!email) nextErr.email = "Email is required.";
     if (!password) nextErr.password = "Password is required.";
     setErrors(nextErr);
-
     if (Object.keys(nextErr).length > 0) return;
 
-    // langsung redirect ke dashboard tanpa validasi server
-    navigate("/home");
+    setLoading(true);
+    setErrors((prev) => ({ ...prev, form: undefined }));
+    setResetSent(null);
+
+    try {
+      await setPersistence(
+        auth,
+        remember ? browserLocalPersistence : browserSessionPersistence
+      );
+      await signInWithEmailAndPassword(auth, email, password);
+      toast.success(`Signed in as ${auth.currentUser?.email ?? email}`);
+      navigate("/home");
+    } catch (err: unknown) {
+      const errorCode =
+        typeof err === "object" && err !== null && "code" in err
+          ? (err as { code?: string }).code
+          : "";
+      const msg = mapFirebaseError(errorCode || "");
+      setErrors((prev) => ({ ...prev, form: msg }));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -35,6 +82,17 @@ const LoginForm: React.FC = () => {
         <h2 className="text-gray-900 text-3xl font-bold">Welcome Back!</h2>
         <p className="text-gray-600 mt-1">Sign in to your account</p>
       </header>
+
+      {errors.form && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
+          {errors.form}
+        </div>
+      )}
+      {resetSent && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-700 px-3 py-2 text-sm">
+          {resetSent}
+        </div>
+      )}
 
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         {/* Email */}
@@ -54,6 +112,7 @@ const LoginForm: React.FC = () => {
                 ${errors.email ? "border-red-400" : "border-gray-300"}`}
               placeholder="Input your email address"
               autoComplete="email"
+              disabled={loading}
             />
           </div>
           {errors.email && (
@@ -81,22 +140,21 @@ const LoginForm: React.FC = () => {
                 ${errors.password ? "border-red-400" : "border-gray-300"}`}
               placeholder="Input your password"
               autoComplete="current-password"
+              disabled={loading}
             />
-
-            {/* Toggle show/hide password (posisi dibenarkan) */}
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/3 -translate-y-1/3 w-8 h-8 grid place-items-center text-gray-500"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 grid place-items-center text-gray-500"
               style={{
                 background: "transparent",
                 border: "none",
                 outline: "none",
               }}
               aria-label={showPassword ? "Hide password" : "Show password"}
+              disabled={loading}
             >
-              {" "}
-              {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}{" "}
+              {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
             </button>
           </div>
           {errors.password && (
@@ -112,23 +170,18 @@ const LoginForm: React.FC = () => {
               className="rounded border-gray-300 accent-indigo-600 focus:ring-2 focus:ring-indigo-500"
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
+              disabled={loading}
             />
             Remember me
           </label>
-
-          <a
-            href="#"
-            className="text-indigo-600 text-sm font-medium hover:underline"
-          >
-            Forgot password?
-          </a>
         </div>
 
         <button
           type="submit"
+          disabled={loading}
           className="mt-1 w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition rounded-lg text-white py-2.5 font-semibold shadow"
         >
-          Sign in
+          {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
     </div>

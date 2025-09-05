@@ -1,17 +1,20 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../HomeComponents/Sidebar";
 import SecondarySidebar from "../DomainComponents/SecondarySidebar";
 import ThirdSidebar from "./ThirdSidebar";
+import { AuthContext } from "../../context/AuthContext";
 
-type LayoutProps = { userName: string };
-
-export default function Layout({ userName }: LayoutProps) {
+export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const user = useContext(AuthContext);
 
   const inDomainRoot = location.pathname === "/domain";
   const inDomainSection = /^\/domain\/[^/]+(?:\/|$)/.test(location.pathname);
+
+  // ambil display dari Firebase
+  const userName = user?.email || user?.displayName || "Account";
 
   const primaryWidth = collapsed ? 64 : 256;
   const secondaryWidth = collapsed ? 64 : 256;
@@ -31,7 +34,9 @@ export default function Layout({ userName }: LayoutProps) {
           userName={userName}
         />
       )}
+
       {inDomainRoot && <SecondarySidebar open leftOffset={primaryWidth} />}
+
       {inDomainSection && (
         <ThirdSidebar
           collapsed={collapsed}
@@ -44,7 +49,7 @@ export default function Layout({ userName }: LayoutProps) {
         className="min-h-screen w-screen overflow-x-hidden transition-[padding] duration-300 bg-[#1a1b1e] text-[#ECECF1]"
         style={{ paddingLeft }}
       >
-        <Outlet context={{ userName }} />
+        <Outlet />
       </main>
     </div>
   );

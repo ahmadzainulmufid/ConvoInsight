@@ -13,7 +13,7 @@
     "@tailwindcss/vite": "^4.1.12",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "firebase": "^12.1.0",
+    "firebase": "^12.2.1",
     "idb-keyval": "^6.2.2",
     "lucide-react": "^0.539.0",
     "openai": "^5.13.1",

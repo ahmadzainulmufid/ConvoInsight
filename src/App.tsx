@@ -1,4 +1,4 @@
-// src/App.tsx
+// App.tsx
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -17,6 +17,9 @@ import Layout from "./components/SupportComponents/Layout";
 import { Toaster } from "react-hot-toast";
 import ConnectPage from "./pages/ConnectPage";
 import ConfigurationPage from "./pages/ConfigurationPage";
+import { AuthProvider } from "./context/AuthProvider";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import { AuthContext } from "./context/AuthContext";
 
 function LegacyDatasetRedirect() {
   const { id } = useParams();
@@ -24,56 +27,76 @@ function LegacyDatasetRedirect() {
   return <Navigate to={`/domain/${last}/datasets/${id}`} replace />;
 }
 
-const App: React.FC = () => {
-  const userName = "AAGM Ceria Banget";
+// Hanya untuk halaman publik (mis. login). Jika sudah login → redirect ke /home
+const PublicRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
+  const user = React.useContext(AuthContext);
+  if (user) return <Navigate to="/home" replace />;
+  return <>{children}</>;
+};
 
+const App: React.FC = () => {
   return (
     <Router>
-      <Toaster
-        position="top-right"
-        reverseOrder={false}
-        toastOptions={{
-          style: {
-            background: "#2A2B32",
-            color: "#fff",
-            border: "1px solid #3a3b42",
-          },
-        }}
-      />
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route element={<Layout userName={userName} />}>
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/domain" element={<DomainPage />} />
-          <Route path="/domain/:section">
-            <Route
-              path="datasets"
-              element={<DatasetsPage userName={userName} />}
-            />
-            <Route
-              path="datasets/new"
-              element={<CreateDatasetPage userName={userName} />}
-            />
-            <Route
-              path="datasets/:id"
-              element={<DatasetDetailPage userName={userName} />}
-            />
-            <Route
-              path="datasets/connect"
-              element={<ConnectPage userName={userName} />}
-            />
-            <Route path="configuration" element={<ConfigurationPage />} />
-          </Route>
-
-          {/* redirect legacy /datasets/:id -> /domain/{last_section}/datasets/:id */}
-          <Route path="/datasets/:id" element={<LegacyDatasetRedirect />} />
-
+      <AuthProvider>
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          toastOptions={{
+            style: {
+              background: "#2A2B32",
+              color: "#fff",
+              border: "1px solid #3a3b42",
+            },
+          }}
+        />
+        <Routes>
+          {/* Login: publik, tapi redirect kalau sudah login */}
           <Route
-            path="*"
-            element={<div className="p-6 text-white">404 Not Found</div>}
+            path="/"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
           />
-        </Route>
-      </Routes>
+
+          {/* Semua yang lain: protected */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/domain" element={<DomainPage />} />
+            <Route path="/domain/:section">
+              <Route path="datasets" element={<DatasetsPage userName={""} />} />
+              <Route
+                path="datasets/new"
+                element={<CreateDatasetPage userName={""} />}
+              />
+              <Route
+                path="datasets/:id"
+                element={<DatasetDetailPage userName={""} />}
+              />
+              <Route
+                path="datasets/connect"
+                element={<ConnectPage userName={""} />}
+              />
+              <Route path="configuration" element={<ConfigurationPage />} />
+            </Route>
+
+            {/* legacy redirect juga protected */}
+            <Route path="/datasets/:id" element={<LegacyDatasetRedirect />} />
+
+            <Route
+              path="*"
+              element={<div className="p-6 text-white">404 Not Found</div>}
+            />
+          </Route>
+        </Routes>
+      </AuthProvider>
     </Router>
   );
 };
