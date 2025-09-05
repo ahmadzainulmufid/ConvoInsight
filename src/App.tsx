@@ -20,6 +20,7 @@ import ConfigurationPage from "./pages/ConfigurationPage";
 import { AuthProvider } from "./context/AuthProvider";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { AuthContext } from "./context/AuthContext";
+import CreateDomainPage from "./pages/CreateDomainPage";
 
 function LegacyDatasetRedirect() {
   const { id } = useParams();
@@ -27,7 +28,6 @@ function LegacyDatasetRedirect() {
   return <Navigate to={`/domain/${last}/datasets/${id}`} replace />;
 }
 
-// Hanya untuk halaman publik (mis. login). Jika sudah login → redirect ke /home
 const PublicRoute: React.FC<React.PropsWithChildren> = ({ children }) => {
   const user = React.useContext(AuthContext);
   if (user) return <Navigate to="/home" replace />;
@@ -70,6 +70,7 @@ const App: React.FC = () => {
           >
             <Route path="/home" element={<HomePage />} />
             <Route path="/domain" element={<DomainPage />} />
+            <Route path="/domain/new" element={<CreateDomainPage />} />
             <Route path="/domain/:section">
               <Route path="datasets" element={<DatasetsPage userName={""} />} />
               <Route

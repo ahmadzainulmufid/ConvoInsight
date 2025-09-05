@@ -8,6 +8,9 @@ import {
 } from "react-icons/hi";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { FiLogOut } from "react-icons/fi";
+import { signOut } from "firebase/auth";
+import { auth } from "../LoginComponents/firebaseSetup";
+import toast from "react-hot-toast";
 
 export type SidebarProps = {
   collapsed: boolean;
@@ -83,9 +86,14 @@ export default function Sidebar({
     },
   ];
 
-  const handleSignOut = () => {
-    setMenuOpen(false);
-    navigate("/");
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      toast.success("Signed out");
+      navigate("/", { replace: true });
+    } catch {
+      toast.error("Gagal sign out, coba lagi");
+    }
   };
 
   const toTitle = (s: string) =>

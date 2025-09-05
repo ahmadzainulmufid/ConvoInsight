@@ -6,7 +6,7 @@ import {
   HiOutlineHome,
   HiOutlineCollection,
 } from "react-icons/hi";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { FiLogOut } from "react-icons/fi";
 import { signOut } from "firebase/auth";
 import { auth } from "../LoginComponents/firebaseSetup";
@@ -67,8 +67,8 @@ export default function Sidebar({
     "flex items-center h-10 rounded-md text-sm transition-colors";
 
   const navItems = [
-    { to: "/home", label: "Home", icon: HiOutlineHome },
-    { to: "/domain", label: "Domain", icon: HiOutlineCollection },
+    { to: "/home", label: "Home", icon: HiOutlineHome, end: true },
+    { to: "/domain", label: "Domain", icon: HiOutlineCollection, end: true },
   ];
 
   const handleSignOut = async () => {
@@ -112,10 +112,11 @@ export default function Sidebar({
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-2">
         <div className="space-y-2">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
+              end={end} // ⬅ penting: bikin match-nya exact
               title={label}
               className={({ isActive }) =>
                 [
@@ -127,7 +128,6 @@ export default function Sidebar({
                 ].join(" ")
               }
             >
-              {/* Wrapper w-6 utk konsistensi lebar ikon dan centering saat collapsed */}
               <div className={collapsed ? "w-6 flex justify-center" : ""}>
                 <Icon className="shrink-0" />
               </div>
@@ -136,22 +136,24 @@ export default function Sidebar({
           ))}
 
           {/* New Domain */}
-          <Link
-            to="new"
+          <NavLink
+            to="/domain/new"
             title="New Domain"
-            className={[
-              baseItem,
-              collapsed
-                ? "justify-center px-0 gap-0"
-                : "justify-start px-3 gap-3",
-              "hover:bg-[#2A2B32]",
-            ].join(" ")}
+            className={({ isActive }) =>
+              [
+                baseItem,
+                collapsed
+                  ? "justify-center px-0 gap-0"
+                  : "justify-start px-3 gap-3",
+                isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]",
+              ].join(" ")
+            }
           >
             <div className={collapsed ? "w-6 flex justify-center" : ""}>
               <HiOutlinePlus className="shrink-0" />
             </div>
             <span className={labelClass}>New Domain</span>
-          </Link>
+          </NavLink>
         </div>
       </nav>
 

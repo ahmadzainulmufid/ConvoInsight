@@ -1,4 +1,6 @@
+// components/DomainComponents/SecondarySidebar.tsx
 import { NavLink } from "react-router-dom";
+import { useDomains } from "../../hooks/useDomains";
 
 export default function SecondarySidebar({
   open,
@@ -7,6 +9,8 @@ export default function SecondarySidebar({
   open: boolean;
   leftOffset: number;
 }) {
+  const { domains } = useDomains();
+
   return (
     <aside
       className={[
@@ -21,23 +25,23 @@ export default function SecondarySidebar({
       </div>
 
       <nav className="p-2 space-y-2">
-        {[
-          { to: "/domain/Campaign/datasets", label: "Campaign" },
-          { to: "/domain/Fixed/datasets", label: "Fixed" },
-          { to: "/domain/Mobile/datasets", label: "Mobile" },
-        ].map(({ to, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `px-3 h-10 rounded-md text-sm flex items-center ${
-                isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]"
-              }`
-            }
-          >
-            {label}
-          </NavLink>
-        ))}
+        {domains.map((label) => {
+          const to = `/domain/${encodeURIComponent(label)}/datasets`;
+          return (
+            <NavLink
+              key={label}
+              to={to}
+              className={({ isActive }) =>
+                `px-3 h-10 rounded-md text-sm flex items-center ${
+                  isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]"
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          );
+        })}
+        {/* ⬇️ HAPUS blok "+ Manage Domains" yang sebelumnya ada di sini */}
       </nav>
     </aside>
   );

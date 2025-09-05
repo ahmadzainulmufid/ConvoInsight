@@ -1,3 +1,4 @@
+// components/SupportComponents/Layout.tsx
 import { useState, useContext } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../HomeComponents/Sidebar";
@@ -10,23 +11,25 @@ export default function Layout() {
   const location = useLocation();
   const user = useContext(AuthContext);
 
-  const inDomainRoot = location.pathname === "/domain";
-  const inDomainSection = /^\/domain\/[^/]+(?:\/|$)/.test(location.pathname);
-
-  // ambil display dari Firebase
   const userName = user?.email || user?.displayName || "Account";
+
+  const isManageDomain = location.pathname === "/domain/new"; // <= ⬅️ tambahkan
+  const inDomainRoot = location.pathname === "/domain"; // root
+  const inDomainSection =
+    /^\/domain\/[^/]+(?:\/|$)/.test(location.pathname) && !isManageDomain; // <= kecualikan /domain/new
 
   const primaryWidth = collapsed ? 64 : 256;
   const secondaryWidth = collapsed ? 64 : 256;
   const thirdWidth = collapsed ? 64 : 256;
 
   // Final paddingLeft
-  let paddingLeft = primaryWidth;
-  if (inDomainRoot) paddingLeft += secondaryWidth;
-  if (inDomainSection) paddingLeft = thirdWidth;
+  let paddingLeft = primaryWidth; // default: cuma sidebar1
+  if (inDomainRoot) paddingLeft += secondaryWidth; // sidebar1 + sidebar2
+  if (inDomainSection) paddingLeft = thirdWidth; // hanya sidebar3
 
   return (
     <div className="min-h-screen w-screen bg-[#202123]">
+      {/* Sidebar1 tampil di semua halaman KECUALI halaman section (bukan /domain & bukan /domain/new) */}
       {!inDomainSection && (
         <Sidebar
           collapsed={collapsed}
@@ -35,8 +38,12 @@ export default function Layout() {
         />
       )}
 
-      {inDomainRoot && <SecondarySidebar open leftOffset={primaryWidth} />}
+      {/* Sidebar2 hanya di /domain (bukan /domain/new) */}
+      {inDomainRoot && !isManageDomain && (
+        <SecondarySidebar open leftOffset={primaryWidth} />
+      )}
 
+      {/* Sidebar3 hanya di halaman section */}
       {inDomainSection && (
         <ThirdSidebar
           collapsed={collapsed}
