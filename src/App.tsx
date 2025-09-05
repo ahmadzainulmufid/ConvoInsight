@@ -21,6 +21,8 @@ import { AuthProvider } from "./context/AuthProvider";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { AuthContext } from "./context/AuthContext";
 import CreateDomainPage from "./pages/CreateDomainPage";
+import DashboardPage from "./pages/DashboardPage";
+import NewChatPage from "./pages/NewChatPage";
 
 function LegacyDatasetRedirect() {
   const { id } = useParams();
@@ -72,6 +74,8 @@ const App: React.FC = () => {
             <Route path="/domain" element={<DomainPage />} />
             <Route path="/domain/new" element={<CreateDomainPage />} />
             <Route path="/domain/:section">
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="dashboard/newchat" element={<NewChatPage />} />
               <Route path="datasets" element={<DatasetsPage userName={""} />} />
               <Route
                 path="datasets/new"
