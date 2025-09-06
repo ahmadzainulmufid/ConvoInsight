@@ -63,9 +63,9 @@ export function useDomains(options?: { seedDefaultOnEmpty?: boolean }) {
   // tambah domain (cegah duplikat case-insensitive)
   const addDomain = useCallback(
     async (name: string) => {
-      if (!uid) return { ok: false, reason: "Harus login dulu" };
+      if (!uid) return { ok: false, reason: "Must login first" };
       const trimmed = name.trim();
-      if (!trimmed) return { ok: false, reason: "Nama tidak boleh kosong" };
+      if (!trimmed) return { ok: false, reason: "Name cannot be blank" };
 
       const colRef = collection(db, "users", uid, "domains");
       const dupQ = query(
@@ -73,7 +73,7 @@ export function useDomains(options?: { seedDefaultOnEmpty?: boolean }) {
         where("nameLower", "==", trimmed.toLowerCase())
       );
       const dupSnap = await getDocs(dupQ);
-      if (!dupSnap.empty) return { ok: false, reason: "Domain sudah ada" };
+      if (!dupSnap.empty) return { ok: false, reason: "Domain already exists" };
 
       await addDoc(colRef, {
         name: trimmed,
@@ -88,7 +88,7 @@ export function useDomains(options?: { seedDefaultOnEmpty?: boolean }) {
   // hapus domain by id
   const removeDomain = useCallback(
     async (id: string) => {
-      if (!uid) return { ok: false, reason: "Harus login dulu" };
+      if (!uid) return { ok: false, reason: "Must login first" };
       const ref = doc(db, "users", uid, "domains", id);
       await deleteDoc(ref);
       return { ok: true };

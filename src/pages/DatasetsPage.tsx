@@ -36,7 +36,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
             <span className="text-indigo-600 text-xl">›_</span>
           </div>
           <h2 className="text-2xl md:text-3xl font-semibold text-white">
-            Getting started with DataInsight
+            Getting started with ConvoInsight
           </h2>
         </div>
 

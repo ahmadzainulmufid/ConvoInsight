@@ -24,7 +24,7 @@ export default function CreateDomainPage() {
 
   const handleDelete = async (id: string) => {
     const res = await removeDomain(id);
-    if (res.ok) toast.success("Domain removed");
+    if (res.ok) toast.success("Domain delete");
   };
 
   return (
@@ -82,7 +82,7 @@ export default function CreateDomainPage() {
                   onClick={() => handleDelete(d.id)}
                   className="px-3 py-1.5 text-sm rounded bg-red-600 hover:bg-red-700"
                 >
-                  Removed
+                  Delete
                 </button>
               </li>
             ))}

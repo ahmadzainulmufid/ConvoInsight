@@ -12,7 +12,7 @@ export default function DomainPage() {
         {domains.length ? (
           <b>{domains.map((d) => d.name).join(", ")}</b>
         ) : (
-          "Belum ada domain — tambah di halaman Manage Domains."
+          "No domain yet, add it on the Manage Domains page."
         )}
       </p>
     </div>
