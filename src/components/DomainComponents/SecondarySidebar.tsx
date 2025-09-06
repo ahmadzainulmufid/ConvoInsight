@@ -25,11 +25,11 @@ export default function SecondarySidebar({
       </div>
 
       <nav className="p-2 space-y-2">
-        {domains.map((label) => {
-          const to = `/domain/${encodeURIComponent(label)}/datasets`;
+        {domains.map((d) => {
+          const to = `/domain/${encodeURIComponent(d.name)}/datasets`;
           return (
             <NavLink
-              key={label}
+              key={d.id}
               to={to}
               className={({ isActive }) =>
                 `px-3 h-10 rounded-md text-sm flex items-center ${
@@ -37,11 +37,10 @@ export default function SecondarySidebar({
                 }`
               }
             >
-              {label}
+              {d.name}
             </NavLink>
           );
         })}
-        {/* ⬇️ HAPUS blok "+ Manage Domains" yang sebelumnya ada di sini */}
       </nav>
     </aside>
   );

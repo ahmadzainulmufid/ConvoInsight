@@ -9,7 +9,7 @@ import {
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { FiLogOut } from "react-icons/fi";
 import { signOut } from "firebase/auth";
-import { auth } from "../LoginComponents/firebaseSetup";
+import { auth } from "../../utils/firebaseSetup";
 import toast from "react-hot-toast";
 
 export type SidebarProps = {

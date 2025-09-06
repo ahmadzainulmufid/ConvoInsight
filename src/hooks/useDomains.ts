@@ -1,71 +1,100 @@
+// hooks/useDomains.ts (ganti isinya jadi versi Firestore)
 import { useCallback, useEffect, useState } from "react";
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+  where,
+  getDocs,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+import { db } from "../utils/firebaseSetup";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 
-const STORAGE_KEY = "domains";
+export type DomainItem = { id: string; name: string };
+
 const DEFAULT_DOMAINS = ["Campaign", "Fixed", "Mobile"] as const;
 
-// util
-function readDomains(): string[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [...DEFAULT_DOMAINS];
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return [...DEFAULT_DOMAINS];
-    return arr.filter(Boolean);
-  } catch {
-    return [...DEFAULT_DOMAINS];
-  }
-}
+export function useDomains(options?: { seedDefaultOnEmpty?: boolean }) {
+  const [domains, setDomains] = useState<DomainItem[]>([]);
+  const [uid, setUid] = useState<string | null>(null);
 
-function writeDomains(domains: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(domains));
-  // trigger custom event agar komponen lain ikut refresh
-  window.dispatchEvent(new CustomEvent("domains:updated"));
-}
-
-export function useDomains() {
-  const [domains, setDomains] = useState<string[]>(() => {
-    // seed awal bila belum ada
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      writeDomains([...DEFAULT_DOMAINS]);
-    }
-    return readDomains();
-  });
-
-  // sinkron saat tab lain / komponen lain update
+  // track user
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setDomains(readDomains());
-    };
-    const onCustom = () => setDomains(readDomains());
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("domains:updated", onCustom as EventListener);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("domains:updated", onCustom as EventListener);
-    };
+    const auth = getAuth();
+    const unsub = onAuthStateChanged(auth, (u) => setUid(u?.uid ?? null));
+    return unsub;
   }, []);
 
-  const addDomain = useCallback((name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return { ok: false, reason: "Nama tidak boleh kosong" };
-    const current = readDomains();
-    // cegah duplikat (case-insensitive)
-    if (current.some((d) => d.toLowerCase() === trimmed.toLowerCase())) {
-      return { ok: false, reason: "Domain sudah ada" };
+  // live query
+  useEffect(() => {
+    if (!uid) {
+      setDomains([]);
+      return;
     }
-    const next = [...current, trimmed];
-    writeDomains(next);
-    setDomains(next);
-    return { ok: true };
-  }, []);
+    const colRef = collection(db, "users", uid, "domains");
+    const q = query(colRef, orderBy("createdAt", "asc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const rows: DomainItem[] = snap.docs.map((d) => ({
+        id: d.id,
+        name: String(d.get("name") ?? ""),
+      }));
+      setDomains(rows);
 
-  const removeDomain = useCallback((name: string) => {
-    const current = readDomains();
-    const next = current.filter((d) => d !== name);
-    writeDomains(next);
-    setDomains(next);
-    return { ok: true };
-  }, []);
+      // seeding opsional saat kosong
+      if (options?.seedDefaultOnEmpty && rows.length === 0) {
+        // seed sekali (tanpa await barengan; biar cepat)
+        DEFAULT_DOMAINS.forEach((nm) =>
+          addDoc(colRef, {
+            name: nm,
+            nameLower: nm.toLowerCase(),
+            createdAt: serverTimestamp(),
+          })
+        );
+      }
+    });
+    return unsub;
+  }, [uid, options?.seedDefaultOnEmpty]);
 
-  return { domains, addDomain, removeDomain };
+  // tambah domain (cegah duplikat case-insensitive)
+  const addDomain = useCallback(
+    async (name: string) => {
+      if (!uid) return { ok: false, reason: "Harus login dulu" };
+      const trimmed = name.trim();
+      if (!trimmed) return { ok: false, reason: "Nama tidak boleh kosong" };
+
+      const colRef = collection(db, "users", uid, "domains");
+      const dupQ = query(
+        colRef,
+        where("nameLower", "==", trimmed.toLowerCase())
+      );
+      const dupSnap = await getDocs(dupQ);
+      if (!dupSnap.empty) return { ok: false, reason: "Domain sudah ada" };
+
+      await addDoc(colRef, {
+        name: trimmed,
+        nameLower: trimmed.toLowerCase(),
+        createdAt: serverTimestamp(),
+      });
+      return { ok: true };
+    },
+    [uid]
+  );
+
+  // hapus domain by id
+  const removeDomain = useCallback(
+    async (id: string) => {
+      if (!uid) return { ok: false, reason: "Harus login dulu" };
+      const ref = doc(db, "users", uid, "domains", id);
+      await deleteDoc(ref);
+      return { ok: true };
+    },
+    [uid]
+  );
+
+  return { domains, addDomain, removeDomain, uid };
 }

@@ -8,7 +8,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
-import { auth } from "./firebaseSetup";
+import { auth } from "../../utils/firebaseSetup";
 import toast from "react-hot-toast";
 
 const LoginForm: React.FC = () => {

@@ -5,23 +5,26 @@ import { NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 
 export default function CreateDomainPage() {
-  const { domains, addDomain, removeDomain } = useDomains();
+  // set seedDefaultOnEmpty ke true kalau mau otomatis isi 3 default saat koleksi masih kosong
+  const { domains, addDomain, removeDomain, uid } = useDomains({
+    seedDefaultOnEmpty: false,
+  });
   const [name, setName] = useState("");
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = addDomain(name);
+    const res = await addDomain(name);
     if (res.ok) {
-      toast.success("Domain ditambahkan");
-      setName(""); // tetap di halaman ini, tidak navigate
+      toast.success("Domain added");
+      setName("");
     } else {
-      toast.error(res.reason || "Gagal menambah domain");
+      toast.error(res.reason || "Failed to add domain");
     }
   };
 
-  const handleDelete = (d: string) => {
-    removeDomain(d);
-    toast.success("Domain dihapus");
+  const handleDelete = async (id: string) => {
+    const res = await removeDomain(id);
+    if (res.ok) toast.success("Domain removed");
   };
 
   return (
@@ -36,11 +39,18 @@ export default function CreateDomainPage() {
         </NavLink>
       </header>
 
+      {!uid && (
+        <div className="text-sm text-amber-300">
+          You're not logged in. Please log in so your domain information can be
+          saved to your account.
+        </div>
+      )}
+
       <form
         onSubmit={handleAdd}
         className="bg-[#2A2B32] p-4 rounded-lg space-y-3"
       >
-        <label className="block text-sm text-gray-300">Nama Domain Baru</label>
+        <label className="block text-sm text-gray-300">New Domain Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -49,29 +59,30 @@ export default function CreateDomainPage() {
         />
         <button
           type="submit"
-          className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
+          disabled={!uid}
+          className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50"
         >
-          Tambah Domain
+          Create Domain
         </button>
       </form>
 
       <section className="bg-[#2A2B32] p-4 rounded-lg">
-        <h2 className="text-sm text-gray-300 mb-3">Domain Saat Ini</h2>
+        <h2 className="text-sm text-gray-300 mb-3">Current Domain</h2>
         {domains.length === 0 ? (
-          <p className="text-gray-400 text-sm">Belum ada domain.</p>
+          <p className="text-gray-400 text-sm">There is no domain yet</p>
         ) : (
           <ul className="space-y-2">
             {domains.map((d) => (
               <li
-                key={d}
+                key={d.id}
                 className="flex items-center justify-between rounded border border-[#3a3b42] px-3 py-2"
               >
-                <span>{d}</span>
+                <span>{d.name}</span>
                 <button
-                  onClick={() => handleDelete(d)}
+                  onClick={() => handleDelete(d.id)}
                   className="px-3 py-1.5 text-sm rounded bg-red-600 hover:bg-red-700"
                 >
-                  Hapus
+                  Removed
                 </button>
               </li>
             ))}
