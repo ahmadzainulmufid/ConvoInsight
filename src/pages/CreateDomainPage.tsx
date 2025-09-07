@@ -1,15 +1,19 @@
-// pages/CreateDomainPage.tsx
 import React, { useState } from "react";
 import { useDomains } from "../hooks/useDomains";
 import { NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
 
 export default function CreateDomainPage() {
-  // set seedDefaultOnEmpty ke true kalau mau otomatis isi 3 default saat koleksi masih kosong
   const { domains, addDomain, removeDomain, uid } = useDomains({
     seedDefaultOnEmpty: false,
   });
   const [name, setName] = useState("");
+
+  // ✅ state untuk konfirmasi delete
+  const [domainToDelete, setDomainToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,9 +26,11 @@ export default function CreateDomainPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    const res = await removeDomain(id);
-    if (res.ok) toast.success("Domain delete");
+  const confirmDelete = async () => {
+    if (!domainToDelete) return;
+    const res = await removeDomain(domainToDelete.id);
+    if (res.ok) toast.success(`Domain "${domainToDelete.name}" deleted`);
+    setDomainToDelete(null); // tutup popup
   };
 
   return (
@@ -79,7 +85,7 @@ export default function CreateDomainPage() {
               >
                 <span>{d.name}</span>
                 <button
-                  onClick={() => handleDelete(d.id)}
+                  onClick={() => setDomainToDelete({ id: d.id, name: d.name })}
                   className="px-3 py-1.5 text-sm rounded bg-red-600 hover:bg-red-700"
                 >
                   Delete
@@ -89,6 +95,36 @@ export default function CreateDomainPage() {
           </ul>
         )}
       </section>
+
+      {/* ✅ Modal Konfirmasi Delete */}
+      {domainToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">
+            <h2 className="text-lg font-semibold">Delete Domain?</h2>
+            <p className="text-sm text-gray-300">
+              Are you sure you want to delete the domain?{" "}
+              <span className="font-semibold text-white">
+                "{domainToDelete.name}"
+              </span>
+              ?
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setDomainToDelete(null)}
+                className="px-4 py-1.5 text-sm rounded-md bg-white/10 hover:bg-white/20"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-1.5 text-sm rounded-md bg-red-600 hover:bg-red-500 text-white"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

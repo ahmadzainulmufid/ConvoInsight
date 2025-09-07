@@ -3,7 +3,7 @@ import { FiUploadCloud } from "react-icons/fi";
 
 export type UploadDropzoneProps = {
   onUploaded: (file: File) => void;
-  maxSize?: number; // default 5MB
+  maxSize?: number;
 };
 
 const UploadDropzone: React.FC<UploadDropzoneProps> = ({
