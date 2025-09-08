@@ -1,4 +1,3 @@
-// components/CardStat.jsx
 import {
   FiDollarSign,
   FiUsers,
@@ -19,6 +18,7 @@ type CardStatProps = {
   value: string | number;
   change: string;
   type: keyof typeof icons;
+  onClick?: () => void; // ✅ tambahkan
 };
 
 type InfoCardProps = {
@@ -30,11 +30,14 @@ type CardSuggestionProps = {
   title: string;
 };
 
-const CardStat = ({ title, value, change, type }: CardStatProps) => {
+const CardStat = ({ title, value, change, type, onClick }: CardStatProps) => {
   const isPositive = change.startsWith("+");
 
   return (
-    <div className="bg-white dark:bg-[#1e1f23] rounded-lg p-5 shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center">
+    <div
+      className="bg-white dark:bg-[#1e1f23] rounded-lg p-5 shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center cursor-pointer hover:ring-2 hover:ring-indigo-400 transition"
+      onClick={onClick} // ✅ tambahkan
+    >
       <div>
         <h4 className="text-sm text-gray-500">{title}</h4>
         <p className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -56,12 +59,9 @@ const CardStat = ({ title, value, change, type }: CardStatProps) => {
 export const InfoCard = ({ title, description }: InfoCardProps) => {
   return (
     <div className="bg-white dark:bg-[#1e1f23] rounded-lg shadow-md p-4 flex items-start space-x-4 w-full border border-gray-200 dark:border-gray-700">
-      {/* Icon */}
       <div className="mt-1">
         <FiInfo className="text-blue-500 w-5 h-5" />
       </div>
-
-      {/* Content */}
       <div>
         <h3 className="text-base font-semibold text-gray-900 dark:text-white">
           {title}
