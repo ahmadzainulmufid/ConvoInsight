@@ -1,9 +1,18 @@
+// components/DatasetsComponents/UploadDropzone.tsx
 import React, { useRef, useState } from "react";
 import { FiUploadCloud } from "react-icons/fi";
 
 export type UploadDropzoneProps = {
-  onUploaded: (file: File) => void;
+  onUploaded: (files: File[]) => void;
   maxSize?: number;
+};
+
+type UploadItem = {
+  id: string;
+  file: File;
+  progress: number;
+  status: "queued" | "uploading" | "done" | "error" | "skipped";
+  error?: string;
 };
 
 const UploadDropzone: React.FC<UploadDropzoneProps> = ({
@@ -11,56 +20,147 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
   maxSize = 50 * 1024 * 1024,
 }) => {
   const [dragging, setDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [items, setItems] = useState<UploadItem[]>([]);
+  const [errorSummary, setErrorSummary] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const acceptOk = (name: string) =>
     name.toLowerCase().endsWith(".csv") ||
     name.toLowerCase().endsWith(".parquet");
 
-  const fakeUpload = () =>
+  // fake upload per file supaya ada UX feedback
+  const fakeUpload = (itemId: string) =>
     new Promise<void>((resolve) => {
-      setUploading(true);
-      setProgress(0);
       let p = 0;
-      const t = setInterval(() => {
+      const tick = () => {
         p = Math.min(100, p + 8 + Math.random() * 12);
-        setProgress(p);
-        if (p >= 100) {
-          clearInterval(t);
-          setTimeout(resolve, 500);
-        }
-      }, 180);
+        setItems((prev) =>
+          prev.map((it) => (it.id === itemId ? { ...it, progress: p } : it))
+        );
+        if (p >= 100) return resolve();
+        setTimeout(tick, 160);
+      };
+      tick();
     });
 
-  const getKindByName = (name: string) =>
-    name.toLowerCase().endsWith(".parquet") ? "parquet" : "csv";
+  function toUploadItems(fileList: FileList | File[]): UploadItem[] {
+    const arr = Array.from(fileList);
+    return arr.map((f) => ({
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      file: f,
+      progress: 0,
+      status: "queued",
+    }));
+  }
 
-  async function handleFile(file: File) {
-    setError(null);
-    if (!acceptOk(file.name)) {
-      setUploading(false);
-      return setError("Only .csv or .parquet files are allowed.");
+  function validateQueue(q: UploadItem[]) {
+    const rejected: UploadItem[] = [];
+    const accepted: UploadItem[] = [];
+    for (const it of q) {
+      if (!acceptOk(it.file.name)) {
+        rejected.push({
+          ...it,
+          status: "skipped",
+          error: "Only .csv or .parquet files are allowed.",
+        });
+        continue;
+      }
+      if (it.file.size > maxSize) {
+        rejected.push({
+          ...it,
+          status: "skipped",
+          error: `File exceeds ${Math.floor(maxSize / (1024 * 1024))} MB.`,
+        });
+        continue;
+      }
+      accepted.push(it);
     }
-    if (file.size > maxSize) {
-      setUploading(false);
-      return setError("File exceeds 5 MB.");
+
+    const summary =
+      rejected.length > 0
+        ? `Skipped ${rejected.length} file(s):\n- ` +
+          rejected.map((r) => `${r.file.name} (${r.error})`).join("\n- ")
+        : null;
+
+    return { accepted, rejected, summary };
+  }
+
+  async function runUpload(queue: UploadItem[]) {
+    // set status uploading
+    setItems((prev) =>
+      prev.map((p) =>
+        queue.find((q) => q.id === p.id) ? { ...p, status: "uploading" } : p
+      )
+    );
+
+    // progress simulasi paralel
+    await Promise.all(
+      queue.map(async (it) => {
+        try {
+          await fakeUpload(it.id);
+          setItems((prev) =>
+            prev.map((p) =>
+              p.id === it.id ? { ...p, status: "done", progress: 100 } : p
+            )
+          );
+        } catch (e) {
+          setItems((prev) =>
+            prev.map((p) =>
+              p.id === it.id
+                ? {
+                    ...p,
+                    status: "error",
+                    error:
+                      e instanceof Error
+                        ? e.message
+                        : "Upload failed unexpectedly",
+                  }
+                : p
+            )
+          );
+        }
+      })
+    );
+
+    const doneFiles = queue
+      .filter((it) => {
+        const cur = items.find((x) => x.id === it.id);
+        return (cur?.status ?? it.status) !== "error";
+      })
+      .map((it) => it.file);
+
+    if (doneFiles.length > 0) onUploaded(doneFiles);
+
+    setTimeout(() => {
+      setItems([]);
+    }, 1500);
+  }
+
+  async function handleFiles(fileList: FileList | File[]) {
+    setErrorSummary(null);
+
+    const newQueue = toUploadItems(fileList);
+    const { accepted, rejected, summary } = validateQueue(newQueue);
+
+    if (summary) {
+      setErrorSummary(summary);
+      setTimeout(() => {
+        setErrorSummary(null);
+      }, 4000);
     }
 
-    await fakeUpload();
+    setItems((prev) => [...prev, ...rejected, ...accepted]);
 
-    // Simpan referensi file untuk halaman detail dataset
-    const blobUrl = URL.createObjectURL(file);
-    sessionStorage.setItem("pending_file_url", blobUrl);
-    sessionStorage.setItem("pending_file_name", file.name);
-    sessionStorage.setItem("pending_file_kind", getKindByName(file.name));
-    sessionStorage.setItem("pending_file_mime", file.type || "");
+    setTimeout(() => {
+      setItems((prev) =>
+        prev.filter((it) => it.status !== "skipped" && it.status !== "error")
+      );
+    }, 4000);
 
-    setUploading(false);
-    setProgress(0);
-    onUploaded(file);
+    if (accepted.length > 0) {
+      await runUpload(accepted);
+    }
+
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -68,15 +168,17 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setDragging(false);
-    const f = e.dataTransfer.files?.[0];
-    if (f) void handleFile(f);
+    if (e.dataTransfer?.files?.length) {
+      void handleFiles(e.dataTransfer.files);
+    }
   };
 
   return (
     <div className="bg-[#232427] rounded-2xl shadow-sm border border-[#2a2b32] p-5 md:p-6">
-      <h2 className="text-xl font-bold text-white">Add a dataset</h2>
+      <h2 className="text-xl font-bold text-white">Add datasets</h2>
       <p className="text-gray-300 mt-1">
-        Upload your csv or select a connector to add a dataset
+        Upload one or more <b>CSV</b> / <b>Parquet</b> files, or use a
+        connector.
       </p>
 
       <div
@@ -95,51 +197,70 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
           }`}
       >
         <FiUploadCloud className="mx-auto text-3xl text-gray-400" />
-        {!uploading ? (
-          <>
-            <p className="mt-3 text-gray-200">
-              Drag and drop <b>csv</b> or <b>parquet</b> files here, or{" "}
-              <label
-                htmlFor="fileInput"
-                className="text-indigo-400 font-medium underline cursor-pointer hover:text-indigo-300"
-              >
-                click to select
-              </label>
-            </p>
-            <p className="text-sm text-gray-400 mt-2">Max file size: 50 MB</p>
-            <input
-              id="fileInput"
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,.parquet,text/csv,application/vnd.apache.parquet"
-              className="sr-only"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleFile(f);
-              }}
-            />
-          </>
-        ) : (
-          <div className="mt-3">
-            <div className="mx-auto h-8 w-8 border-4 border-[#3a3b42] border-t-transparent rounded-full animate-spin" />
-            <p className="text-gray-200 mt-3">Uploading…</p>
-            <div className="mt-2 w-full max-w-md mx-auto h-2 bg-[#2a2b32] rounded-full overflow-hidden">
-              <div
-                className="h-2 bg-indigo-500 transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-1">
-              {Math.floor(progress)}%
-            </p>
-          </div>
-        )}
+        <p className="mt-3 text-gray-200">
+          Drag & drop files here, or{" "}
+          <label
+            htmlFor="fileInput"
+            className="text-indigo-400 font-medium underline cursor-pointer hover:text-indigo-300"
+          >
+            click to select
+          </label>
+        </p>
+        <p className="text-sm text-gray-400 mt-2">
+          You can select multiple files or sigle files • Max <b>50 MB</b> each
+        </p>
+        <input
+          id="fileInput"
+          ref={fileInputRef}
+          type="file"
+          multiple // ⬅️ penting: allow multi
+          accept=".csv,.parquet,text/csv,application/vnd.apache.parquet"
+          className="sr-only"
+          onChange={(e) => {
+            const list = e.target.files;
+            if (list && list.length) void handleFiles(list);
+          }}
+        />
       </div>
 
-      {error && (
-        <div className="mt-4 flex items-center gap-2 text-red-300 bg-red-900/30 border border-red-700 rounded-lg px-3 py-2">
+      {/* Daftar queue + progress */}
+      {items.length > 0 && (
+        <div className="mt-4 grid gap-3">
+          {items.map((it) => (
+            <div
+              key={it.id}
+              className="rounded-lg border border-[#3a3b42] bg-[#1f2024] p-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-white">{it.file.name}</div>
+                <div className="text-xs text-gray-400">
+                  {it.status === "queued" && "Queued"}
+                  {it.status === "uploading" && "Uploading…"}
+                  {it.status === "done" && "Done"}
+                  {it.status === "skipped" && "Skipped"}
+                  {it.status === "error" && "Error"}
+                </div>
+              </div>
+              {(it.status === "uploading" || it.status === "done") && (
+                <div className="mt-2 h-2 bg-[#2a2b32] rounded overflow-hidden">
+                  <div
+                    className="h-2 bg-indigo-500 transition-all"
+                    style={{ width: `${Math.floor(it.progress)}%` }}
+                  />
+                </div>
+              )}
+              {it.error && (
+                <div className="mt-2 text-xs text-red-300">⚠️ {it.error}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {errorSummary && (
+        <div className="mt-4 flex items-start gap-2 text-red-300 bg-red-900/30 border border-red-700 rounded-lg px-3 py-2 whitespace-pre-wrap">
           <span>⚠️</span>
-          <span className="text-sm">{error}</span>
+          <span className="text-sm">{errorSummary}</span>
         </div>
       )}
     </div>

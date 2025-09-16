@@ -41,41 +41,71 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
         </div>
 
         <UploadDropzone
-          onUploaded={async (file) => {
-            const id = Date.now().toString();
-            const uploadedAt = new Date().toLocaleDateString("en-US", {
+          onUploaded={async (files) => {
+            if (!files.length) return;
+
+            // muat dataset lama
+            const raw = localStorage.getItem(storageKey);
+            const prev: DatasetItem[] = raw ? JSON.parse(raw) : [];
+            const now = new Date();
+            const uploadedAt = now.toLocaleDateString("en-US", {
               year: "numeric",
               month: "short",
               day: "numeric",
             });
 
-            const newItem: DatasetItem = {
-              id,
-              name: file.name,
-              size: file.size,
-              uploadedAt,
-            };
+            const newItems: DatasetItem[] = [];
+            for (const file of files) {
+              const id =
+                Date.now().toString() +
+                "_" +
+                Math.random().toString(36).slice(2, 8);
+              const item: DatasetItem = {
+                id,
+                name: file.name,
+                size: file.size,
+                uploadedAt,
+              };
+              newItems.push(item);
 
-            const raw = localStorage.getItem(storageKey);
-            const prev: DatasetItem[] = raw ? JSON.parse(raw) : [];
-            const updated = [...prev, newItem];
+              // simpan blob ke IndexedDB
+              await saveDatasetBlob(id, file);
+
+              // metadata ringan untuk detail
+              sessionStorage.setItem(
+                `ds_file_kind_${id}`,
+                getKindByName(file.name)
+              );
+              sessionStorage.setItem(
+                `ds_file_mime_${id}`,
+                file.type || "text/csv"
+              );
+
+              // (opsional) URL blob sementara kalau halaman detail butuh preview cepat
+              const blobUrl = URL.createObjectURL(file);
+              sessionStorage.setItem(`pending_file_url_${id}`, blobUrl);
+              sessionStorage.setItem(`pending_file_name_${id}`, file.name);
+              sessionStorage.setItem(
+                `pending_file_kind_${id}`,
+                getKindByName(file.name)
+              );
+              sessionStorage.setItem(
+                `pending_file_mime_${id}`,
+                file.type || ""
+              );
+            }
+
+            const updated = [...prev, ...newItems];
             localStorage.setItem(storageKey, JSON.stringify(updated));
+            setItems(updated);
 
-            // ✅ simpan blob ke IndexedDB
-            await saveDatasetBlob(id, file);
-
-            // simpan metadata ringan di sessionStorage (opsional)
-            sessionStorage.setItem(
-              `ds_file_kind_${id}`,
-              getKindByName(file.name)
-            );
-            sessionStorage.setItem(
-              `ds_file_mime_${id}`,
-              file.type || "text/csv"
-            );
-
-            toast.success("Dataset uploaded successfully!");
-            navigate(`/domain/${section}/datasets/${id}`);
+            if (files.length === 1) {
+              toast.success(`"${files[0].name}" uploaded successfully!`);
+              navigate(`/domain/${section}/datasets/${newItems[0].id}`);
+            } else {
+              toast.success(`${files.length} datasets uploaded successfully!`);
+              // tetap di halaman list supaya user bisa pilih mana yang mau dibuka
+            }
           }}
         />
 

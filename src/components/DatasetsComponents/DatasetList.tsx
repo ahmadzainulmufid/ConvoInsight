@@ -25,7 +25,7 @@ const DatasetList: React.FC<{
   const confirmDelete = () => {
     if (selected && onDelete) {
       onDelete(selected);
-      toast.success(`Dataset "${selected.name}" berhasil dihapus`);
+      toast.success(`Dataset "${selected.name}" successfully deleted`);
     }
     setSelected(null);
   };
