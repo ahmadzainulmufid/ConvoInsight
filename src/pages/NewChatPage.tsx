@@ -1,21 +1,22 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import HistorySidebar from "../components/ChatComponents/HistorySidebar";
 import { useChatHistory } from "../hooks/useChatHistory";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
 import AnimatedMessageBubble from "../components/ChatComponents/AnimatedMessageBubble";
-import { askDataset, type AskResult, type DataRow } from "../utils/askDataset";
-import ChartGallery from "../components/ChatComponents/ChartGallery";
 
 type Msg = {
   role: "user" | "assistant";
   content: string;
-  analysis?: string;
-  charts?: AskResult["charts"];
-  preview?: { columns: string[]; rows: DataRow[] };
 };
-type ChatAPIResponse = { reply?: string; error?: string };
+
+type ChatAPIResponse = {
+  session_id: string;
+  response: string;
+  chart_url?: string | null;
+  execution_time?: number;
+};
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -26,27 +27,9 @@ function getErrorMessage(err: unknown): string {
   }
 }
 
-type DatasetItem = {
-  id: string;
-  name: string;
-  size: number;
-  uploadedAt: string;
-};
-
-function loadDatasetsForSection(section?: string | null): DatasetItem[] {
-  const key = section ? `datasets_${section}` : "datasets";
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 export default function NewChatPage() {
   const { section } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { add } = useChatHistory(section);
 
@@ -58,14 +41,8 @@ export default function NewChatPage() {
   const openedId = searchParams.get("id");
   const isNewConversation = !openedId;
 
-  const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:5000";
-
-  const datasets = useMemo(() => loadDatasetsForSection(section), [section]);
-
-  // ⛔️ HILANGKAN auto-select dataset agar default selalu GENERAL
-  const [datasetId, setDatasetId] = useState<string | null>(
-    searchParams.get("datasetId") || null
-  );
+  const API_BASE =
+    "https://mlbi-pipeline-services-32684464346.asia-southeast2.run.app";
 
   useEffect(() => {
     if (!openedId) {
@@ -82,33 +59,6 @@ export default function NewChatPage() {
 
   const title = isNewConversation ? "ConvoInsight" : "Conversation";
   const subtitle = "Chat with your business data assistant";
-
-  function formatAskText(r: AskResult): string {
-    // tampilkan answer + SQL; analysis dan charts dirender terpisah
-    const previewCols = r.columns.slice(0, 6);
-    const previewRows = r.rows.slice(0, 5);
-
-    const header = previewCols.join(" | ");
-    const sep = previewCols.map(() => "---").join(" | ");
-    const body = previewRows
-      .map((row) => previewCols.map((c) => String(row[c] ?? "")).join(" | "))
-      .join("\n");
-
-    const table = previewCols.length
-      ? `\n\nPreview (max 5 rows):\n${header}\n${sep}\n${body}`
-      : "";
-
-    return `${r.answer}\n\nSQL:\n\`\`\`sql\n${r.sql}\n\`\`\`${table}`;
-  }
-
-  function onSelectDataset(id: string | "") {
-    const nextId = id || null;
-    setDatasetId(nextId);
-    const next = new URLSearchParams(searchParams);
-    if (nextId) next.set("datasetId", nextId);
-    else next.delete("datasetId");
-    setSearchParams(next, { replace: true });
-  }
 
   const handleSend = async () => {
     const text = message.trim();
@@ -132,7 +82,6 @@ export default function NewChatPage() {
 
       const next = new URLSearchParams(searchParams);
       next.set("id", id);
-      if (datasetId) next.set("datasetId", datasetId);
       navigate(`/domain/${section}/dashboard/newchat?${next.toString()}`, {
         replace: true,
       });
@@ -140,52 +89,27 @@ export default function NewChatPage() {
     }
 
     try {
-      // === Jika ada dataset dipilih: panggil /api/ask-dataset ===
-      if (datasetId) {
-        const res = await askDataset(datasetId, text);
-        setMessages((cur) => [
-          ...cur,
-          {
-            role: "assistant",
-            content: formatAskText(res),
-            analysis: res.analysis,
-            charts: res.charts,
-            preview: { columns: res.columns, rows: res.rows.slice(0, 5) },
-          },
-        ]);
-        return;
-      }
-
-      // === GENERAL CHAT (tanpa dataset) ===
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const res = await fetch(`${API_BASE}/query`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMsgs }),
+        body: JSON.stringify({
+          domain: section,
+          prompt: text,
+        }),
       });
 
-      let data: ChatAPIResponse | undefined;
-      try {
-        data = (await res.json()) as ChatAPIResponse;
-      } catch {
-        /* ignore */
-      }
-
       if (!res.ok) {
-        const detail = data?.error ?? `HTTP ${res.status}`;
-        throw new Error(detail);
+        const err = await res.text();
+        throw new Error(err);
       }
 
-      const replyText =
-        typeof data?.reply === "string"
-          ? data.reply
-          : data?.error ?? "(no reply)";
+      const data: ChatAPIResponse = await res.json();
 
       setMessages((cur) => [
         ...cur,
         {
           role: "assistant",
-          content: replyText,
-          // jangan kirim analysis/charts di general chat
+          content: data.response,
         },
       ]);
     } catch (err: unknown) {
@@ -195,34 +119,13 @@ export default function NewChatPage() {
         ...cur,
         {
           role: "assistant",
-          content: "⚠️ (fallback) Terjadi kendala memproses pesan.",
+          content: "⚠️ Terjadi kendala memproses pertanyaan.",
         },
       ]);
     } finally {
       setSending(false);
     }
   };
-
-  const DatasetSelector = (
-    <div className="flex items-center gap-2 mb-3">
-      <label className="text-xs text-gray-400">Dataset:</label>
-      <select
-        value={datasetId ?? ""}
-        onChange={(e) => onSelectDataset(e.target.value)}
-        className="bg-[#2A2B32] text-gray-200 text-sm rounded-md px-2 py-1 border border-[#2F3038]"
-      >
-        <option value="">(None – general chat)</option>
-        {datasets.map((d) => (
-          <option key={d.id} value={d.id}>
-            {d.name}
-          </option>
-        ))}
-      </select>
-      <span className="text-xs text-gray-500">
-        • {datasetId ? "pertanyaan dianalisis ke dataset" : "mode general chat"}
-      </span>
-    </div>
-  );
 
   return (
     <div className="relative min-h-screen p-6 pr-6">
@@ -236,17 +139,16 @@ export default function NewChatPage() {
               <p className="mt-2 text-sm text-gray-400">{subtitle}</p>
             </div>
 
-            <div className="w-full max-w-2xl">{DatasetSelector}</div>
+            <div className="mb-3 text-xs text-gray-400">
+              All uploaded datasets in domain <b>{section}</b> will be used for
+              analysis.
+            </div>
 
             <ChatComposer
               value={message}
               onChange={setMessage}
               onSend={handleSend}
-              placeholder={
-                datasetId
-                  ? "Tanya tentang dataset terpilih…"
-                  : "Tanya hal umum tentang bisnis, tren, atau insight…"
-              }
+              placeholder="Tanyakan insight bisnis atau analisis data…"
             />
 
             <p className="mt-2 mr-50 text-xs text-gray-500 text-center">
@@ -265,7 +167,10 @@ export default function NewChatPage() {
               Conversation
             </h2>
 
-            {DatasetSelector}
+            <div className="mb-3 text-xs text-gray-400">
+              All uploaded datasets in domain <b>{section}</b> will be used for
+              analysis.
+            </div>
 
             <div className="min-h-[60vh] rounded-md border border-[#2F3038] bg-[#1f2026] p-4 flex flex-col">
               <div
@@ -281,55 +186,6 @@ export default function NewChatPage() {
                         message={{ role: m.role, content: m.content }}
                         animate={animate}
                       />
-
-                      {/* Analisis deskriptif dari backend */}
-                      {m.analysis && m.role === "assistant" && (
-                        <div className="rounded-md bg-[#24252c] border border-[#2F3038] p-3 text-sm text-gray-200 whitespace-pre-wrap">
-                          {m.analysis}
-                        </div>
-                      )}
-
-                      {/* Chart gallery (Plotly atau fallback img) */}
-                      {m.charts && m.charts.length > 0 && (
-                        <ChartGallery charts={m.charts} />
-                      )}
-
-                      {/* Preview table kecil */}
-                      {m.preview && m.preview.columns.length > 0 && (
-                        <div className="overflow-x-auto text-xs">
-                          <table className="min-w-[480px] border border-[#2F3038]">
-                            <thead>
-                              <tr className="bg-[#2A2B32]">
-                                {m.preview.columns.map((c) => (
-                                  <th
-                                    key={c}
-                                    className="px-2 py-1 text-left border-b border-[#2F3038]"
-                                  >
-                                    {c}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {m.preview.rows.map((r, idx) => (
-                                <tr key={idx} className="odd:bg-[#1f2026]">
-                                  {m.preview!.columns.map((c) => (
-                                    <td
-                                      key={c}
-                                      className="px-2 py-1 border-b border-[#2F3038]"
-                                    >
-                                      {String(r[c] ?? "")}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          <div className="text-[10px] text-gray-500 mt-1">
-                            Preview (max 5 rows)
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -348,13 +204,7 @@ export default function NewChatPage() {
                   value={message}
                   onChange={setMessage}
                   onSend={handleSend}
-                  placeholder={
-                    sending
-                      ? "Sending…"
-                      : datasetId
-                      ? "Tanya tentang dataset terpilih…"
-                      : "Tulis pertanyaan umum ke AI…"
-                  }
+                  placeholder={sending ? "Sending…" : "Tulis pertanyaan…"}
                 />
               </div>
             </div>
