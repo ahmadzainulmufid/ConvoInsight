@@ -1,5 +1,4 @@
-// src/pages/DatasetsPage.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/DatasetsComponents/AppShell";
 import UploadDropzone from "../components/DatasetsComponents/UploadDropzone";
@@ -12,17 +11,58 @@ import { toast } from "react-hot-toast";
 
 type Props = { userName: string };
 
+type DatasetApiItem = {
+  filename: string;
+  gcs_path: string;
+  size: number;
+  updated?: string;
+};
+
+const API_BASE =
+  "https://mlbi-pipeline-services-32684464346.asia-southeast2.run.app";
+
 const DatasetsPage: React.FC<Props> = ({ userName }) => {
   const navigate = useNavigate();
   const section = useSectionFromPath();
-
-  const storageKey = section ? `datasets_${section}` : "datasets";
   const [items, setItems] = useState<DatasetItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchDatasets = useCallback(async () => {
+    if (!section) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/domains/${section}/datasets`);
+      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+      const data = await res.json();
+
+      const datasets: DatasetItem[] = (data.datasets as DatasetApiItem[]).map(
+        (d, i) => ({
+          id: `${i}`,
+          name: d.filename,
+          size: d.size,
+          uploadedAt: d.updated
+            ? new Date(d.updated).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+            : "-",
+        })
+      );
+
+      setItems(datasets);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load datasets");
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [section]);
 
   useEffect(() => {
-    const raw = localStorage.getItem(storageKey);
-    setItems(raw ? JSON.parse(raw) : []);
-  }, [storageKey]);
+    fetchDatasets();
+  }, [fetchDatasets]);
 
   return (
     <AppShell userName={userName}>
@@ -39,45 +79,26 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
         <UploadDropzone
           onUploaded={async (files) => {
             try {
+              const form = new FormData();
               for (const file of files) {
-                const form = new FormData();
-                form.append("file", file); // ⬅️ cukup satu file per loop
-
-                const res = await fetch(
-                  `https://mlbi-pipeline-services-32684464346.asia-southeast2.run.app/upload_datasets/${section}`,
-                  { method: "POST", body: form }
-                );
-
-                if (!res.ok) {
-                  throw new Error(`Upload failed: ${res.status}`);
-                }
-
-                const data = await res.json();
-                const gcsInfo = data.files[0];
-
-                const id = Date.now().toString();
-                const uploadedAt = new Date().toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                });
-
-                const newItem: DatasetItem = {
-                  id,
-                  name: gcsInfo.filename,
-                  size: file.size,
-                  uploadedAt,
-                };
-
-                const raw = localStorage.getItem(storageKey);
-                const prev: DatasetItem[] = raw ? JSON.parse(raw) : [];
-                const updated = [...prev, newItem];
-                localStorage.setItem(storageKey, JSON.stringify(updated));
-                setItems(updated);
-
-                toast.success("Dataset uploaded successfully!");
-                navigate(`/domain/${section}/datasets/${id}`);
+                form.append("files", file);
               }
+
+              const res = await fetch(
+                `${API_BASE}/upload_datasets/${section}`,
+                { method: "POST", body: form }
+              );
+
+              if (!res.ok) {
+                throw new Error(`Upload failed: ${res.status}`);
+              }
+
+              await res.json();
+              toast.success("Dataset uploaded successfully!");
+              await fetchDatasets();
+
+              const id = Date.now().toString();
+              navigate(`/domain/${section}/datasets/${id}`);
             } catch (err: unknown) {
               console.error(err);
               toast.error("Failed to upload dataset");
@@ -87,15 +108,19 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
 
         <ConnectorsRow />
 
-        <DatasetList
-          items={items}
-          onView={(ds) => navigate(`/domain/${section}/datasets/${ds.id}`)}
-          onDelete={(ds) => {
-            const next = items.filter((x) => x.id !== ds.id);
-            setItems(next);
-            localStorage.setItem(storageKey, JSON.stringify(next));
-          }}
-        />
+        {loading ? (
+          <p className="text-sm text-gray-400">Loading datasets…</p>
+        ) : (
+          <DatasetList
+            items={items}
+            onView={(ds) => navigate(`/domain/${section}/datasets/${ds.id}`)}
+            onDelete={(ds) => {
+              const next = items.filter((x) => x.id !== ds.id);
+              setItems(next);
+              toast.success(`Dataset "${ds.name}" deleted locally`);
+            }}
+          />
+        )}
       </div>
     </AppShell>
   );
