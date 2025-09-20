@@ -1,52 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppShell from "../components/DatasetsComponents/AppShell";
 import DataTable from "../components/DatasetsComponents/DataTable";
 import type { Row } from "../components/DatasetsComponents/DataTable";
-import { getDatasetBlob } from "../utils/fileStore";
 
 type Props = { userName: string };
 
-type DatasetMeta = {
-  id: string;
-  name: string;
-  size: number;
-  uploadedAt: string;
-};
-
-function splitCSVLine(line: string) {
-  const out: string[] = [];
-  let cur = "";
-  let q = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"') {
-      if (q && line[i + 1] === '"') {
-        cur += '"';
-        i++;
-      } else q = !q;
-    } else if (c === "," && !q) {
-      out.push(cur);
-      cur = "";
-    } else {
-      cur += c;
-    }
-  }
-  out.push(cur);
-  return out;
-}
+const API_BASE =
+  "https://mlbi-pipeline-services-32684464346.asia-southeast2.run.app";
 
 const DatasetDetailPage: React.FC<Props> = ({ userName }) => {
   const { section, id } = useParams();
   const navigate = useNavigate();
-
-  const storageKey = section ? `datasets_${section}` : "datasets";
-  const list = useMemo<DatasetMeta[]>(() => {
-    const raw = localStorage.getItem(storageKey);
-    return raw ? JSON.parse(raw) : [];
-  }, [storageKey]);
-
-  const dataset = list.find((d) => d.id === id);
 
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -56,60 +21,32 @@ const DatasetDetailPage: React.FC<Props> = ({ userName }) => {
 
   useEffect(() => {
     async function load() {
-      if (!id) return;
-
-      const kind = sessionStorage.getItem(`ds_file_kind_${id}`) || "csv";
-      if (kind !== "csv") {
-        setWarn("Preview for parquet is not enabled yet.");
-        setLoading(false);
-        return;
-      }
+      if (!id || !section) return;
 
       try {
-        const blob = await getDatasetBlob(id);
-        if (!blob) {
-          setWarn("File content not found.");
-          setLoading(false);
-          return;
-        }
+        // encode filename agar backend FastAPI bisa terima titik (.csv)
+        const encodedId = encodeURIComponent(id);
 
-        const text = await blob.text();
+        const res = await fetch(
+          `${API_BASE}/domains/${section}/datasets/${encodedId}/preview`
+        );
+        if (!res.ok) throw new Error(`Failed to fetch preview: ${res.status}`);
 
-        // ✅ bikin lines dulu
-        const lines = text.split(/\r?\n/).filter((l) => l.trim().length);
-        if (lines.length === 0) {
-          setWarn("Empty file.");
-          setLoading(false);
-          return;
-        }
-
-        // header
-        const rawHdrs = splitCSVLine(lines[0]);
-        const hdrs = rawHdrs.map((h) => h.trim());
-
-        // rows
-        const data: Row[] = lines.slice(1).map((l) => {
-          const cells = splitCSVLine(l);
-          const obj: Row = {};
-          hdrs.forEach((h, i) => {
-            obj[h] = (cells[i] ?? "").trim();
-          });
-          return obj;
-        });
-
-        setHeaders(hdrs);
-        setRows(data);
-        setTotalRows(data.length);
+        const data = await res.json();
+        setHeaders(data.columns || []);
+        setRows(data.rows || []);
+        setTotalRows(data.total_rows || 0);
         setWarn(null);
-      } catch {
-        setWarn("Failed to read file.");
+      } catch (err) {
+        console.error(err);
+        setWarn("Failed to load dataset preview.");
       } finally {
         setLoading(false);
       }
     }
 
     void load();
-  }, [id]);
+  }, [id, section]);
 
   return (
     <AppShell
@@ -124,8 +61,7 @@ const DatasetDetailPage: React.FC<Props> = ({ userName }) => {
         >
           datasets
         </button>{" "}
-        /{" "}
-        <span className="text-gray-300">{dataset?.name || "new-dataset"}</span>
+        / <span className="text-gray-300">{id || "new-dataset"}</span>
       </div>
 
       {loading ? (

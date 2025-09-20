@@ -36,8 +36,8 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
       const data = await res.json();
 
       const datasets: DatasetItem[] = (data.datasets as DatasetApiItem[]).map(
-        (d, i) => ({
-          id: `${i}`,
+        (d) => ({
+          id: d.filename,
           name: d.filename,
           size: d.size,
           uploadedAt: d.updated
@@ -97,8 +97,9 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
               toast.success("Dataset uploaded successfully!");
               await fetchDatasets();
 
-              const id = Date.now().toString();
-              navigate(`/domain/${section}/datasets/${id}`);
+              if (files.length > 0) {
+                navigate(`/domain/${section}/datasets/${files[0].name}`);
+              }
             } catch (err: unknown) {
               console.error(err);
               toast.error("Failed to upload dataset");
@@ -117,7 +118,6 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
             onDelete={(ds) => {
               const next = items.filter((x) => x.id !== ds.id);
               setItems(next);
-              toast.success(`Dataset "${ds.name}" deleted locally`);
             }}
           />
         )}

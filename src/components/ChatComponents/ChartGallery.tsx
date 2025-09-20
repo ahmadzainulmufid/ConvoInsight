@@ -1,5 +1,16 @@
 import Plot from "react-plotly.js";
-import type { ChartItem, PlotlySpec } from "../../utils/askDataset";
+import type { Data } from "plotly.js";
+
+export type PlotlySpec = {
+  data: Data[];
+  layout?: Record<string, unknown>;
+  config?: Record<string, unknown>;
+};
+
+export type ChartItem =
+  | { title: string; html: string }
+  | { title: string; data_uri: string; plotly?: PlotlySpec }
+  | { title: string; plotly: PlotlySpec; data_uri?: string };
 
 export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
   if (!charts || charts.length === 0) return null;
@@ -7,17 +18,40 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
   return (
     <div className="grid gap-4">
       {charts.map((c, idx) => {
-        const key = `${c.title}-${idx}`;
+        const key = `${("title" in c && c.title) || "chart"}-${idx}`;
+        const heading = c.title || "Chart";
 
-        // --- case plotly
+        // HTML chart (iframe srcDoc)
+        if ("html" in c && typeof c.html === "string") {
+          return (
+            <div
+              key={key}
+              className="rounded-md bg-[#24252c] border border-[#2F3038] p-3 sm:p-4 w-full"
+            >
+              <div className="text-sm mb-2 text-gray-200">{heading}</div>
+              <iframe
+                srcDoc={c.html}
+                title={heading}
+                className="w-full rounded"
+                style={{
+                  height: "clamp(320px, 60vh, 640px)",
+                  border: "none",
+                  overflow: "hidden",
+                }}
+              />
+            </div>
+          );
+        }
+
+        // Plotly native
         if ("plotly" in c && c.plotly) {
           const p: PlotlySpec = c.plotly;
           return (
             <div
               key={key}
-              className="rounded-md bg-[#24252c] border border-[#2F3038] p-3"
+              className="rounded-md bg-[#24252c] border border-[#2F3038] p-3 sm:p-4 w-full"
             >
-              <div className="text-sm mb-2 text-gray-200">{c.title}</div>
+              <div className="text-sm mb-2 text-gray-200">{heading}</div>
               <Plot
                 data={p.data}
                 layout={{
@@ -29,25 +63,25 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
                   ...p.layout,
                 }}
                 config={{ displaylogo: false, responsive: true, ...p.config }}
-                style={{ width: "100%", height: "360px" }}
+                style={{ width: "100%", height: "clamp(320px, 60vh, 640px)" }}
                 useResizeHandler
               />
             </div>
           );
         }
 
-        // --- case image
+        // Static image chart
         if ("data_uri" in c && c.data_uri) {
           return (
             <div
               key={key}
-              className="rounded-md bg-[#24252c] border border-[#2F3038] p-3"
+              className="rounded-md bg-[#24252c] border border-[#2F3038] p-3 sm:p-4 w-full"
             >
-              <div className="text-sm mb-2 text-gray-200">{c.title}</div>
+              <div className="text-sm mb-2 text-gray-200">{heading}</div>
               <img
                 src={c.data_uri}
-                alt={c.title}
-                className="max-w-full rounded"
+                alt={heading}
+                className="w-full rounded object-contain"
               />
             </div>
           );
