@@ -11,6 +11,7 @@ import ChartGallery, {
 } from "../components/ChatComponents/ChartGallery";
 import { fetchChartHtml } from "../utils/fetchChart";
 import { cleanAndSplitText } from "../utils/cleanText";
+import { useChatHistory } from "../hooks/useChatHistory";
 
 type Msg = {
   role: "user" | "assistant";
@@ -28,6 +29,7 @@ export default function NewChatPage() {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const { add } = useChatHistory(domain);
 
   const openedId = searchParams.get("id");
   const isNewConversation = !openedId;
@@ -67,12 +69,22 @@ export default function NewChatPage() {
 
     const userMsgCount = nextMsgs.filter((m) => m.role === "user").length;
     if (!openedId && userMsgCount === 1) {
+      // buat ID baru untuk session
       const id = `${Date.now()}`;
       const next = new URLSearchParams(searchParams);
       next.set("id", id);
       navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, {
         replace: true,
       });
+
+      // 🟢 tambahkan ke history
+      add({
+        id,
+        title: text.slice(0, 30) || "Untitled Chat", // judul diambil dari pesan pertama
+        section: domain,
+        createdAt: Date.now(),
+      });
+
       toast.success("Chat disimpan ke History");
     }
 
