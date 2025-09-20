@@ -12,8 +12,11 @@ import ChartGallery, {
 import { fetchChartHtml } from "../utils/fetchChart";
 import { cleanAndSplitText } from "../utils/cleanText";
 import { useChatHistory } from "../hooks/useChatHistory";
+import { saveChatMessage, listenMessages } from "../service/chatStore";
+import { getAuth } from "firebase/auth";
 
 type Msg = {
+  id?: string;
   role: "user" | "assistant";
   content: string;
   chartUrl?: string | null;
@@ -31,17 +34,35 @@ export default function NewChatPage() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const { add } = useChatHistory(domain);
 
+  const auth = getAuth();
+  const userId = auth.currentUser?.uid;
+
   const openedId = searchParams.get("id");
   const isNewConversation = !openedId;
 
   const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
   useEffect(() => {
-    if (!openedId) {
-      setMessages([]);
-      setMessage("");
-    }
-  }, [openedId]);
+    if (!openedId || !userId || !domain) return;
+    const unsub = listenMessages(userId, domain, openedId, (msgs) => {
+      setMessages(
+        msgs.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.text,
+          charts: m.blobUrl
+            ? [
+                {
+                  title: "Chart",
+                  html: `<iframe src="${m.blobUrl}" class="w-full h-[400px] border rounded"></iframe>`,
+                },
+              ]
+            : undefined,
+        }))
+      );
+    });
+    return () => unsub();
+  }, [openedId, userId, domain]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -62,34 +83,33 @@ export default function NewChatPage() {
       return;
     }
 
-    const nextMsgs: Msg[] = [...messages, { role: "user", content: text }];
-    setMessages(nextMsgs);
     setMessage("");
     setSending(true);
 
-    const userMsgCount = nextMsgs.filter((m) => m.role === "user").length;
-    if (!openedId && userMsgCount === 1) {
-      // buat ID baru untuk session
-      const id = `${Date.now()}`;
+    const sessionId = openedId ?? `${Date.now()}`;
+    if (!openedId) {
       const next = new URLSearchParams(searchParams);
-      next.set("id", id);
+      next.set("id", sessionId);
       navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, {
         replace: true,
       });
 
-      // 🟢 tambahkan ke history
       add({
-        id,
-        title: text.slice(0, 30) || "Untitled Chat", // judul diambil dari pesan pertama
+        id: sessionId,
+        title: text.slice(0, 30) || "Untitled Chat",
         section: domain,
         createdAt: Date.now(),
       });
 
-      toast.success("Chat disimpan ke History");
+      toast.success("History added successfully");
     }
 
+    // 🟢 update UI langsung (tanpa nunggu Firestore)
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+
+    await saveChatMessage(userId!, domain, sessionId, "user", text);
+
     try {
-      const sessionId = searchParams.get("id");
       const res = await queryDomain({
         apiBase: API_BASE,
         domain,
@@ -97,40 +117,59 @@ export default function NewChatPage() {
         sessionId,
       });
 
-      let charts: ChartItem[] | undefined;
-      const chartUrl: string | null | undefined = res.chart_url ?? null;
-
-      if (chartUrl) {
-        try {
-          const html = await fetchChartHtml(API_BASE, chartUrl);
-          if (html) {
-            charts = [{ title: "Chart", html }];
-          }
-        } catch (e) {
-          console.warn("Fetch chart HTML failed, falling back to iframe:", e);
+      let chartBlob: Blob | undefined;
+      if (res.chart_url) {
+        const html = await fetchChartHtml(API_BASE, res.chart_url);
+        if (html) {
+          chartBlob = new Blob([html], { type: "text/html" });
         }
       }
 
-      setMessages((cur) => [
-        ...cur,
+      await saveChatMessage(
+        userId!,
+        domain,
+        sessionId,
+        "assistant",
+        res.response ?? "(empty)",
+        chartBlob
+      );
+
+      // 🟢 langsung update UI biar gak "no message yet"
+      setMessages((prev) => [
+        ...prev,
         {
           role: "assistant",
           content: res.response ?? "(empty)",
-          chartUrl,
-          charts,
+          charts: chartBlob
+            ? [
+                {
+                  title: "Chart",
+                  html: `<iframe src="${URL.createObjectURL(
+                    chartBlob
+                  )}" class="w-full h-[400px] border rounded"></iframe>`,
+                },
+              ]
+            : undefined,
         },
       ]);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Gagal memproses permintaan.";
-      toast.error(msg);
-      setMessages((cur) => [
-        ...cur,
+      await saveChatMessage(
+        userId!,
+        domain,
+        sessionId,
+        "assistant",
+        "⚠️ Terjadi kendala memproses pesan."
+      );
+      setMessages((prev) => [
+        ...prev,
         {
           role: "assistant",
-          content: "⚠️ (fallback) Terjadi kendala memproses pesan.",
+          content: "⚠️ Terjadi kendala memproses pesan.",
         },
       ]);
+      toast.error(
+        err instanceof Error ? err.message : "Gagal memproses permintaan."
+      );
     } finally {
       setSending(false);
     }
@@ -189,7 +228,7 @@ export default function NewChatPage() {
                   const isLast = i === messages.length - 1;
                   const animate = isLast && m.role === "assistant" && !sending;
 
-                  // > 1 chart: tampil per chart + penjelasan masing-masing
+                  // > 1 chart
                   if (
                     m.role === "assistant" &&
                     m.charts &&
@@ -198,11 +237,14 @@ export default function NewChatPage() {
                     const parts = cleanAndSplitText(m.content, m.charts.length);
                     return (
                       <div
-                        key={i}
+                        key={m.id ?? `msg-${i}`}
                         className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0 space-y-6"
                       >
                         {m.charts.map((c, idx) => (
-                          <div key={`${i}-chart-${idx}`} className="space-y-3">
+                          <div
+                            key={`${m.id ?? i}-chart-${idx}`}
+                            className="space-y-3"
+                          >
                             <ChartGallery charts={[c]} />
                             <div className="w-full">
                               <AnimatedMessageBubble
@@ -221,7 +263,7 @@ export default function NewChatPage() {
                     );
                   }
 
-                  // 1 chart: chart → penjelasan
+                  // 1 chart
                   if (
                     m.role === "assistant" &&
                     m.charts &&
@@ -230,7 +272,7 @@ export default function NewChatPage() {
                     const part = cleanAndSplitText(m.content, 1)[0];
                     return (
                       <div
-                        key={i}
+                        key={m.id ?? `msg-${i}`}
                         className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0"
                       >
                         <div className="mb-3">
@@ -247,9 +289,9 @@ export default function NewChatPage() {
                     );
                   }
 
-                  // tanpa chart: teks saja (tetap dibersihkan)
+                  // tanpa chart
                   return (
-                    <div className="w-full">
+                    <div key={m.id ?? `msg-${i}`} className="w-full">
                       <AnimatedMessageBubble
                         message={{
                           role: m.role,
