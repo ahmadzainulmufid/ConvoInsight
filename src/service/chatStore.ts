@@ -1,194 +1,103 @@
-// src/services/chatStore.ts
+// src/service/chatStore.ts
+import { auth, db } from "../utils/firebaseSetup";
 import {
-  addDoc,
   collection,
-  doc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
+  addDoc,
   serverTimestamp,
-  setDoc,
-  updateDoc,
+  query,
+  orderBy,
+  onSnapshot,
   where,
-  Timestamp,
-  writeBatch,
-  QueryConstraint,
-  FirestoreError,
+  getDocs,
 } from "firebase/firestore";
-import { db } from "../utils/firebaseSetup";
-import type { AskResult, DataRow } from "../utils/askDataset";
-
-export type ChatRole = "user" | "assistant";
+import { saveChartBlob, getChartBlob } from "../utils/fileStore"; // pastikan path sesuai
 
 export type ChatMessage = {
-  role: ChatRole;
-  content: string;
-  analysis?: string;
-  charts?: AskResult["charts"];
-  preview?: { columns: string[]; rows: DataRow[] };
-  createdAt?: Timestamp;
+  id?: string;
+  sessionId: string;
+  role: "user" | "assistant";
+  text: string;
+  chartId?: string; // 🔑 referensi ke IndexedDB
+  createdAt?: unknown;
 };
 
-export type Conversation = {
-  id: string;
-  title: string;
-  section?: string | null;
-  datasetId?: string | null;
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
-  ownerUid?: string | null;
-};
+export async function getDomainDocId(
+  domainName: string
+): Promise<string | null> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
 
-// Helper: guard uid
-function assertUid(uid: string | null | undefined): asserts uid is string {
-  if (!uid) throw new Error("UID kosong. Pastikan user sudah login.");
-}
-
-function userConversationsCol(uid: string) {
-  return collection(db, "users", uid, "conversations");
-}
-
-function conversationDoc(uid: string, convId: string) {
-  return doc(db, "users", uid, "conversations", convId);
-}
-
-function messagesCol(uid: string, convId: string) {
-  return collection(db, "users", uid, "conversations", convId, "messages");
-}
-
-// --- CRUD conversations ---
-export async function createConversation(
-  uid: string | null | undefined,
-  input: {
-    title: string;
-    section?: string | null;
-    datasetId?: string | null;
-  }
-): Promise<string> {
-  assertUid(uid);
-  const ref = doc(userConversationsCol(uid)); // custom id
-  await setDoc(ref, {
-    title: input.title,
-    section: input.section ?? null,
-    datasetId: input.datasetId ?? null,
-    ownerUid: uid,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
-export async function loadConversationMeta(
-  uid: string | null | undefined,
-  id: string
-): Promise<Conversation | null> {
-  assertUid(uid);
-  const snap = await getDoc(conversationDoc(uid, id));
-  if (!snap.exists()) return null;
-  return { id: snap.id, ...(snap.data() as Omit<Conversation, "id">) };
-}
-
-export async function updateConversationMeta(
-  uid: string | null | undefined,
-  id: string,
-  patch: Partial<Omit<Conversation, "id">>
-) {
-  assertUid(uid);
-  await updateDoc(conversationDoc(uid, id), {
-    ...patch,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export async function deleteConversation(
-  uid: string | null | undefined,
-  id: string
-) {
-  assertUid(uid);
-  // hapus semua messages dulu (batched)
-  const mcol = messagesCol(uid, id);
-  const ss = await getDocs(mcol);
-  const batch = writeBatch(db);
-  ss.docs.forEach((d) => batch.delete(d.ref));
-  batch.delete(conversationDoc(uid, id));
-  await batch.commit();
-}
-
-// --- Listing conversations ---
-export async function listConversations(
-  uid: string | null | undefined,
-  section?: string | null
-): Promise<Conversation[]> {
-  assertUid(uid);
-  const constraints: QueryConstraint[] = [orderBy("updatedAt", "desc")];
-  if (section) constraints.unshift(where("section", "==", section));
-  const q = query(userConversationsCol(uid), ...constraints);
-  const ss = await getDocs(q);
-  return ss.docs.map((d) => ({
-    id: d.id,
-    ...(d.data() as Omit<Conversation, "id">),
-  }));
-}
-
-// Realtime listener untuk conversations (HistorySidebar)
-export function listenConversations(
-  uid: string | null | undefined,
-  section: string | null | undefined,
-  cb: (rows: Conversation[]) => void,
-  onError?: (err: FirestoreError) => void
-) {
-  assertUid(uid);
-  const constraints: QueryConstraint[] = [orderBy("updatedAt", "desc")];
-  if (section) constraints.unshift(where("section", "==", section));
-  const q = query(userConversationsCol(uid), ...constraints);
-  return onSnapshot(
-    q,
-    (ss) => {
-      const rows: Conversation[] = ss.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<Conversation, "id">),
-      }));
-      cb(rows);
-    },
-    (err) => {
-      console.error("[listenConversations] onSnapshot error:", err);
-      onError?.(err);
-    }
+  // ambil koleksi domain user
+  const q = query(
+    collection(db, "users", user.uid, "domains"),
+    where("name", "==", domainName)
   );
+
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+
+  // ambil doc pertama yang match
+  return snap.docs[0].id;
 }
 
-// --- Messages ---
-export async function appendMessage(
-  uid: string | null | undefined,
-  convId: string,
-  msg: ChatMessage
+// Simpan chat
+export async function saveChatMessage(
+  domainDocId: string,
+  sessionId: string,
+  role: "user" | "assistant",
+  text: string,
+  chartHtml?: string
 ) {
-  assertUid(uid);
-  const mcol = messagesCol(uid, convId);
-  await addDoc(mcol, { ...msg, createdAt: serverTimestamp() });
-  await updateConversationMeta(uid, convId, {}); // bump updatedAt
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+
+  let chartId: string | undefined;
+  if (chartHtml) {
+    chartId = `${sessionId}_${Date.now()}`;
+    const blob = new Blob([chartHtml], { type: "text/html" });
+    await saveChartBlob(chartId, blob);
+  }
+
+  const payload = {
+    sessionId,
+    role,
+    text,
+    createdAt: serverTimestamp(),
+    ...(chartId ? { chartId } : {}),
+  };
+
+  // 🔑 pakai domainDocId langsung
+  await addDoc(
+    collection(db, "users", user.uid, "domains", domainDocId, "messages"),
+    payload
+  );
 }
 
 export function listenMessages(
-  uid: string | null | undefined,
-  convId: string,
-  cb: (messages: ChatMessage[]) => void,
-  onError?: (err: FirestoreError) => void
+  domainDocId: string,
+  sessionId: string,
+  cb: (msgs: (ChatMessage & { chartHtml?: string })[]) => void
 ) {
-  assertUid(uid);
-  const mcol = messagesCol(uid, convId);
-  const q = query(mcol, orderBy("createdAt", "asc"));
-  return onSnapshot(
-    q,
-    (ss) => {
-      const out: ChatMessage[] = ss.docs.map((d) => d.data() as ChatMessage);
-      cb(out);
-    },
-    (err) => {
-      console.error("[listenMessages] onSnapshot error:", err);
-      onError?.(err);
-    }
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+
+  const q = query(
+    collection(db, "users", user.uid, "domains", domainDocId, "messages"),
+    where("sessionId", "==", sessionId),
+    orderBy("createdAt", "asc")
   );
+
+  return onSnapshot(q, async (snap) => {
+    const out: (ChatMessage & { chartHtml?: string })[] = [];
+    for (const d of snap.docs) {
+      const data = d.data() as ChatMessage;
+      let chartHtml: string | undefined;
+      if (data.chartId) {
+        const blob = await getChartBlob(data.chartId);
+        if (blob) chartHtml = await blob.text();
+      }
+      out.push({ id: d.id, ...data, chartHtml });
+    }
+    cb(out);
+  });
 }

@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { db, auth } from "../utils/firebaseSetup";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  deleteDoc,
+} from "firebase/firestore";
 
 const KEY = "chat_history";
 
@@ -48,12 +56,42 @@ export function useChatHistory(section?: string) {
     setItems(next);
   }, []);
 
-  const remove = useCallback((id: string) => {
-    const cur = read();
-    const next = cur.filter((x) => x.id !== id);
-    write(next);
-    setItems(next);
-  }, []);
+  const remove = useCallback(
+    async (sessionId: string) => {
+      // hapus dari localStorage
+      const cur = read();
+      const next = cur.filter((x) => x.id !== sessionId);
+      write(next);
+      setItems(next);
+
+      // hapus semua message dari Firestore
+      const user = auth.currentUser;
+      if (user && section) {
+        try {
+          const colRef = collection(
+            db,
+            "users",
+            user.uid,
+            "domains",
+            section,
+            "messages"
+          );
+          const q = query(colRef, where("sessionId", "==", sessionId));
+          const snap = await getDocs(q);
+
+          const batchDeletes = snap.docs.map((d) => deleteDoc(d.ref));
+          await Promise.all(batchDeletes);
+
+          console.log(
+            `Semua messages dengan sessionId=${sessionId} dihapus dari Firestore`
+          );
+        } catch (err) {
+          console.error("Gagal hapus messages dari Firestore:", err);
+        }
+      }
+    },
+    [section]
+  );
 
   const filtered = section
     ? items.filter((x) => x.section?.toLowerCase() === section.toLowerCase())
