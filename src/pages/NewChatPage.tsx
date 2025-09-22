@@ -51,8 +51,7 @@ export default function NewChatPage() {
   const isNewConversation = !openedId;
 
   const API_BASE =
-    import.meta.env.VITE_API_BASE ??
-    "https://cnrh6f9l-8000.asse.devtunnels.ms/";
+    "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
   // resolve Firestore docId dari nama domain
   useEffect(() => {

@@ -101,3 +101,31 @@ export function listenMessages(
     cb(out);
   });
 }
+
+export async function fetchMessagesOnce(
+  domainDocId: string,
+  sessionId: string
+): Promise<(ChatMessage & { chartHtml?: string })[]> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+
+  const q = query(
+    collection(db, "users", user.uid, "domains", domainDocId, "messages"),
+    where("sessionId", "==", sessionId),
+    orderBy("createdAt", "asc")
+  );
+
+  const snap = await getDocs(q);
+
+  const out: (ChatMessage & { chartHtml?: string })[] = [];
+  for (const d of snap.docs) {
+    const data = d.data() as ChatMessage;
+    let chartHtml: string | undefined;
+    if (data.chartId) {
+      const blob = await getChartBlob(data.chartId);
+      if (blob) chartHtml = await blob.text();
+    }
+    out.push({ id: d.id, ...data, chartHtml });
+  }
+  return out;
+}

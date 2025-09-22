@@ -2,6 +2,12 @@ import { useChatHistory } from "../../hooks/useChatHistory";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { HiOutlinePlus, HiDotsVertical } from "react-icons/hi";
+import {
+  getDomainDocId,
+  listenMessages,
+  type ChatMessage,
+} from "../../service/chatStore";
+import { exportChatToPdf } from "../../utils/exportPdf";
 
 export default function HistorySidebar({
   open,
@@ -38,10 +44,33 @@ export default function HistorySidebar({
     onClose();
   };
 
-  const handleExportPdf = (id: string) => {
-    // TODO: ganti dengan alur export-mu sendiri
-    // Misal navigate ke halaman chat lalu trigger export di sana:
-    navigate(`/domain/${section}/dashboard/newchat?id=${id}&export=pdf`);
+  const handleExportPdf = async (id: string) => {
+    try {
+      if (!section) return;
+      const domainDocId = await getDomainDocId(section);
+      if (!domainDocId) {
+        console.warn("Domain not found:", section);
+        return;
+      }
+
+      const msgs: (ChatMessage & { chartHtml?: string })[] = [];
+
+      // ambil snapshot sekali
+      const unsub = listenMessages(domainDocId, id, (snap) => {
+        msgs.splice(0, msgs.length, ...snap); // replace array isi
+      });
+      unsub();
+
+      if (msgs.length === 0) {
+        alert("Tidak ada messages");
+        return;
+      }
+
+      await exportChatToPdf(msgs, `chat-${id}.pdf`);
+    } catch (e) {
+      console.error("Export PDF gagal:", e);
+    }
+
     setMenuOpenId(null);
   };
 
