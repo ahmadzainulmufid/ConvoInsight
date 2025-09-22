@@ -7,6 +7,7 @@ import {
   getDocs,
   deleteDoc,
 } from "firebase/firestore";
+import { getDomainDocId } from "../service/chatStore";
 
 const KEY = "chat_history";
 
@@ -68,25 +69,31 @@ export function useChatHistory(section?: string) {
       const user = auth.currentUser;
       if (user && section) {
         try {
+          // 🔑 resolve domain docId dari nama (misal "Campaign" → Firestore docId)
+          const domainDocId = await getDomainDocId(section);
+          if (!domainDocId) {
+            console.warn("Domain not found in Firestore:", section);
+            return;
+          }
+
           const colRef = collection(
             db,
             "users",
             user.uid,
             "domains",
-            section,
+            domainDocId,
             "messages"
           );
           const q = query(colRef, where("sessionId", "==", sessionId));
           const snap = await getDocs(q);
 
-          const batchDeletes = snap.docs.map((d) => deleteDoc(d.ref));
-          await Promise.all(batchDeletes);
+          await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 
           console.log(
-            `Semua messages dengan sessionId=${sessionId} dihapus dari Firestore`
+            `✅ Semua messages dengan sessionId=${sessionId} dihapus dari Firestore`
           );
         } catch (err) {
-          console.error("Gagal hapus messages dari Firestore:", err);
+          console.error("❌ Gagal hapus messages dari Firestore:", err);
         }
       }
     },

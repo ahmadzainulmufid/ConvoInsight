@@ -50,7 +50,9 @@ export default function NewChatPage() {
   const openedId = searchParams.get("id");
   const isNewConversation = !openedId;
 
-  const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
+  const API_BASE =
+    import.meta.env.VITE_API_BASE ??
+    "https://cnrh6f9l-8000.asse.devtunnels.ms/";
 
   // resolve Firestore docId dari nama domain
   useEffect(() => {
