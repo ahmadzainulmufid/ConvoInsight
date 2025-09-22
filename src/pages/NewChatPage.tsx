@@ -6,23 +6,27 @@ import toast from "react-hot-toast";
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
 import AnimatedMessageBubble from "../components/ChatComponents/AnimatedMessageBubble";
 import { queryDomain } from "../utils/queryDomain";
-import ChartGallery, {
-  type ChartItem,
-} from "../components/ChatComponents/ChartGallery";
-import { fetchChartHtml } from "../utils/fetchChart";
-import { cleanAndSplitText } from "../utils/cleanText";
+import ChartGallery from "../components/ChatComponents/ChartGallery";
 import { useChatHistory } from "../hooks/useChatHistory";
-import { saveChatMessage, listenMessages } from "../service/chatStore";
-import { getAuth } from "firebase/auth";
+import type { ChartItem } from "../components/ChatComponents/ChartGallery";
+import { fetchChartHtml } from "../utils/fetchChart";
 
 type Msg = {
-  id?: string;
   role: "user" | "assistant";
   content: string;
   chartUrl?: string | null;
   charts?: ChartItem[];
 };
 
+function cleanResponseText(text: string): string {
+  return text
+    .replace(/[*]\s*For a detailed breakdown.*(\r?\n)?/gi, "")
+    .replace(/The chart.*\.html[`']?\.?(\r?\n)?/gi, "")
+    .replace(/\/?[\w/\\-]+\.html[`']?/gi, "")
+    .replace(/\bundefined\b/gi, "")
+    .replace(/\n{2,}/g, "\n\n")
+    .trim();
+}
 export default function NewChatPage() {
   const { section: domain } = useParams();
   const [searchParams] = useSearchParams();
@@ -34,35 +38,17 @@ export default function NewChatPage() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const { add } = useChatHistory(domain);
 
-  const auth = getAuth();
-  const userId = auth.currentUser?.uid;
-
   const openedId = searchParams.get("id");
   const isNewConversation = !openedId;
 
   const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
   useEffect(() => {
-    if (!openedId || !userId || !domain) return;
-    const unsub = listenMessages(userId, domain, openedId, (msgs) => {
-      setMessages(
-        msgs.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: m.text,
-          charts: m.blobUrl
-            ? [
-                {
-                  title: "Chart",
-                  html: `<iframe src="${m.blobUrl}" class="w-full h-[400px] border rounded"></iframe>`,
-                },
-              ]
-            : undefined,
-        }))
-      );
-    });
-    return () => unsub();
-  }, [openedId, userId, domain]);
+    if (!openedId) {
+      setMessages([]);
+      setMessage("");
+    }
+  }, [openedId]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -83,33 +69,33 @@ export default function NewChatPage() {
       return;
     }
 
+    const nextMsgs: Msg[] = [...messages, { role: "user", content: text }];
+    setMessages(nextMsgs);
     setMessage("");
     setSending(true);
 
-    const sessionId = openedId ?? `${Date.now()}`;
-    if (!openedId) {
+    // buat session id di URL pas pesan pertama
+    const userMsgCount = nextMsgs.filter((m) => m.role === "user").length;
+    if (!openedId && userMsgCount === 1) {
+      const id = `${Date.now()}`;
       const next = new URLSearchParams(searchParams);
-      next.set("id", sessionId);
+      next.set("id", id);
       navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, {
         replace: true,
       });
 
       add({
-        id: sessionId,
-        title: text.slice(0, 30) || "Untitled Chat",
+        id,
+        title: text.length > 50 ? text.slice(0, 50) + "…" : text,
         section: domain,
         createdAt: Date.now(),
       });
 
-      toast.success("History added successfully");
+      toast.success("Chat disimpan ke History");
     }
 
-    // 🟢 update UI langsung (tanpa nunggu Firestore)
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-
-    await saveChatMessage(userId!, domain, sessionId, "user", text);
-
     try {
+      const sessionId = searchParams.get("id");
       const res = await queryDomain({
         apiBase: API_BASE,
         domain,
@@ -117,59 +103,41 @@ export default function NewChatPage() {
         sessionId,
       });
 
-      let chartBlob: Blob | undefined;
-      if (res.chart_url) {
-        const html = await fetchChartHtml(API_BASE, res.chart_url);
-        if (html) {
-          chartBlob = new Blob([html], { type: "text/html" });
+      // default payload
+      let charts: ChartItem[] | undefined;
+      const chartUrl: string | null | undefined = res.chart_url ?? null;
+
+      if (chartUrl) {
+        try {
+          const html = await fetchChartHtml(API_BASE, chartUrl);
+          if (html) {
+            charts = [{ title: "Chart", html }];
+          }
+        } catch (e) {
+          console.warn("Fetch chart HTML failed, falling back to iframe:", e);
         }
       }
 
-      await saveChatMessage(
-        userId!,
-        domain,
-        sessionId,
-        "assistant",
-        res.response ?? "(empty)",
-        chartBlob
-      );
-
-      // 🟢 langsung update UI biar gak "no message yet"
-      setMessages((prev) => [
-        ...prev,
+      setMessages((cur) => [
+        ...cur,
         {
           role: "assistant",
-          content: res.response ?? "(empty)",
-          charts: chartBlob
-            ? [
-                {
-                  title: "Chart",
-                  html: `<iframe src="${URL.createObjectURL(
-                    chartBlob
-                  )}" class="w-full h-[400px] border rounded"></iframe>`,
-                },
-              ]
-            : undefined,
+          content: cleanResponseText(res.response ?? "(empty)"),
+          chartUrl,
+          charts,
         },
       ]);
     } catch (err: unknown) {
-      await saveChatMessage(
-        userId!,
-        domain,
-        sessionId,
-        "assistant",
-        "⚠️ Terjadi kendala memproses pesan."
-      );
-      setMessages((prev) => [
-        ...prev,
+      const msg =
+        err instanceof Error ? err.message : "Gagal memproses permintaan.";
+      toast.error(msg);
+      setMessages((cur) => [
+        ...cur,
         {
           role: "assistant",
-          content: "⚠️ Terjadi kendala memproses pesan.",
+          content: "⚠️ (fallback) Terjadi kendala memproses pesan.",
         },
       ]);
-      toast.error(
-        err instanceof Error ? err.message : "Gagal memproses permintaan."
-      );
     } finally {
       setSending(false);
     }
@@ -178,7 +146,7 @@ export default function NewChatPage() {
   return (
     <div className="relative min-h-screen p-4 sm:p-6">
       {isNewConversation ? (
-        // Tampilan awal (belum ada chat)
+        // ⬇️ perbesar container
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-6 max-w-7xl mx-auto min-h-[60vh] place-content-center">
           <div className="w-full flex flex-col items-center">
             <div className="mb-6 text-center px-2 sm:px-0">
@@ -188,22 +156,18 @@ export default function NewChatPage() {
               <p className="mt-2 text-sm text-gray-400">{subtitle}</p>
             </div>
 
-            <div className="w-full flex justify-center ml-30">
-              <div className="w-full max-w-[680px] px-2 sm:px-0">
-                <ChatComposer
-                  value={message}
-                  onChange={setMessage}
-                  onSend={handleSend}
-                  placeholder={"ask about data on convoinsight…"}
-                />
-              </div>
+            <div className="w-full mx-auto max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0 ml-40">
+              <ChatComposer
+                value={message}
+                onChange={setMessage}
+                onSend={handleSend}
+                placeholder="Tanya tentang data di domain ini…"
+              />
             </div>
 
-            <p className="mt-2 text-xs text-gray-500 text-center w-full">
-              <span className="block mx-auto max-w-[680px] px-3">
-                Tips: “Compare revenue m1 vs m0”, “Top 3 drivers of churn”, “QoQ
-                growth by channel”
-              </span>
+            <p className="mt-2 text-xs text-gray-500 text-center px-3">
+              Tips: “Compare revenue m1 vs m0”, “Top 3 drivers of churn”, “QoQ
+              growth by channel”
             </p>
           </div>
 
@@ -212,7 +176,7 @@ export default function NewChatPage() {
           </div>
         </div>
       ) : (
-        // Tampilan percakapan
+        // ⬇️ perbesar container + tambah padding
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6 max-w-7xl mx-auto">
           <div className="flex flex-col">
             <h2 className="text-lg font-semibold text-center lg:text-left mb-3 px-2 sm:px-0">
@@ -228,77 +192,60 @@ export default function NewChatPage() {
                   const isLast = i === messages.length - 1;
                   const animate = isLast && m.role === "assistant" && !sending;
 
-                  // > 1 chart
-                  if (
-                    m.role === "assistant" &&
-                    m.charts &&
-                    m.charts.length > 1
-                  ) {
-                    const parts = cleanAndSplitText(m.content, m.charts.length);
-                    return (
-                      <div
-                        key={m.id ?? `msg-${i}`}
-                        className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0 space-y-6"
-                      >
-                        {m.charts.map((c, idx) => (
-                          <div
-                            key={`${m.id ?? i}-chart-${idx}`}
-                            className="space-y-3"
-                          >
-                            <ChartGallery charts={[c]} />
-                            <div className="w-full">
-                              <AnimatedMessageBubble
-                                message={{
-                                  role: "assistant",
-                                  content: parts[idx] ?? "",
-                                }}
-                                animate={
-                                  animate && idx === m.charts!.length - 1
-                                }
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-
-                  // 1 chart
-                  if (
-                    m.role === "assistant" &&
-                    m.charts &&
-                    m.charts.length === 1
-                  ) {
-                    const part = cleanAndSplitText(m.content, 1)[0];
-                    return (
-                      <div
-                        key={m.id ?? `msg-${i}`}
-                        className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0"
-                      >
-                        <div className="mb-3">
+                  return (
+                    <div
+                      key={i}
+                      className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0"
+                    >
+                      {/* 1) Chart dari HTML string */}
+                      {m.charts && m.charts.length > 0 && (
+                        <div className="mb-4">
                           <ChartGallery charts={m.charts} />
                         </div>
-                        <div className="w-full">
+                      )}
+
+                      {/* 2) Fallback iframe */}
+                      {!m.charts?.length &&
+                        m.chartUrl &&
+                        m.role === "assistant" && (
+                          <div className="mb-4 rounded-md bg-[#24252c] border border-[#2F3038] p-3">
+                            <div className="text-sm mb-2 text-gray-200">
+                              Chart
+                            </div>
+                            <iframe
+                              src={
+                                m.chartUrl.startsWith("http")
+                                  ? m.chartUrl
+                                  : `${API_BASE.replace(/\/+$/, "")}${
+                                      m.chartUrl
+                                    }`
+                              }
+                              className="w-full rounded"
+                              style={{
+                                height: "clamp(320px, 50vh, 640px)",
+                                border: "none",
+                              }}
+                            />
+                          </div>
+                        )}
+
+                      {/* 3) Jawaban teks */}
+                      {m.role === "assistant" ? (
+                        <div className="w-full mb-6">
                           <AnimatedMessageBubble
-                            message={{ role: m.role, content: part }}
+                            message={{ role: m.role, content: m.content }}
                             animate={animate}
                             fullWidth
                           />
                         </div>
-                      </div>
-                    );
-                  }
-
-                  // tanpa chart
-                  return (
-                    <div key={m.id ?? `msg-${i}`} className="w-full">
-                      <AnimatedMessageBubble
-                        message={{
-                          role: m.role,
-                          content: cleanAndSplitText(m.content, 1)[0],
-                        }}
-                        animate={animate}
-                      />
+                      ) : (
+                        <div className="mb-6">
+                          <AnimatedMessageBubble
+                            message={{ role: m.role, content: m.content }}
+                            animate={animate}
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -315,15 +262,14 @@ export default function NewChatPage() {
                 )}
               </div>
 
-              <div className="mt-4 w-full flex justify-center">
-                <div className="w-full max-w-[680px] mx-auto px-2 sm:px-0">
-                  <ChatComposer
-                    value={message}
-                    onChange={setMessage}
-                    onSend={handleSend}
-                    placeholder={sending ? "Sending…" : "Type a question…"}
-                  />
-                </div>
+              <div className="mt-4 mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0">
+                <ChatComposer
+                  value={message}
+                  onChange={setMessage}
+                  onSend={handleSend}
+                  placeholder={sending ? "Sending…" : "Ketik pertanyaan…"}
+                  expanded
+                />
               </div>
             </div>
           </div>

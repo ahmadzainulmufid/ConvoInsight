@@ -1,18 +1,20 @@
 import React, { useEffect, useRef } from "react";
 import { FiSend } from "react-icons/fi";
 
-const MAX_H = 160; // 10rem
+const MAX_H = 160;
 
 export function ChatComposer({
   value,
   onChange,
   onSend,
   placeholder,
+  expanded = false, // 🔑 default false
 }: {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
   placeholder?: string;
+  expanded?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -44,7 +46,9 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-2xl flex items-stretch gap-2"
+      className={`w-full flex items-stretch gap-2 ${
+        expanded ? "max-w-3xl md:max-w-4xl xl:max-w-5xl" : "max-w-2xl"
+      }`}
     >
       <textarea
         ref={ref}
@@ -56,11 +60,10 @@ export function ChatComposer({
         className={[
           "flex-1 resize-none rounded border border-[#3a3b42] bg-transparent",
           "px-4 py-3 text-white outline-none focus:ring-2 focus:ring-indigo-500",
-          "min-h-[44px]", // tampak seperti input 1 baris
+          "min-h-[44px]",
         ].join(" ")}
         style={{ maxHeight: MAX_H }}
       />
-
       <button
         type="submit"
         disabled={!value.trim()}
