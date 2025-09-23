@@ -10,11 +10,13 @@ export async function queryDomain({
   domain,
   prompt,
   sessionId,
+  signal,
 }: {
   apiBase: string;
   domain: string;
   prompt: string;
   sessionId?: string | null;
+  signal?: AbortSignal;
 }): Promise<DomainQueryResp> {
   const r = await fetch(`${apiBase}/query`, {
     method: "POST",
@@ -24,6 +26,7 @@ export async function queryDomain({
       prompt,
       session_id: sessionId ?? undefined,
     }),
+    signal,
   });
   const data = (await r.json()) as DomainQueryResp | { detail?: unknown };
   if (!r.ok) {

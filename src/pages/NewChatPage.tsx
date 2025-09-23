@@ -54,6 +54,9 @@ export default function NewChatPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
 
+  const [controller, setController] = useState<AbortController | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const API_BASE =
     "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
@@ -113,6 +116,10 @@ export default function NewChatPage() {
     setMessages(nextMsgs);
     setMessage("");
     setSending(true);
+    setIsGenerating(true);
+
+    const abortCtrl = new AbortController();
+    setController(abortCtrl);
 
     // buat session id di URL pas pesan pertama
     const userMsgCount = nextMsgs.filter((m) => m.role === "user").length;
@@ -146,6 +153,7 @@ export default function NewChatPage() {
         domain: domain!,
         prompt: text,
         sessionId,
+        signal: abortCtrl.signal,
       });
 
       let charts: ChartItem[] | undefined;
@@ -202,6 +210,7 @@ export default function NewChatPage() {
       );
     } finally {
       setSending(false);
+      setIsGenerating(false);
     }
   };
 
@@ -353,13 +362,28 @@ export default function NewChatPage() {
               </div>
 
               <div className="mt-4 mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0">
-                <ChatComposer
-                  value={message}
-                  onChange={setMessage}
-                  onSend={handleSend}
-                  placeholder={sending ? "Sending…" : "Type a question…"}
-                  expanded
-                />
+                {isGenerating ? (
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => {
+                        controller?.abort();
+                        setIsGenerating(false);
+                        toast("⏹️ Generation stopped");
+                      }}
+                      className="px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-sm"
+                    >
+                      Stop Generating
+                    </button>
+                  </div>
+                ) : (
+                  <ChatComposer
+                    value={message}
+                    onChange={setMessage}
+                    onSend={handleSend}
+                    placeholder={sending ? "Sending…" : "Type a question…"}
+                    expanded
+                  />
+                )}
               </div>
             </div>
           </div>
