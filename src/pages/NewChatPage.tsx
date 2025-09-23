@@ -35,6 +35,43 @@ function cleanResponseText(text: string): string {
     .trim();
 }
 
+function normalizeResponse(text: string): string {
+  let out = text;
+
+  // Hilangkan bold **...**
+  out = out.replace(/\*\*(.*?)\*\*/g, "$1");
+
+  // Ubah "Next actions:" jadi heading
+  out = out.replace(/Next actions:/gi, "Next actions\n");
+
+  // Ubah "Over-performance Drivers:" jadi heading
+  out = out.replace(
+    /Over-performance Drivers:/gi,
+    "Over-performance Drivers\n"
+  );
+
+  // Ubah "Under-performance Drivers:" jadi heading
+  out = out.replace(
+    /Under-performance Drivers:/gi,
+    "Under-performance Drivers\n"
+  );
+
+  // Ubah "Caveats:" jadi heading
+  out = out.replace(/Caveats:/gi, "Caveats\n");
+
+  // Ubah "Confidence:" jadi heading
+  out = out.replace(/Confidence:/gi, "Confidence\n");
+
+  // Ganti bullet `*` di awal baris jadi numbering otomatis
+  let counter = 1;
+  out = out.replace(/^\s*[*-]\s+/gm, () => `${counter++}. `);
+
+  // Rapikan newline berlebih
+  out = out.replace(/\n{3,}/g, "\n\n");
+
+  return out.trim();
+}
+
 export default function NewChatPage() {
   const { section: domain } = useParams();
   const [searchParams] = useSearchParams();
@@ -58,6 +95,7 @@ export default function NewChatPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const API_BASE =
+    import.meta.env.VITE_API_URL ||
     "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
   // resolve Firestore docId dari nama domain
@@ -171,13 +209,14 @@ export default function NewChatPage() {
           console.warn("Fetch chart HTML failed:", e);
         }
       }
+      const cleaned = cleanResponseText(res.response ?? "(empty)");
 
       const assistantMsg: Msg = {
         role: "assistant",
-        content: cleanResponseText(res.response ?? "(empty)"),
         chartUrl,
         charts,
         animate: true,
+        content: normalizeResponse(cleaned),
       };
 
       setMessages((cur) => [...cur, assistantMsg]);
