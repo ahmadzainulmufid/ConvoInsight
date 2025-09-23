@@ -24,7 +24,6 @@ const DatasetDetailPage: React.FC<Props> = ({ userName }) => {
       if (!id || !section) return;
 
       try {
-        // encode filename agar backend FastAPI bisa terima titik (.csv)
         const encodedId = encodeURIComponent(id);
 
         const res = await fetch(

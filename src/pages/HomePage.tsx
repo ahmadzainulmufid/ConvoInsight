@@ -1,9 +1,7 @@
 const HomePage: React.FC = () => {
   return (
     <div className="relative h-screen flex">
-      {/* MAIN CONTENT */}
       <main className="flex-1 overflow-y-auto pb-40 px-6 md:px-8 py-6 space-y-8 bg-[#1a1b1e]">
-        {/* Section header */}
         <section>
           <h2 className="text-base font-semibold text-white">
             👋 Welcome to ConvoInsight
@@ -80,7 +78,6 @@ const HomePage: React.FC = () => {
                 <li>Head to the Configuration menu.</li>
                 <li>
                   You can define:
-                  {/* sub-list harus di DALAM <li> ini */}
                   <ul className="list-disc list-inside mt-2 ml-5">
                     <li>What kind of KPIs to show</li>
                     <li>How the AI should reason and generate insights</li>
@@ -95,7 +92,6 @@ const HomePage: React.FC = () => {
                 <li>Go to Dashboard.</li>
                 <li>
                   You’ll see:
-                  {/* sub-list juga di DALAM <li> ini */}
                   <ul className="list-disc list-inside mt-2 ml-5">
                     <li>KPI metrics</li>
                     <li>Charts and graphs</li>

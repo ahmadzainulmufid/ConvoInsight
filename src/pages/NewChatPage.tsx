@@ -60,12 +60,12 @@ export default function NewChatPage() {
       try {
         const id = await getDomainDocId(domain);
         if (!id) {
-          toast.error(`Domain "${domain}" tidak ditemukan di Firestore`);
+          toast.error(`Domain "${domain}" not found`);
         }
         setDomainDocId(id);
       } catch (e) {
         console.error("Failed to resolve domain docId", e);
-        toast.error("Gagal menemukan domain di Firestore");
+        toast.error("Failed to find domain");
       }
     })();
   }, [domain]);
@@ -103,7 +103,7 @@ export default function NewChatPage() {
     const text = message.trim();
     if (!text || sending) return;
     if (!domainDocId) {
-      toast.error("Domain tidak ditemukan di Firestore");
+      toast.error("Domain not found");
       return;
     }
 
@@ -132,7 +132,7 @@ export default function NewChatPage() {
         createdAt: Date.now(),
       });
 
-      toast.success("Chat disimpan ke History");
+      toast.success("Chat saved to History");
     }
 
     try {
@@ -182,12 +182,12 @@ export default function NewChatPage() {
       );
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : "Gagal memproses permintaan.";
+        err instanceof Error ? err.message : "Failed to process the request";
       toast.error(msg);
 
       const fallback: Msg = {
         role: "assistant",
-        content: "⚠️ (fallback) Terjadi kendala memproses pesan.",
+        content: "⚠️ (fallback) There was a problem processing the message.",
         animate: true,
       };
       setMessages((cur) => [...cur, fallback]);
@@ -220,7 +220,7 @@ export default function NewChatPage() {
                 value={message}
                 onChange={setMessage}
                 onSend={handleSend}
-                placeholder="Tanya tentang data di domain ini…"
+                placeholder="Ask about data in this domain…"
               />
             </div>
 
@@ -261,7 +261,7 @@ export default function NewChatPage() {
                       <div className="w-full mb-6">
                         <AnimatedMessageBubble
                           message={{ role: m.role, content: m.content }}
-                          animate={m.animate ?? false} // 🔑 pakai flag
+                          animate={m.animate ?? false}
                           fullWidth
                         />
                       </div>
@@ -269,7 +269,7 @@ export default function NewChatPage() {
                       <div className="mb-6">
                         <AnimatedMessageBubble
                           message={{ role: m.role, content: m.content }}
-                          animate={m.animate ?? false} // 🔑 pakai flag
+                          animate={m.animate ?? false}
                         />
                       </div>
                     )}
@@ -293,7 +293,7 @@ export default function NewChatPage() {
                   value={message}
                   onChange={setMessage}
                   onSend={handleSend}
-                  placeholder={sending ? "Sending…" : "Ketik pertanyaan…"}
+                  placeholder={sending ? "Sending…" : "Type a question…"}
                   expanded
                 />
               </div>

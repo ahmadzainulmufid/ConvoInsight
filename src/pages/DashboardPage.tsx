@@ -44,7 +44,7 @@ const DashboardPage: React.FC = () => {
   const [charts, setCharts] = useState<ChartItem[]>([]);
   const [analysis, setAnalysis] = useState<string>("");
   const [loadingChart, setLoadingChart] = useState(false);
-  const [parsedKpis, setParsedKpis] = useState<KPIItem[]>([]); // untuk mapping saat klik
+  const [parsedKpis, setParsedKpis] = useState<KPIItem[]>([]);
 
   const handleDashboardSettings = () => {
     navigate(`/domain/${section}/dashboard/dashboardSetting`);
@@ -71,7 +71,6 @@ const DashboardPage: React.FC = () => {
       }));
       setKpis(mapped);
 
-      // Ambil chart dari KPI pertama
       const first = parsed[0];
       if (first && first.key.startsWith("column:")) {
         const parts = first.key.split(":");
@@ -92,9 +91,9 @@ const DashboardPage: React.FC = () => {
       setCharts(result.charts || []);
       setAnalysis(result.analysis || "");
     } catch (err) {
-      console.error("Gagal ambil chart/analysis:", err);
+      console.error("Failed to fetch chart/analysis:", err);
       setCharts([]);
-      setAnalysis("Gagal memuat analisis.");
+      setAnalysis("Failed to load analysis");
     } finally {
       setLoadingChart(false);
     }

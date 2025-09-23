@@ -41,12 +41,11 @@ function SortableItem({
     <li
       ref={setNodeRef}
       style={style}
-      {...attributes} // cukup attributes saja di li
+      {...attributes}
       className="flex items-center justify-between rounded border border-[#3a3b42] px-3 py-2 bg-[#2e2f36]"
     >
-      {/* Drag handle khusus */}
       <span
-        {...listeners} // drag listener khusus di handle
+        {...listeners}
         className="cursor-grab active:cursor-grabbing text-gray-400 mr-2"
       >
         ⠿
@@ -137,7 +136,6 @@ export default function DashboardSettingPage() {
         </NavLink>
       </header>
 
-      {/* Form Add */}
       <form
         onSubmit={handleAdd}
         className="bg-[#2A2B32] p-4 rounded-lg space-y-3"
@@ -158,7 +156,6 @@ export default function DashboardSettingPage() {
         </button>
       </form>
 
-      {/* List Group dengan drag-and-drop */}
       <section className="bg-[#2A2B32] p-4 rounded-lg">
         <h2 className="text-sm text-gray-300 mb-3">Current Group Dashboard</h2>
         {group.length === 0 ? (
@@ -199,7 +196,6 @@ export default function DashboardSettingPage() {
         )}
       </section>
 
-      {/* Modal konfirmasi delete */}
       {groupToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">

@@ -15,12 +15,10 @@ export default function NanoJarvis() {
   const inputRef = useRef<HTMLInputElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
 
-  // auto-focus (hindari di perangkat touch)
   useEffect(() => {
     if (!isTouchDevice()) inputRef.current?.focus();
   }, []);
 
-  // salam pembuka
   useEffect(() => {
     const id = crypto.randomUUID();
     setTimeout(() => {
@@ -31,7 +29,6 @@ export default function NanoJarvis() {
     }, 100);
   }, []);
 
-  // auto-scroll ke bawah setiap pesan berubah
   useEffect(() => {
     chatRef.current?.lastElementChild?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -61,12 +58,10 @@ export default function NanoJarvis() {
     appendMessage("human", question);
     inputRef.current?.blur();
 
-    // render bubble assistant kosong lebih dulu supaya stream mengisi ke sini
     const assistantId = appendMessage("assistant", "");
 
     const url = `/chat?${encodeURIComponent(question)}`;
 
-    // beri sedikit jeda biar loader kelihatan
     setTimeout(get, 100);
 
     async function get() {
@@ -75,7 +70,6 @@ export default function NanoJarvis() {
         const res = await fetch(url);
         removeFirstOfType("loader");
 
-        // streaming
         const reader = res.body?.getReader();
         if (!reader) {
           updateMessageText(
@@ -85,10 +79,7 @@ export default function NanoJarvis() {
           return;
         }
 
-        // baca chunk
-        // biome-ignore lint/suspicious/noConstantBinaryExpression: TS helper
         const decoder = new TextDecoder();
-        // loop
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -119,7 +110,6 @@ export default function NanoJarvis() {
     }
   };
 
-  // CSS inline agar file tunggal seperti HTML asal
   const styles = useMemo(
     () => `
       html { line-height: 1.5; background-color: white;
@@ -172,7 +162,6 @@ export default function NanoJarvis() {
       className="full-h"
       style={{ display: "flex", flexDirection: "column", height: "100%" }}
     >
-      {/* style inline agar file tunggal */}
       <style>{styles}</style>
 
       <main id="chat" ref={chatRef} style={{ flex: "auto" }}>

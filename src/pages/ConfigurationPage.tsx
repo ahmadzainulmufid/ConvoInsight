@@ -3,7 +3,6 @@ import { toast } from "react-hot-toast";
 import useSectionFromPath from "../utils/useSectionFromPath";
 import { getDatasetBlob } from "../utils/fileStore";
 
-/** ---------------- Types ---------------- */
 type BuiltInKPIKey =
   | "active_users"
   | "conversion_rate"
@@ -13,8 +12,7 @@ type BuiltInKPIKey =
   | "ctr"
   | "cpa";
 
-// Tambahkan pola kustom untuk kolom dataset
-type KPIKey = BuiltInKPIKey | `column:${string}`; // e.g. column:<datasetId>:<columnName>
+type KPIKey = BuiltInKPIKey | `column:${string}`;
 
 type KPIItem = {
   key: KPIKey;
@@ -33,7 +31,6 @@ type DatasetMeta = {
 
 type DatasetsList = DatasetMeta[];
 
-/** ---------------- Built-in KPI Catalog ---------------- */
 const BUILTIN_KPIS: KPIItem[] = [
   { key: "active_users", label: "Active Users" },
   { key: "conversion_rate", label: "Conversion Rate", unit: "%" },
@@ -44,16 +41,13 @@ const BUILTIN_KPIS: KPIItem[] = [
   { key: "cpa", label: "CPA", unit: "IDR" },
 ];
 
-/** ---------------- LocalStorage Keys ---------------- */
 const kpiLSKey = (section: string | null) =>
   `config_selected_kpis_${section ?? "default"}`;
 
-/** ---------------- Helpers ---------------- */
 function classNames(...arr: Array<string | false | undefined>) {
   return arr.filter(Boolean).join(" ");
 }
 
-// CSV line split dengan dukungan quote & escaped quote
 function splitCSVLine(line: string): string[] {
   const out: string[] = [];
   let cur = "";
@@ -83,7 +77,6 @@ function normalize(s: string) {
     .replace(/[\s_-]+/g, " ");
 }
 
-/** Pemetaan heuristik nama kolom → KPI bawaan */
 function mapColumnToBuiltinKPI(column: string): KPIItem | null {
   const n = normalize(column);
   if (["active users", "users_active", "activeusers"].includes(n))
@@ -113,7 +106,6 @@ function mapColumnToBuiltinKPI(column: string): KPIItem | null {
   return null;
 }
 
-/** ---------------- Small UI Bits ---------------- */
 function Pill({
   children,
   onRemove,
@@ -199,7 +191,6 @@ function Select({
   );
 }
 
-/** ---------------- LLM Suggestions (mock) ---------------- */
 async function fetchLlmSuggestions(): Promise<KPIItem[]> {
   await new Promise((r) => setTimeout(r, 600));
   return [
@@ -209,11 +200,9 @@ async function fetchLlmSuggestions(): Promise<KPIItem[]> {
   ];
 }
 
-/** ---------------- Page ---------------- */
 const ConfigurationPage: React.FC = () => {
   const section = useSectionFromPath();
 
-  // selected KPIs (persist per section)
   const [selectedKpis, setSelectedKpis] = useState<KPIItem[]>(() => {
     const raw = localStorage.getItem(kpiLSKey(section));
     if (!raw) return [];
@@ -229,18 +218,15 @@ const ConfigurationPage: React.FC = () => {
     localStorage.setItem(kpiLSKey(section), JSON.stringify(selectedKpis));
   }, [selectedKpis, section]);
 
-  // panels
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("data");
 
-  // ------- From Data (dataset-backed) -------
   const [datasets, setDatasets] = useState<DatasetsList>([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState<string>("");
   const [datasetColumns, setDatasetColumns] = useState<string[]>([]);
   const [selectedColumn, setSelectedColumn] = useState<string>("");
   const [loadingColumns, setLoadingColumns] = useState(false);
 
-  // Load dataset list for current section
   useEffect(() => {
     const storageKey = section ? `datasets_${section}` : "datasets";
     const raw = localStorage.getItem(storageKey);
@@ -248,7 +234,6 @@ const ConfigurationPage: React.FC = () => {
     setDatasets(list);
   }, [section]);
 
-  // Load columns when dataset changes
   useEffect(() => {
     async function loadColumns() {
       setDatasetColumns([]);
@@ -257,7 +242,6 @@ const ConfigurationPage: React.FC = () => {
 
       setLoadingColumns(true);
       try {
-        // ✅ Ambil Blob dari IndexedDB
         const blob = await getDatasetBlob(selectedDatasetId);
         if (!blob) {
           toast.error("File content not found for this dataset.");
@@ -271,7 +255,6 @@ const ConfigurationPage: React.FC = () => {
           return;
         }
 
-        // baca teks CSV
         const text = await blob.text();
         const lines = text.split(/\r?\n/).filter((l) => l.trim().length);
         if (!lines.length) {
@@ -283,7 +266,7 @@ const ConfigurationPage: React.FC = () => {
           .filter(Boolean);
         setDatasetColumns(hdrs);
       } catch {
-        toast.error("Failed to read CSV headers.");
+        toast.error("Failed to read CSV headers");
       } finally {
         setLoadingColumns(false);
       }
@@ -310,13 +293,11 @@ const ConfigurationPage: React.FC = () => {
       toast("Pick dataset and column first");
       return;
     }
-    // coba mapping ke KPI built-in
     const builtin = mapColumnToBuiltinKPI(selectedColumn);
     let newItem: KPIItem;
     if (builtin) {
       newItem = builtin;
     } else {
-      // fallback: KPI kustom berbasis kolom dataset
       const key: KPIKey = `column:${selectedDatasetId}:${selectedColumn}`;
       newItem = { key, label: selectedColumn };
     }
@@ -327,11 +308,9 @@ const ConfigurationPage: React.FC = () => {
     }
     setSelectedKpis((prev) => [...prev, newItem]);
     toast.success(`Added KPI: ${newItem.label}`);
-    // optional: reset pilihan kolom
     setSelectedColumn("");
   }
 
-  // ------- From LLM -------
   const [llmLoading, setLlmLoading] = useState(false);
   const [llmOptions, setLlmOptions] = useState<KPIItem[]>([]);
   const [pickedFromLlm, setPickedFromLlm] = useState("");
@@ -379,7 +358,6 @@ const ConfigurationPage: React.FC = () => {
     setPickedFromLlm("");
   }
 
-  // ------- Remove KPIs -------
   const [showRemovePanel, setShowRemovePanel] = useState(false);
   const [toRemove, setToRemove] = useState<Set<KPIKey>>(new Set());
   function removeSelectedKeys() {
@@ -396,7 +374,6 @@ const ConfigurationPage: React.FC = () => {
   return (
     <div className="relative min-h-screen flex bg-[#1a1b1e]">
       <main className="flex-1 overflow-y-auto pb-40 px-6 md:px-8 py-6 space-y-8">
-        {/* Header */}
         <section className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-white">
             Configuration Settings
@@ -423,7 +400,6 @@ const ConfigurationPage: React.FC = () => {
           </div>
         </section>
 
-        {/* Selected chips */}
         <section className="space-y-3">
           <p className="text-sm text-gray-300">Selected KPIs</p>
           {selectedKpis.length === 0 ? (
@@ -449,7 +425,6 @@ const ConfigurationPage: React.FC = () => {
           )}
         </section>
 
-        {/* Add Panel */}
         {showAddPanel && (
           <section className="rounded-xl border border-[#2a2b32] bg-[#232427] p-4 space-y-4">
             <div className="flex items-center justify-between">
@@ -480,7 +455,6 @@ const ConfigurationPage: React.FC = () => {
               </div>
             </div>
 
-            {/* From Data */}
             {activeTab === "data" && (
               <div className="space-y-4">
                 <p className="text-sm text-gray-300">
@@ -517,15 +491,14 @@ const ConfigurationPage: React.FC = () => {
                   </Button>
                 </div>
                 <div className="text-xs text-gray-400">
-                  Tips: kolom yang namanya mirip{" "}
-                  <i>“active users, revenue, conversion rate”</i> otomatis
-                  dipetakan ke KPI bawaan. Selain itu akan ditambahkan sebagai
-                  KPI kustom berbasis kolom.
+                  Tips: columns with similar names{" "}
+                  <i>“active users, revenue, conversion rate”</i> automatically
+                  mapped to the default KPIs. Additionally, they will be added
+                  as column-based custom KPIs.
                 </div>
               </div>
             )}
 
-            {/* From LLM */}
             {activeTab === "llm" && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -561,7 +534,6 @@ const ConfigurationPage: React.FC = () => {
           </section>
         )}
 
-        {/* Remove Panel */}
         {showRemovePanel && (
           <section className="rounded-xl border border-[#2a2b32] bg-[#232427] p-4 space-y-4">
             <div className="flex items-center justify-between">

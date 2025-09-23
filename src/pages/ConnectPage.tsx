@@ -5,7 +5,6 @@ import AppShell from "../components/DatasetsComponents/AppShell";
 import useSectionFromPath from "../utils/useSectionFromPath";
 import { saveDatasetBlob } from "../utils/fileStore";
 
-/** -------- Types -------- */
 type Props = { userName: string };
 type TableRef = { schema: string; name: string };
 
@@ -18,12 +17,10 @@ type ImportResp = {
   csv: string;
 };
 
-/** -------- Utils -------- */
 function getErrorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
   try {
-    // attempt to stringify unknown objects
     return JSON.stringify(e);
   } catch {
     return "Unknown error";
@@ -41,7 +38,6 @@ async function postJSON<T>(
   });
   const j = (await r.json()) as T & { detail?: string; message?: string };
   if (!r.ok) {
-    // prefer server detail/message if exists
     const msg =
       (j.detail ?? j.message) || `Request failed with status ${r.status}`;
     throw new Error(msg);
@@ -49,7 +45,6 @@ async function postJSON<T>(
   return j as T;
 }
 
-/** -------- Small UI Bits (typed) -------- */
 interface FormRowProps {
   label: string;
   children: React.ReactNode;
@@ -80,21 +75,19 @@ function Btn({ children, onClick, disabled }: BtnProps) {
   );
 }
 
-/** -------- Page -------- */
 export default function ConnectPage({ userName }: Props) {
   const navigate = useNavigate();
   const section = useSectionFromPath();
 
-  // contoh: https://my-connector.example.com/api/connect/postgres
   const [apiBase, setApiBase] = useState<string>("");
-  const [token, setToken] = useState<string>(""); // optional
+  const [token, setToken] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [tables, setTables] = useState<TableRef[]>([]);
   const [selected, setSelected] = useState<TableRef | null>(null);
 
   async function onTest() {
     if (!apiBase) {
-      toast("Isi API Base URL dulu");
+      toast("Fill in the API Base URL first");
       return;
     }
     setLoading(true);
@@ -114,7 +107,7 @@ export default function ConnectPage({ userName }: Props) {
 
   async function onListTables() {
     if (!apiBase) {
-      toast("Isi API Base URL dulu");
+      toast("Fill in the API Base URL first");
       return;
     }
     setLoading(true);
@@ -135,11 +128,11 @@ export default function ConnectPage({ userName }: Props) {
 
   async function onImport() {
     if (!apiBase) {
-      toast("Isi API Base URL dulu");
+      toast("Fill in the API Base URL first");
       return;
     }
     if (!selected) {
-      toast("Pilih tabel dulu");
+      toast("Select the table first");
       return;
     }
     setLoading(true);

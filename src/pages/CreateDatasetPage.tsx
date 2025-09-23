@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AppShell from "../components/DatasetsComponents/AppShell";
-import { FiX /*, FiTrash2 */ } from "react-icons/fi"; // ⬅️ icon
+import { FiX } from "react-icons/fi";
 
 type State = { fileName?: string; size?: number };
 
@@ -36,7 +36,6 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
     if (defaultName) setName(defaultName);
   }, [defaultName]);
 
-  // pages/CreateDatasetPage.tsx
   function handleCreate() {
     const item = {
       id: `${Date.now()}`,
@@ -45,12 +44,10 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
       uploadedAt: new Date().toLocaleString(),
     };
 
-    // simpan meta dataset
     const raw = localStorage.getItem("datasets");
     const list = raw ? JSON.parse(raw) : [];
     localStorage.setItem("datasets", JSON.stringify([item, ...list]));
 
-    // ⬅️ Pindahkan pending file url -> key berdasarkan datasetId
     const pUrl = sessionStorage.getItem("pending_file_url");
     const pName = sessionStorage.getItem("pending_file_name");
     const pKind = sessionStorage.getItem("pending_file_kind");
@@ -58,13 +55,12 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
       sessionStorage.setItem(`ds_file_url_${item.id}`, pUrl);
       sessionStorage.setItem(`ds_file_name_${item.id}`, pName ?? "");
       sessionStorage.setItem(`ds_file_kind_${item.id}`, pKind ?? "csv");
-      // bersihkan pending
+
       sessionStorage.removeItem("pending_file_url");
       sessionStorage.removeItem("pending_file_name");
       sessionStorage.removeItem("pending_file_kind");
     }
 
-    // langsung menuju halaman table+chat
     navigate(`/datasets/${item.id}`);
   }
 
@@ -73,7 +69,6 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
   return (
     <AppShell userName={userName}>
       <div className="w-full max-w-2xl mx-auto">
-        {/* Header */}
         <div className="flex items-center gap-2 mb-6">
           <div className="h-8 w-8 grid place-items-center rounded-lg bg-indigo-100">
             <span className="text-indigo-600 text-xl">›_</span>
@@ -83,16 +78,13 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
           </h2>
         </div>
 
-        {/* Card */}
         <div className="bg-[#232427] rounded-2xl shadow-sm border border-[#2a2b32] p-5 md:p-6 space-y-5">
-          {/* File pill */}
           <div className="border-2 border-dashed border-[#3a3b42] bg-[#1f2024] rounded-lg p-3">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#2a2b32] text-gray-200 text-sm">
                 {fileName}
               </span>
 
-              {/* Icon button (X). Ganti FiX -> FiTrash2 kalau mau ikon trash */}
               <button
                 type="button"
                 onClick={() => navigate("/datasets")}
@@ -101,12 +93,10 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
                 className="p-2 rounded-full text-gray-300 hover:text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
               >
                 <FiX className="w-5 h-5" />
-                {/* <FiTrash2 className="w-5 h-5" /> */}
               </button>
             </div>
           </div>
 
-          {/* Name */}
           <div>
             <label className="block text-gray-300 text-sm mb-1">
               Name{" "}
@@ -123,7 +113,6 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
             </p>
           </div>
 
-          {/* Description */}
           <div>
             <label className="block text-gray-300 text-sm mb-1">
               Description
@@ -137,7 +126,6 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
             />
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end">
             <button
               onClick={handleCreate}

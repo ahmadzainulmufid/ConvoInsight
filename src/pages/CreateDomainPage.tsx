@@ -9,7 +9,6 @@ export default function CreateDomainPage() {
   });
   const [name, setName] = useState("");
 
-  // ✅ state untuk konfirmasi delete
   const [domainToDelete, setDomainToDelete] = useState<{
     id: string;
     name: string;
@@ -30,7 +29,7 @@ export default function CreateDomainPage() {
     if (!domainToDelete) return;
     const res = await removeDomain(domainToDelete.id);
     if (res.ok) toast.success(`Domain "${domainToDelete.name}" deleted`);
-    setDomainToDelete(null); // tutup popup
+    setDomainToDelete(null);
   };
 
   return (
@@ -96,7 +95,6 @@ export default function CreateDomainPage() {
         )}
       </section>
 
-      {/* ✅ Modal Konfirmasi Delete */}
       {domainToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">

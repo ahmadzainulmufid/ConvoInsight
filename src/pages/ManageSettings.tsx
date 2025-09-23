@@ -20,7 +20,6 @@ const ManageSettingsPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState("");
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  // Load history saat pertama kali
   useEffect(() => {
     getHistory().then(setHistory);
   }, []);
@@ -28,7 +27,7 @@ const ManageSettingsPage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
-    setOutput(`Output hasil eksekusi: ${prompt}`);
+    setOutput(`Execution result output: ${prompt}`);
     setStep("output");
   };
 
@@ -60,7 +59,6 @@ const ManageSettingsPage: React.FC = () => {
 
     toast.success(`Saved with type: ${selectedType}`);
 
-    // reset step
     setPrompt("");
     setOutput(null);
     setSelectedType("");
@@ -82,7 +80,6 @@ const ManageSettingsPage: React.FC = () => {
 
   return (
     <div className="p-6 text-white space-y-6">
-      {/* Header utama */}
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Prompting User Settings</h1>
         <NavLink
@@ -162,20 +159,22 @@ const ManageSettingsPage: React.FC = () => {
               Select Prompting Type
             </label>
             <div className="space-y-2">
-              {["Summary", "Trend Analysis", "Transaction Achievement"].map(
-                (opt) => (
-                  <label key={opt} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="promptType"
-                      value={opt}
-                      checked={selectedType === opt}
-                      onChange={(e) => setSelectedType(e.target.value)}
-                    />
-                    {opt}
-                  </label>
-                )
-              )}
+              {[
+                "Take a tour convoinsight",
+                "Create Dashboard",
+                "Chat Analytics",
+              ].map((opt) => (
+                <label key={opt} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="promptType"
+                    value={opt}
+                    checked={selectedType === opt}
+                    onChange={(e) => setSelectedType(e.target.value)}
+                  />
+                  {opt}
+                </label>
+              ))}
             </div>
 
             <div className="flex gap-3 pt-2">
