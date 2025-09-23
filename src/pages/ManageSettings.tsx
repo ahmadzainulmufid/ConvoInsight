@@ -1,14 +1,29 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  getHistory,
+  saveHistory,
+  deleteHistoryItem,
+  type HistoryItem,
+} from "../utils/fileStore";
+import { v4 as uuidv4 } from "uuid";
+
+type Step = "prompt" | "output" | "type";
 
 const ManageSettingsPage: React.FC = () => {
   const { section: domainDocId } = useParams();
   const [prompt, setPrompt] = useState("");
   const [output, setOutput] = useState<string | null>(null);
-  const [step, setStep] = useState<"prompt" | "output" | "type">("prompt");
-  const [selectedType, setSelectedType] = useState<string>("");
+  const [step, setStep] = useState<Step>("prompt");
+  const [selectedType, setSelectedType] = useState("");
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  // Load history saat pertama kali
+  useEffect(() => {
+    getHistory().then(setHistory);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,19 +41,39 @@ const ManageSettingsPage: React.FC = () => {
     setStep("prompt");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedType) {
       toast.error("Please select a type before saving");
       return;
     }
+
+    const newItem: HistoryItem = {
+      id: uuidv4(),
+      prompt,
+      output: output || "",
+      type: selectedType,
+    };
+
+    const updated = [...history, newItem];
+    setHistory(updated);
+    await saveHistory(updated);
+
     toast.success(`Saved with type: ${selectedType}`);
+
+    // reset step
     setPrompt("");
     setOutput(null);
     setSelectedType("");
     setStep("prompt");
   };
 
-  // Animasi masuk/keluar tiap step
+  const handleDelete = async (id: string) => {
+    const updated = history.filter((h) => h.id !== id);
+    setHistory(updated);
+    await deleteHistoryItem(id);
+    toast.success("History item deleted");
+  };
+
   const variants = {
     initial: { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
@@ -57,10 +92,6 @@ const ManageSettingsPage: React.FC = () => {
           Back to Dashboard
         </NavLink>
       </header>
-
-      <p className="mt-2 text-gray-300">
-        Please enter prompting according to your dashboard needs.
-      </p>
 
       <AnimatePresence mode="wait">
         {step === "prompt" && (
@@ -164,6 +195,35 @@ const ManageSettingsPage: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* History Section */}
+      {history.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold">History</h2>
+          {history.map((h) => (
+            <div
+              key={h.id}
+              className="bg-[#2A2B32] p-4 rounded-lg space-y-2 border border-[#3a3b42]"
+            >
+              <p>
+                <span className="font-semibold">Prompt:</span> {h.prompt}
+              </p>
+              <p>
+                <span className="font-semibold">Output:</span> {h.output}
+              </p>
+              <p>
+                <span className="font-semibold">Type:</span> {h.type}
+              </p>
+              <button
+                onClick={() => handleDelete(h.id)}
+                className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-sm"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
