@@ -8,50 +8,42 @@ export type PlotlySpec = {
 };
 
 export type ChartItem =
-  | { title: string; html: string }
-  | { title: string; data_uri: string; plotly?: PlotlySpec }
-  | { title: string; plotly: PlotlySpec; data_uri?: string };
+  | { html: string }
+  | { data_uri: string; plotly?: PlotlySpec }
+  | { plotly: PlotlySpec; data_uri?: string };
 
 export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
   if (!charts || charts.length === 0) return null;
 
   return (
-    <div className="grid gap-4">
+    <div className="space-y-6">
       {charts.map((c, idx) => {
-        const key = `${("title" in c && c.title) || "chart"}-${idx}`;
-        const heading = c.title || "Chart";
+        const key = `chart-${idx}`;
 
-        // HTML chart (iframe srcDoc)
+        // HTML chart
         if ("html" in c && typeof c.html === "string") {
           return (
-            <div
-              key={key}
-              className="rounded-md bg-[#24252c] border border-[#2F3038] p-3 sm:p-4 w-full"
-            >
-              <div className="text-sm mb-2 text-gray-200">{heading}</div>
+            <div key={key} className="w-full">
               <iframe
                 srcDoc={c.html}
-                title={heading}
-                className="w-full rounded"
+                title={key}
+                className="w-full"
                 style={{
                   height: "clamp(320px, 60vh, 640px)",
                   border: "none",
                   overflow: "hidden",
                 }}
               />
+              <hr className="border-t border-gray-700 my-6 opacity-50" />
             </div>
           );
         }
 
-        // Plotly native
+        // Plotly
         if ("plotly" in c && c.plotly) {
           const p: PlotlySpec = c.plotly;
           return (
-            <div
-              key={key}
-              className="rounded-md bg-[#24252c] border border-[#2F3038] p-3 sm:p-4 w-full"
-            >
-              <div className="text-sm mb-2 text-gray-200">{heading}</div>
+            <div key={key} className="w-full">
               <Plot
                 data={p.data}
                 layout={{
@@ -66,23 +58,21 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
                 style={{ width: "100%", height: "clamp(320px, 60vh, 640px)" }}
                 useResizeHandler
               />
+              <hr className="border-t border-gray-700 my-6 opacity-50" />
             </div>
           );
         }
 
-        // Static image chart
+        // Image
         if ("data_uri" in c && c.data_uri) {
           return (
-            <div
-              key={key}
-              className="rounded-md bg-[#24252c] border border-[#2F3038] p-3 sm:p-4 w-full"
-            >
-              <div className="text-sm mb-2 text-gray-200">{heading}</div>
+            <div key={key} className="w-full">
               <img
                 src={c.data_uri}
-                alt={heading}
+                alt={key}
                 className="w-full rounded object-contain"
               />
+              <hr className="border-t border-gray-700 my-6 opacity-50" />
             </div>
           );
         }

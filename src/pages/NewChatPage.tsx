@@ -15,6 +15,7 @@ import {
   listenMessages,
   getDomainDocId,
 } from "../service/chatStore";
+import { FiCopy, FiEdit2, FiCheck, FiX } from "react-icons/fi";
 
 type Msg = {
   role: "user" | "assistant";
@@ -50,6 +51,9 @@ export default function NewChatPage() {
   const openedId = searchParams.get("id");
   const isNewConversation = !openedId;
 
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+
   const API_BASE =
     "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
@@ -76,9 +80,7 @@ export default function NewChatPage() {
 
     const unsub = listenMessages(domainDocId, openedId, (msgs) => {
       const mapped: Msg[] = msgs.map((m) => {
-        const charts = m.chartHtml
-          ? [{ title: "Chart", html: m.chartHtml }]
-          : undefined;
+        const charts = m.chartHtml ? [{ html: m.chartHtml }] : undefined;
         return { role: m.role, content: m.text, charts, animate: false };
       });
       setMessages(mapped);
@@ -155,7 +157,7 @@ export default function NewChatPage() {
           const html = await fetchChartHtml(API_BASE, chartUrl);
           if (html) {
             chartHtml = html;
-            charts = [{ title: "Chart", html }];
+            charts = [{ html }];
           }
         } catch (e) {
           console.warn("Fetch chart HTML failed:", e);
@@ -251,26 +253,88 @@ export default function NewChatPage() {
                     key={i}
                     className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0"
                   >
-                    {m.charts && m.charts.length > 0 && (
-                      <div className="mb-4">
-                        <ChartGallery charts={m.charts} />
-                      </div>
-                    )}
-
                     {m.role === "assistant" ? (
-                      <div className="w-full mb-6">
-                        <AnimatedMessageBubble
-                          message={{ role: m.role, content: m.content }}
-                          animate={m.animate ?? false}
-                          fullWidth
-                        />
-                      </div>
+                      <>
+                        {/* Chart langsung inline tanpa judul */}
+                        {m.charts && m.charts.length > 0 && (
+                          <div className="mb-4">
+                            <ChartGallery charts={m.charts} />
+                          </div>
+                        )}
+
+                        {/* Jawaban teks assistant (tanpa card) */}
+                        <div className="mb-6 text-gray-200 leading-relaxed whitespace-pre-line">
+                          {m.content}
+                        </div>
+
+                        {/* Garis pemisah antar jawaban */}
+                        {i < messages.length - 1 && (
+                          <hr className="border-t border-gray-700 my-6 opacity-50" />
+                        )}
+                      </>
                     ) : (
-                      <div className="mb-6">
-                        <AnimatedMessageBubble
-                          message={{ role: m.role, content: m.content }}
-                          animate={m.animate ?? false}
-                        />
+                      <div className="mb-10 relative group">
+                        {editingIndex === i ? (
+                          // Mode editing
+                          <div className="flex flex-col gap-2">
+                            <textarea
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              className="w-full rounded-lg border border-gray-600 bg-[#1f2026] text-gray-200 p-2 text-sm"
+                              rows={3}
+                            />
+                            <div className="flex gap-2 justify-end text-sm">
+                              <button
+                                onClick={() => {
+                                  const next = [...messages];
+                                  next[i].content = editText;
+                                  setMessages(next);
+                                  setEditingIndex(null);
+                                  toast.success("Message updated!");
+                                }}
+                                className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                              >
+                                <FiCheck size={14} /> Save
+                              </button>
+                              <button
+                                onClick={() => setEditingIndex(null)}
+                                className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white flex items-center gap-1"
+                              >
+                                <FiX size={14} /> Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Bubble user normal */}
+                            <AnimatedMessageBubble
+                              message={{ role: m.role, content: m.content }}
+                              animate={m.animate ?? false}
+                            />
+
+                            {/* Action icons pojok kanan bawah */}
+                            <div className="flex justify-end gap-2 mt-2 opacity-0 group-hover:opacity-100 transition">
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(m.content);
+                                  toast.success("Message copied!");
+                                }}
+                                className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
+                              >
+                                <FiCopy size={12} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingIndex(i);
+                                  setEditText(m.content);
+                                }}
+                                className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
+                              >
+                                <FiEdit2 size={12} />
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
