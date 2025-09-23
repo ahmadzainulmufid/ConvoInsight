@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FiPlus } from "react-icons/fi";
+import { FiPlus, FiSettings } from "react-icons/fi";
 import CardStat from "../components/SupportComponents/Card";
 import ChartGallery from "../components/ChatComponents/ChartGallery";
 import {
@@ -46,6 +46,9 @@ const DashboardPage: React.FC = () => {
   const [loadingChart, setLoadingChart] = useState(false);
   const [parsedKpis, setParsedKpis] = useState<KPIItem[]>([]); // untuk mapping saat klik
 
+  const handleDashboardSettings = () => {
+    navigate(`/domain/${section}/dashboard/dashboardSetting`);
+  };
   const handleNewChat = () => {
     navigate(`/domain/${section}/dashboard/newchat`);
   };
@@ -156,6 +159,13 @@ const DashboardPage: React.FC = () => {
       >
         <FiPlus size={20} />
         <span>New Chat</span>
+      </button>
+
+      <button
+        onClick={handleDashboardSettings}
+        className="fixed top-6 right-6 p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white shadow-md transition"
+      >
+        <FiSettings size={20} />
       </button>
     </div>
   );
