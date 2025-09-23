@@ -8,6 +8,7 @@ import {
   useParams,
 } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
 import DatasetsPage from "./pages/DatasetsPage";
 import CreateDatasetPage from "./pages/CreateDatasetPage";
@@ -60,6 +61,16 @@ const App: React.FC = () => {
             element={
               <PublicRoute>
                 <LoginPage />
+              </PublicRoute>
+            }
+          />
+
+          {/* Register: publik */}
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <RegisterPage />
               </PublicRoute>
             }
           />

@@ -7,9 +7,12 @@ import {
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
+  signInWithPopup,
 } from "firebase/auth";
-import { auth } from "../../utils/firebaseSetup";
+import { auth, googleProvider } from "../../utils/firebaseSetup";
 import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
+import { FcGoogle } from "react-icons/fc";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -73,6 +76,23 @@ const LoginForm: React.FC = () => {
       setErrors((prev) => ({ ...prev, form: msg }));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await setPersistence(
+        auth,
+        remember ? browserLocalPersistence : browserSessionPersistence
+      );
+
+      const res = await signInWithPopup(auth, googleProvider);
+
+      toast.success(`Welcome ${res.user.displayName || res.user.email}`);
+      navigate("/home");
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      setErrors((prev) => ({ ...prev, form: "Gagal login dengan Google." }));
     }
   };
 
@@ -184,6 +204,34 @@ const LoginForm: React.FC = () => {
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
+
+      <p className="mt-6 text-center text-sm text-gray-600">
+        Don’t have an account?{" "}
+        <Link
+          to="/register"
+          className="text-indigo-600 hover:text-indigo-800 font-medium"
+        >
+          Sign up
+        </Link>
+      </p>
+
+      {/* Divider OR */}
+      <div className="my-4 flex items-center gap-3">
+        <div className="h-px bg-gray-300 flex-1" />
+        <span className="text-xs text-gray-500">or</span>
+        <div className="h-px bg-gray-300 flex-1" />
+      </div>
+
+      {/* Google button */}
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={loading}
+        className="w-full !bg-white !text-gray-700 border border-gray-300 hover:!bg-gray-50 rounded-lg py-2.5 font-semibold shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
+      >
+        <FcGoogle size={20} />
+        Continue with Google
+      </button>
     </div>
   );
 };
