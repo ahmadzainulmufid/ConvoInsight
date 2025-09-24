@@ -94,10 +94,12 @@ export default function NewChatPage() {
   const [controller, setController] = useState<AbortController | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // api base for link deploy or local
   const API_BASE =
     import.meta.env.VITE_API_URL ||
     "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
+  // resolve Firestore docId dari nama domain
   useEffect(() => {
     if (!domain) return;
     (async () => {
