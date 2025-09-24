@@ -98,7 +98,6 @@ export default function NewChatPage() {
     import.meta.env.VITE_API_URL ||
     "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
-  // resolve Firestore docId dari nama domain
   useEffect(() => {
     if (!domain) return;
     (async () => {
