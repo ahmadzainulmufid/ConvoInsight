@@ -177,12 +177,14 @@ export default function NewChatPage() {
     return () => unsub();
   }, [domainDocId, openedId]);
 
-  // auto-scroll
+  const endOfMessagesRef = useRef<HTMLDivElement>(null);
+
+  // scroll langsung ke akhir begitu messages selesai dimuat
   useEffect(() => {
-    requestAnimationFrame(() => {
-      chatScrollRef.current?.scrollTo({ top: 9e9, behavior: "smooth" });
-    });
-  }, [messages.length]);
+    if (messages.length > 0) {
+      endOfMessagesRef.current?.scrollIntoView({ behavior: "auto" });
+    }
+  }, [messages]);
 
   const title = "ConvoInsight";
   const subtitle = domain
@@ -428,6 +430,8 @@ export default function NewChatPage() {
                     )}
                   </div>
                 ))}
+
+                <div ref={endOfMessagesRef} />
 
                 {sending && (
                   <div className="text-sm text-gray-400 animate-pulse pl-4 w-full max-w-3xl px-2 sm:px-0">
