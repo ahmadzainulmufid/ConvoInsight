@@ -48,7 +48,7 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full flex items-center rounded-xl bg-[#343541] px-3 py-2"
+      className="w-full flex items-center rounded-xl bg-gray-600 px-3 py-2"
     >
       <textarea
         ref={ref}
@@ -60,7 +60,7 @@ export function ChatComposer({
         className="flex-1 resize-none bg-transparent outline-none 
                    text-gray-200 text-sm leading-relaxed 
                    placeholder-gray-400 px-2 py-1
-                   min-h-[40px] max-h-[160px]"
+                   min-h-[40px] max-h-[160px] mt-2"
       />
 
       {isGenerating ? (
@@ -69,7 +69,7 @@ export function ChatComposer({
           onClick={onStop}
           className="ml-2 flex items-center justify-center 
                      w-9 h-9 rounded-md 
-                     bg-red-600 hover:bg-red-700 
+                     bg-transparent opacity-60
                      text-white text-lg transition"
           title="Stop"
         >
@@ -83,8 +83,8 @@ export function ChatComposer({
                       w-9 h-9 rounded-md text-lg transition
             ${
               hasText
-                ? "bg-[#19c37d] text-white hover:opacity-90"
-                : "bg-gray-600 text-white opacity-60 cursor-not-allowed"
+                ? "bg-transparent text-white opacity-60 cursor-not-allowed"
+                : "bg-transparent text-white opacity-60 cursor-not-allowed"
             }`}
           title="Send"
         >

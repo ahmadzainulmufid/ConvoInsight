@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import HistorySidebar from "../components/ChatComponents/HistorySidebar";
-import toast from "react-hot-toast";
+// import toast from "react-hot-toast"; // Dihapus
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
 import AnimatedMessageBubble from "../components/ChatComponents/AnimatedMessageBubble";
 import { queryDomain } from "../utils/queryDomain";
@@ -76,7 +76,7 @@ function ChatInput({
   const hasText = value.trim().length > 0;
 
   return (
-    <div className="flex items-center w-full rounded-xl bg-[#343541] px-4 py-3">
+    <div className="flex items-center w-full rounded-xl bg-gray-700 px-4 py-3">
       <textarea
         className="flex-1 bg-transparent resize-none outline-none text-gray-200 text-sm leading-relaxed max-h-40 overflow-y-auto placeholder-gray-400"
         placeholder={placeholder ?? "Ask Anything"}
@@ -96,7 +96,7 @@ function ChatInput({
       {isGenerating ? (
         <button
           onClick={onStop}
-          className="ml-2 flex items-center justify-center w-8 h-8 rounded-md bg-red-600 hover:bg-red-700 text-white transition"
+          className="ml-2 flex items-center justify-center w-8 h-8 rounded-md bg-transparent opacity-60 text-white transition"
         >
           ⏹
         </button>
@@ -107,8 +107,8 @@ function ChatInput({
           className={`ml-2 flex items-center justify-center w-8 h-8 rounded-md transition 
             ${
               hasText
-                ? "bg-gray-600 text-white hover:opacity-90"
-                : "bg-gray-600 text-white opacity-60"
+                ? "bg-transparent text-white opacity-60"
+                : "bg-transparent text-white opacity-60"
             }`}
         >
           {hasText ? "↑" : "➤"}
@@ -140,29 +140,25 @@ export default function NewChatPage() {
   const [controller, setController] = useState<AbortController | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // api base for link deploy or local
   const API_BASE =
     import.meta.env.VITE_API_URL ||
     "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
-  // resolve Firestore docId dari nama domain
   useEffect(() => {
     if (!domain) return;
     (async () => {
       try {
         const id = await getDomainDocId(domain);
         if (!id) {
-          toast.error(`Domain "${domain}" not found`);
+          console.error(`Domain "${domain}" not found`);
         }
         setDomainDocId(id);
       } catch (e) {
         console.error("Failed to resolve domain docId", e);
-        toast.error("Failed to find domain");
       }
     })();
   }, [domain]);
 
-  // subscribe Firestore messages
   useEffect(() => {
     if (!domainDocId || !openedId) return;
 
@@ -180,7 +176,6 @@ export default function NewChatPage() {
 
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
-  // TAMBAHKAN FUNGSI INI
   const scrollToBottom = (behavior: "auto" | "smooth" = "smooth") => {
     if (endOfMessagesRef.current) {
       endOfMessagesRef.current.scrollIntoView({ behavior });
@@ -196,7 +191,7 @@ export default function NewChatPage() {
     const text = message.trim();
     if (!text || sending) return;
     if (!domainDocId) {
-      toast.error("Domain not found");
+      console.error("Domain not found");
       return;
     }
 
@@ -209,7 +204,6 @@ export default function NewChatPage() {
     const abortCtrl = new AbortController();
     setController(abortCtrl);
 
-    // buat session id di URL pas pesan pertama
     const userMsgCount = nextMsgs.filter((m) => m.role === "user").length;
     let sessionId = searchParams.get("id");
     if (!openedId && userMsgCount === 1) {
@@ -228,12 +222,9 @@ export default function NewChatPage() {
         section: domain!,
         createdAt: Date.now(),
       });
-
-      toast.success("Chat saved to History");
     }
 
     try {
-      // simpan pesan user ke Firestore
       await saveChatMessage(domainDocId, sessionId!, "user", text);
 
       const res = await queryDomain({
@@ -270,8 +261,8 @@ export default function NewChatPage() {
       };
 
       setMessages((cur) => [...cur, assistantMsg]);
+      setTimeout(() => scrollToBottom("smooth"), 0);
 
-      // simpan pesan assistant ke Firestore
       await saveChatMessage(
         domainDocId,
         sessionId!,
@@ -280,24 +271,34 @@ export default function NewChatPage() {
         chartHtml
       );
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to process the request";
-      toast.error(msg);
+      let fallbackMsg: Msg;
 
-      const fallback: Msg = {
-        role: "assistant",
-        content: "⚠️ (fallback) There was a problem processing the message.",
-        animate: true,
-      };
-      setMessages((cur) => [...cur, fallback]);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        fallbackMsg = {
+          role: "assistant",
+          content: "Response terminated by user",
+          animate: true,
+        };
+        console.log("Request aborted by user.");
+      } else {
+        const errorMsg =
+          err instanceof Error ? err.message : "Failed to process the request";
+        console.error(errorMsg);
+        fallbackMsg = {
+          role: "assistant",
+          content: "fallback, There was a problem processing the message",
+          animate: true,
+        };
+      }
 
+      setMessages((cur) => [...cur, fallbackMsg]);
       setTimeout(() => scrollToBottom("smooth"), 0);
 
       await saveChatMessage(
         domainDocId,
         sessionId!,
         "assistant",
-        fallback.content
+        fallbackMsg.content
       );
     } finally {
       setSending(false);
@@ -344,21 +345,13 @@ export default function NewChatPage() {
           </div>
         </div>
       ) : (
-        // And replace the entire <div> block that follows with this:
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6 max-w-7xl mx-auto">
-          {/* Main Chat Column */}
           <div className="flex flex-col h-[calc(100vh-3rem)] sm:h-[calc(100vh-4rem)]">
-            {/* Scrollable Messages Area */}
             <div
               ref={chatScrollRef}
               className="flex-1 space-y-6 py-4 overflow-y-auto scrollbar-hide"
             >
-              {/* Fade atas */}
-              <div
-                className="sticky top-0 left-0 right-0 h-16
-        bg-gradient-to-b from-[#1a1b1e] to-transparent
-        z-10 pointer-events-none"
-              />
+              <div className="sticky top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#1a1b1e] to-transparent z-10 pointer-events-none" />
 
               {messages.map((m, i) => (
                 <div
@@ -391,7 +384,7 @@ export default function NewChatPage() {
                                 next[i].content = editText;
                                 setMessages(next);
                                 setEditingIndex(null);
-                                toast.success("Message updated!");
+                                // toast.success("Message updated!"); Dihapus
                               }}
                               className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
                             >
@@ -415,7 +408,7 @@ export default function NewChatPage() {
                             <button
                               onClick={() => {
                                 navigator.clipboard.writeText(m.content);
-                                toast.success("Message copied!");
+                                // toast.success("Message copied!"); Dihapus
                               }}
                               className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
                             >
@@ -451,15 +444,9 @@ export default function NewChatPage() {
                 </div>
               )}
 
-              {/* Fade bawah */}
-              <div
-                className="sticky bottom-0 left-0 right-0 h-20
-        bg-gradient-to-t from-[#1a1b1e] to-transparent
-        z-10 pointer-events-none"
-              />
+              <div className="sticky bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#1a1b1e] to-transparent z-10 pointer-events-none" />
             </div>
 
-            {/* Fixed Chat Input Area */}
             <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
               <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
                 <ChatInput
@@ -478,7 +465,6 @@ export default function NewChatPage() {
             </div>
           </div>
 
-          {/* History Sidebar */}
           <div className="hidden lg:block self-start">
             <HistorySidebar open={true} onClose={() => {}} />
           </div>
