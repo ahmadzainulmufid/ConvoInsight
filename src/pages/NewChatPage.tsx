@@ -347,11 +347,10 @@ export default function NewChatPage() {
               <div ref={chatScrollRef} className="space-y-6 py-4">
                 {/* Fade atas */}
                 <div
-                  className="sticky top-0 left-0 right-0 h-20 
+                  className="sticky top-0 left-0 right-0 
         bg-gradient-to-b from-[#1a1b1e] to-transparent 
         z-20 pointer-events-none"
                 />
-
                 {messages.map((m, i) => (
                   <div
                     key={i}
