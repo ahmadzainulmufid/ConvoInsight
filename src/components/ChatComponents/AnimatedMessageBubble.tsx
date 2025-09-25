@@ -23,7 +23,7 @@ export default function AnimatedMessageBubble({
         ${fullWidth ? "w-full max-w-none" : "max-w-[80%]"}
         ${
           isUser
-            ? "rounded-lg bg-indigo-600/90 text-white ml-auto"
+            ? "rounded-lg bg-gray-600 text-white ml-auto"
             : "rounded-md bg-[#24252c] text-gray-100 border border-[#2F3038]"
         }
       `}

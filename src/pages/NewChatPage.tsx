@@ -107,7 +107,7 @@ function ChatInput({
           className={`ml-2 flex items-center justify-center w-8 h-8 rounded-md transition 
             ${
               hasText
-                ? "bg-[#19c37d] text-white hover:opacity-90"
+                ? "bg-gray-600 text-white hover:opacity-90"
                 : "bg-gray-600 text-white opacity-60"
             }`}
         >
@@ -172,6 +172,7 @@ export default function NewChatPage() {
         return { role: m.role, content: m.text, charts, animate: false };
       });
       setMessages(mapped);
+      setTimeout(() => scrollToBottom("auto"), 0);
     });
 
     return () => unsub();
@@ -179,12 +180,12 @@ export default function NewChatPage() {
 
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
-  // scroll langsung ke akhir begitu messages selesai dimuat
-  useEffect(() => {
-    if (messages.length > 0) {
-      endOfMessagesRef.current?.scrollIntoView({ behavior: "auto" });
+  // TAMBAHKAN FUNGSI INI
+  const scrollToBottom = (behavior: "auto" | "smooth" = "smooth") => {
+    if (endOfMessagesRef.current) {
+      endOfMessagesRef.current.scrollIntoView({ behavior });
     }
-  }, [messages]);
+  };
 
   const title = "ConvoInsight";
   const subtitle = domain
@@ -290,6 +291,8 @@ export default function NewChatPage() {
       };
       setMessages((cur) => [...cur, fallback]);
 
+      setTimeout(() => scrollToBottom("smooth"), 0);
+
       await saveChatMessage(
         domainDocId,
         sessionId!,
@@ -341,136 +344,141 @@ export default function NewChatPage() {
           </div>
         </div>
       ) : (
+        // And replace the entire <div> block that follows with this:
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6 max-w-7xl mx-auto">
-          <div className="flex flex-col">
-            <div className="flex flex-col flex-1">
-              <div ref={chatScrollRef} className="space-y-6 py-4">
-                {/* Fade atas */}
-                <div
-                  className="sticky top-0 left-0 right-0 
-        bg-gradient-to-b from-[#1a1b1e] to-transparent 
-        z-20 pointer-events-none"
-                />
-                {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl"
-                  >
-                    {m.role === "assistant" ? (
-                      <div className="space-y-3">
-                        {m.charts && m.charts.length > 0 && (
-                          <ChartGallery charts={m.charts} />
-                        )}
+          {/* Main Chat Column */}
+          <div className="flex flex-col h-[calc(100vh-3rem)] sm:h-[calc(100vh-4rem)]">
+            {/* Scrollable Messages Area */}
+            <div
+              ref={chatScrollRef}
+              className="flex-1 space-y-6 py-4 overflow-y-auto scrollbar-hide"
+            >
+              {/* Fade atas */}
+              <div
+                className="sticky top-0 left-0 right-0 h-16
+        bg-gradient-to-b from-[#1a1b1e] to-transparent
+        z-10 pointer-events-none"
+              />
 
-                        <p className="text-gray-200 leading-relaxed whitespace-pre-line">
-                          {m.content}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="mb-8 relative group">
-                        {editingIndex === i ? (
-                          <div className="flex flex-col gap-2">
-                            <textarea
-                              value={editText}
-                              onChange={(e) => setEditText(e.target.value)}
-                              className="w-full rounded-lg border border-gray-600 bg-[#1f2026] text-gray-200 p-2 text-sm"
-                              rows={3}
-                            />
-                            <div className="flex gap-2 justify-end text-sm">
-                              <button
-                                onClick={() => {
-                                  const next = [...messages];
-                                  next[i].content = editText;
-                                  setMessages(next);
-                                  setEditingIndex(null);
-                                  toast.success("Message updated!");
-                                }}
-                                className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
-                              >
-                                <FiCheck size={14} /> Save
-                              </button>
-                              <button
-                                onClick={() => setEditingIndex(null)}
-                                className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white flex items-center gap-1"
-                              >
-                                <FiX size={14} /> Cancel
-                              </button>
-                            </div>
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl"
+                >
+                  {m.role === "assistant" ? (
+                    <div className="space-y-3">
+                      {m.charts && m.charts.length > 0 && (
+                        <ChartGallery charts={m.charts} />
+                      )}
+                      <p className="text-gray-200 leading-relaxed whitespace-pre-line">
+                        {m.content}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mb-8 relative group">
+                      {editingIndex === i ? (
+                        <div className="flex flex-col gap-2">
+                          <textarea
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="w-full rounded-lg border border-gray-600 bg-[#1f2026] text-gray-200 p-2 text-sm"
+                            rows={3}
+                          />
+                          <div className="flex gap-2 justify-end text-sm">
+                            <button
+                              onClick={() => {
+                                const next = [...messages];
+                                next[i].content = editText;
+                                setMessages(next);
+                                setEditingIndex(null);
+                                toast.success("Message updated!");
+                              }}
+                              className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                            >
+                              <FiCheck size={14} /> Save
+                            </button>
+                            <button
+                              onClick={() => setEditingIndex(null)}
+                              className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white flex items-center gap-1"
+                            >
+                              <FiX size={14} /> Cancel
+                            </button>
                           </div>
-                        ) : (
-                          <>
-                            <AnimatedMessageBubble
-                              message={{ role: m.role, content: m.content }}
-                              animate={m.animate ?? false}
-                            />
-                            <div className="flex justify-end gap-2 mt-2 opacity-0 group-hover:opacity-100 transition">
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(m.content);
-                                  toast.success("Message copied!");
-                                }}
-                                className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
-                              >
-                                <FiCopy size={12} />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setEditingIndex(i);
-                                  setEditText(m.content);
-                                }}
-                                className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
-                              >
-                                <FiEdit2 size={12} />
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                <div ref={endOfMessagesRef} />
-
-                {sending && (
-                  <div className="text-sm text-gray-400 animate-pulse pl-4 w-full max-w-3xl px-2 sm:px-0">
-                    Assistant is typing...
-                  </div>
-                )}
-                {messages.length === 0 && (
-                  <div className="text-gray-400 text-sm pl-4 w-full max-w-3xl px-2 sm:px-0">
-                    No Message Yet
-                  </div>
-                )}
-
-                {/* Fade bawah */}
-                <div
-                  className="sticky bottom-0 left-0 right-0 h-32 
-        bg-gradient-to-t from-[#1a1b1e] to-transparent 
-        z-20 pointer-events-none"
-                />
-              </div>
-
-              {/* Input ikut naik ke atas saat discroll */}
-              <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
-                <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
-                  <ChatInput
-                    value={message}
-                    onChange={setMessage}
-                    onSend={handleSend}
-                    placeholder="Ask Anything"
-                    disabled={sending}
-                    isGenerating={isGenerating}
-                    onStop={() => {
-                      controller?.abort();
-                      setIsGenerating(false);
-                    }}
-                  />
+                        </div>
+                      ) : (
+                        <>
+                          <AnimatedMessageBubble
+                            message={{ role: m.role, content: m.content }}
+                            animate={m.animate ?? false}
+                          />
+                          <div className="flex justify-end gap-2 mt-2 opacity-0 group-hover:opacity-100 transition">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(m.content);
+                                toast.success("Message copied!");
+                              }}
+                              className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
+                            >
+                              <FiCopy size={12} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingIndex(i);
+                                setEditText(m.content);
+                              }}
+                              className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
+                            >
+                              <FiEdit2 size={12} />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
+              ))}
+
+              <div ref={endOfMessagesRef} />
+
+              {sending && (
+                <div className="text-sm text-gray-400 animate-pulse pl-4 w-full max-w-3xl px-2 sm:px-0">
+                  Assistant is typing...
+                </div>
+              )}
+              {messages.length === 0 && (
+                <div className="text-gray-400 text-sm pl-4 w-full max-w-3xl px-2 sm:px-0">
+                  No Message Yet
+                </div>
+              )}
+
+              {/* Fade bawah */}
+              <div
+                className="sticky bottom-0 left-0 right-0 h-20
+        bg-gradient-to-t from-[#1a1b1e] to-transparent
+        z-10 pointer-events-none"
+              />
+            </div>
+
+            {/* Fixed Chat Input Area */}
+            <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
+              <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
+                <ChatInput
+                  value={message}
+                  onChange={setMessage}
+                  onSend={handleSend}
+                  placeholder="Ask Anything"
+                  disabled={sending}
+                  isGenerating={isGenerating}
+                  onStop={() => {
+                    controller?.abort();
+                    setIsGenerating(false);
+                  }}
+                />
               </div>
             </div>
           </div>
 
+          {/* History Sidebar */}
           <div className="hidden lg:block self-start">
             <HistorySidebar open={true} onClose={() => {}} />
           </div>
