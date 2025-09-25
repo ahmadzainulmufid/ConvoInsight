@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-import { FiSend } from "react-icons/fi";
 
 const MAX_H = 160;
 
@@ -7,18 +6,21 @@ export function ChatComposer({
   value,
   onChange,
   onSend,
-  placeholder,
-  expanded = false, // 🔑 default false
+  placeholder = "Ask Anything",
+  isGenerating = false,
+  onStop,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
   placeholder?: string;
-  expanded?: boolean;
+  isGenerating?: boolean;
+  onStop?: () => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const hasText = value.trim().length > 0;
 
-  // Auto-grow + toggle overflow
+  // Auto-grow
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -32,13 +34,13 @@ export function ChatComposer({
     if ((e.nativeEvent as KeyboardEvent).isComposing) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (value.trim()) onSend();
+      if (hasText && !isGenerating) onSend();
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!value.trim()) return;
+    if (!hasText || isGenerating) return;
     onSend();
     requestAnimationFrame(() => ref.current?.focus());
   };
@@ -46,9 +48,7 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className={`w-full flex items-stretch gap-2 ${
-        expanded ? "max-w-3xl md:max-w-4xl xl:max-w-5xl" : "max-w-2xl"
-      }`}
+      className="w-full flex items-center rounded-xl bg-[#343541] px-3 py-2"
     >
       <textarea
         ref={ref}
@@ -57,22 +57,40 @@ export function ChatComposer({
         onKeyDown={handleKeyDown}
         rows={1}
         placeholder={placeholder}
-        className={[
-          "flex-1 resize-none rounded border border-[#3a3b42] bg-transparent",
-          "px-4 py-3 text-white outline-none focus:ring-2 focus:ring-indigo-500",
-          "min-h-[44px]",
-        ].join(" ")}
-        style={{ maxHeight: MAX_H }}
+        className="flex-1 resize-none bg-transparent outline-none 
+                   text-gray-200 text-sm leading-relaxed 
+                   placeholder-gray-400 px-2 py-1
+                   min-h-[40px] max-h-[160px]"
       />
-      <button
-        type="submit"
-        disabled={!value.trim()}
-        className="h-[44px] px-4 rounded-md bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white flex items-center justify-center gap-2"
-        title="Send"
-      >
-        <FiSend />
-        <span className="hidden sm:inline">Send</span>
-      </button>
+
+      {isGenerating ? (
+        <button
+          type="button"
+          onClick={onStop}
+          className="ml-2 flex items-center justify-center 
+                     w-9 h-9 rounded-md 
+                     bg-red-600 hover:bg-red-700 
+                     text-white text-lg transition"
+          title="Stop"
+        >
+          ⏹
+        </button>
+      ) : (
+        <button
+          type="submit"
+          disabled={!hasText}
+          className={`ml-2 flex items-center justify-center 
+                      w-9 h-9 rounded-md text-lg transition
+            ${
+              hasText
+                ? "bg-[#19c37d] text-white hover:opacity-90"
+                : "bg-gray-600 text-white opacity-60 cursor-not-allowed"
+            }`}
+          title="Send"
+        >
+          {hasText ? "↑" : "➤"}
+        </button>
+      )}
     </form>
   );
 }

@@ -37,39 +37,85 @@ function cleanResponseText(text: string): string {
 
 function normalizeResponse(text: string): string {
   let out = text;
-
-  // Hilangkan bold **...**
   out = out.replace(/\*\*(.*?)\*\*/g, "$1");
-
-  // Ubah "Next actions:" jadi heading
   out = out.replace(/Next actions:/gi, "Next actions\n");
-
-  // Ubah "Over-performance Drivers:" jadi heading
   out = out.replace(
     /Over-performance Drivers:/gi,
     "Over-performance Drivers\n"
   );
-
-  // Ubah "Under-performance Drivers:" jadi heading
   out = out.replace(
     /Under-performance Drivers:/gi,
     "Under-performance Drivers\n"
   );
-
-  // Ubah "Caveats:" jadi heading
   out = out.replace(/Caveats:/gi, "Caveats\n");
-
-  // Ubah "Confidence:" jadi heading
   out = out.replace(/Confidence:/gi, "Confidence\n");
 
-  // Ganti bullet `*` di awal baris jadi numbering otomatis
   let counter = 1;
   out = out.replace(/^\s*[*-]\s+/gm, () => `${counter++}. `);
-
-  // Rapikan newline berlebih
   out = out.replace(/\n{3,}/g, "\n\n");
-
   return out.trim();
+}
+
+function ChatInput({
+  value,
+  onChange,
+  onSend,
+  disabled,
+  isGenerating,
+  onStop,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSend: () => void;
+  disabled?: boolean;
+  isGenerating?: boolean;
+  onStop?: () => void;
+  placeholder?: string;
+}) {
+  const hasText = value.trim().length > 0;
+
+  return (
+    <div className="flex items-center w-full rounded-xl bg-[#343541] px-4 py-3">
+      <textarea
+        className="flex-1 bg-transparent resize-none outline-none text-gray-200 text-sm leading-relaxed max-h-40 overflow-y-auto placeholder-gray-400"
+        placeholder={placeholder ?? "Ask Anything"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.nativeEvent as KeyboardEvent).isComposing) return;
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (!disabled && !isGenerating && hasText) onSend();
+          }
+        }}
+        rows={1}
+        disabled={disabled}
+      />
+
+      {isGenerating ? (
+        <button
+          onClick={onStop}
+          className="ml-2 flex items-center justify-center w-8 h-8 rounded-md bg-red-600 hover:bg-red-700 text-white transition"
+        >
+          ⏹
+        </button>
+      ) : (
+        <button
+          onClick={hasText ? onSend : undefined}
+          disabled={disabled}
+          className={`ml-2 flex items-center justify-center w-8 h-8 rounded-md transition 
+            ${
+              hasText
+                ? "bg-[#19c37d] text-white hover:opacity-90"
+                : "bg-gray-600 text-white opacity-60"
+            }`}
+        >
+          {hasText ? "↑" : "➤"}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function NewChatPage() {
@@ -266,13 +312,20 @@ export default function NewChatPage() {
               <p className="mt-2 text-sm text-gray-400">{subtitle}</p>
             </div>
 
-            <div className="w-full mx-auto max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0 ml-40">
-              <ChatComposer
-                value={message}
-                onChange={setMessage}
-                onSend={handleSend}
-                placeholder="Ask about data in this domain…"
-              />
+            <div className="w-full flex justify-center">
+              <div className="w-full max-w-2xl md:max-w-3xl px-2 sm:px-0">
+                <ChatComposer
+                  value={message}
+                  onChange={setMessage}
+                  onSend={handleSend}
+                  isGenerating={isGenerating}
+                  onStop={() => {
+                    controller?.abort();
+                    setIsGenerating(false);
+                  }}
+                  placeholder="Ask Anything"
+                />
+              </div>
             </div>
 
             <p className="mt-2 text-xs text-gray-500 text-center px-3">
@@ -288,43 +341,33 @@ export default function NewChatPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6 max-w-7xl mx-auto">
           <div className="flex flex-col">
-            <h2 className="text-lg font-semibold text-center lg:text-left mb-3 px-2 sm:px-0">
-              Conversation — {domain}
-            </h2>
+            <div className="flex flex-col flex-1">
+              <div ref={chatScrollRef} className="space-y-6 py-4">
+                {/* Fade atas */}
+                <div
+                  className="sticky top-0 left-0 right-0 h-20 
+        bg-gradient-to-b from-[#1a1b1e] to-transparent 
+        z-20 pointer-events-none"
+                />
 
-            <div className="min-h-[60vh] rounded-md border border-[#2F3038] bg-[#1f2026] p-3 sm:p-4 lg:p-6 flex flex-col">
-              <div
-                ref={chatScrollRef}
-                className="flex-1 overflow-y-auto pr-2 sm:pr-4 space-y-6"
-              >
                 {messages.map((m, i) => (
                   <div
                     key={i}
-                    className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0"
+                    className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl"
                   >
                     {m.role === "assistant" ? (
-                      <>
-                        {/* Chart langsung inline tanpa judul */}
+                      <div className="space-y-3">
                         {m.charts && m.charts.length > 0 && (
-                          <div className="mb-4">
-                            <ChartGallery charts={m.charts} />
-                          </div>
+                          <ChartGallery charts={m.charts} />
                         )}
 
-                        {/* Jawaban teks assistant (tanpa card) */}
-                        <div className="mb-6 text-gray-200 leading-relaxed whitespace-pre-line">
+                        <p className="text-gray-200 leading-relaxed whitespace-pre-line">
                           {m.content}
-                        </div>
-
-                        {/* Garis pemisah antar jawaban */}
-                        {i < messages.length - 1 && (
-                          <hr className="border-t border-gray-700 my-6 opacity-50" />
-                        )}
-                      </>
+                        </p>
+                      </div>
                     ) : (
-                      <div className="mb-10 relative group">
+                      <div className="mb-8 relative group">
                         {editingIndex === i ? (
-                          // Mode editing
                           <div className="flex flex-col gap-2">
                             <textarea
                               value={editText}
@@ -355,13 +398,10 @@ export default function NewChatPage() {
                           </div>
                         ) : (
                           <>
-                            {/* Bubble user normal */}
                             <AnimatedMessageBubble
                               message={{ role: m.role, content: m.content }}
                               animate={m.animate ?? false}
                             />
-
-                            {/* Action icons pojok kanan bawah */}
                             <div className="flex justify-end gap-2 mt-2 opacity-0 group-hover:opacity-100 transition">
                               <button
                                 onClick={() => {
@@ -390,40 +430,40 @@ export default function NewChatPage() {
                 ))}
 
                 {sending && (
-                  <div className="text-sm text-gray-400 animate-pulse mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0">
+                  <div className="text-sm text-gray-400 animate-pulse pl-4 w-full max-w-3xl px-2 sm:px-0">
                     Assistant is typing...
                   </div>
                 )}
                 {messages.length === 0 && (
-                  <div className="text-gray-400 text-sm mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0">
+                  <div className="text-gray-400 text-sm pl-4 w-full max-w-3xl px-2 sm:px-0">
                     No Message Yet
                   </div>
                 )}
+
+                {/* Fade bawah */}
+                <div
+                  className="sticky bottom-0 left-0 right-0 h-32 
+        bg-gradient-to-t from-[#1a1b1e] to-transparent 
+        z-20 pointer-events-none"
+                />
               </div>
 
-              <div className="mt-4 mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-2 sm:px-0">
-                {isGenerating ? (
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => {
-                        controller?.abort();
-                        setIsGenerating(false);
-                        toast("⏹️ Generation stopped");
-                      }}
-                      className="px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-sm"
-                    >
-                      Stop Generating
-                    </button>
-                  </div>
-                ) : (
-                  <ChatComposer
+              {/* Input ikut naik ke atas saat discroll */}
+              <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
+                <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
+                  <ChatInput
                     value={message}
                     onChange={setMessage}
                     onSend={handleSend}
-                    placeholder={sending ? "Sending…" : "Type a question…"}
-                    expanded
+                    placeholder="Ask Anything"
+                    disabled={sending}
+                    isGenerating={isGenerating}
+                    onStop={() => {
+                      controller?.abort();
+                      setIsGenerating(false);
+                    }}
                   />
-                )}
+                </div>
               </div>
             </div>
           </div>
