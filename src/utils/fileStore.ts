@@ -15,6 +15,14 @@ export async function deleteDatasetBlob(id: string): Promise<void> {
   await del(`ds_blob_${id}`);
 }
 
+export async function getDatasetBlobText(
+  dataset: string
+): Promise<string | null> {
+  const blob = (await get(`ds_blob_${dataset}`)) as Blob | undefined;
+  if (!blob) return null;
+  return await blob.text();
+}
+
 /** ================== CHART BLOBS ================== **/
 export async function saveChartBlob(id: string, blob: Blob): Promise<void> {
   await set(`chart_blob_${id}`, blob);

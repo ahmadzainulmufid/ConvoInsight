@@ -15,6 +15,7 @@ import {
   getDomainDocId,
 } from "../service/chatStore";
 import { FiCopy, FiEdit2, FiCheck, FiX } from "react-icons/fi";
+import toast from "react-hot-toast";
 
 type Msg = {
   role: "user" | "assistant";
@@ -22,6 +23,13 @@ type Msg = {
   chartUrl?: string | null;
   charts?: ChartItem[];
   animate?: boolean;
+};
+
+type DatasetApiItem = {
+  filename: string;
+  gcs_path: string;
+  size: number;
+  updated?: string;
 };
 
 function cleanResponseText(text: string): string {
@@ -139,6 +147,9 @@ export default function NewChatPage() {
   const [controller, setController] = useState<AbortController | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
+  const [selectedDataset, setSelectedDataset] = useState<string>("general");
+
   const API_BASE =
     import.meta.env.VITE_API_URL ||
     "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
@@ -172,6 +183,23 @@ export default function NewChatPage() {
 
     return () => unsub();
   }, [domainDocId, openedId]);
+
+  useEffect(() => {
+    if (!domain) return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/domains/${domain}/datasets`);
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableDatasets(
+            (data.datasets as DatasetApiItem[]).map((d) => d.filename)
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load datasets", err);
+      }
+    })();
+  }, [domain, API_BASE]);
 
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
@@ -232,6 +260,7 @@ export default function NewChatPage() {
         prompt: text,
         sessionId,
         signal: abortCtrl.signal,
+        dataset: selectedDataset !== "general" ? selectedDataset : undefined,
       });
 
       let charts: ChartItem[] | undefined;
@@ -319,6 +348,28 @@ export default function NewChatPage() {
 
             <div className="w-full flex justify-center">
               <div className="w-full max-w-2xl md:max-w-3xl px-2 sm:px-0">
+                {/* 🔹 Dataset Selector */}
+                <div className="mb-3">
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Dataset
+                  </label>
+                  <select
+                    value={selectedDataset}
+                    onChange={(e) => setSelectedDataset(e.target.value)}
+                    className="w-full rounded-md bg-[#1f2024] border border-[#2a2b32] 
+                   text-gray-100 text-sm px-3 py-2 focus:outline-none 
+                   focus:border-indigo-500"
+                  >
+                    <option value="general">General (all datasets)</option>
+                    {availableDatasets.map((ds) => (
+                      <option key={ds} value={ds}>
+                        {ds}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Chat Input */}
                 <ChatComposer
                   value={message}
                   onChange={setMessage}
@@ -383,7 +434,6 @@ export default function NewChatPage() {
                                 next[i].content = editText;
                                 setMessages(next);
                                 setEditingIndex(null);
-                                // toast.success("Message updated!"); Dihapus
                               }}
                               className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
                             >
@@ -407,7 +457,7 @@ export default function NewChatPage() {
                             <button
                               onClick={() => {
                                 navigator.clipboard.writeText(m.content);
-                                // toast.success("Message copied!"); Dihapus
+                                toast.success("Message copied!");
                               }}
                               className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
                             >
@@ -448,6 +498,28 @@ export default function NewChatPage() {
 
             <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
               <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
+                {/* 🔹 Dataset Selector */}
+                <div className="mb-3">
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Dataset
+                  </label>
+                  <select
+                    value={selectedDataset}
+                    onChange={(e) => setSelectedDataset(e.target.value)}
+                    className="w-full rounded-md bg-[#1f2024] border border-[#2a2b32] 
+                   text-gray-100 text-sm px-3 py-2 focus:outline-none 
+                   focus:border-indigo-500"
+                  >
+                    <option value="general">General (all datasets)</option>
+                    {availableDatasets.map((ds) => (
+                      <option key={ds} value={ds}>
+                        {ds}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Chat Input */}
                 <ChatInput
                   value={message}
                   onChange={setMessage}
