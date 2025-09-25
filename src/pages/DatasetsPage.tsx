@@ -77,33 +77,16 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
         </div>
 
         <UploadDropzone
+          section={section}
           onUploaded={async (files) => {
-            try {
-              const form = new FormData();
-              for (const file of files) {
-                form.append("files", file);
-              }
+            toast.success("Dataset uploaded & saved!");
+            await fetchDatasets();
 
-              const res = await fetch(
-                `${API_BASE}/upload_datasets/${section}`,
-                { method: "POST", body: form }
-              );
-
-              if (!res.ok) {
-                throw new Error(`Upload failed: ${res.status}`);
-              }
-
-              await res.json();
-              toast.success("Dataset uploaded successfully!");
-              await fetchDatasets();
-
-              if (files.length > 0) {
-                navigate(`/domain/${section}/datasets/${files[0].name}`);
-              }
-            } catch (err: unknown) {
-              console.error(err);
-              toast.error("Failed to upload dataset");
+            if (files.length === 1) {
+              // kalau cuma 1 file → redirect ke detail
+              navigate(`/domain/${section}/datasets/${files[0].name}`);
             }
+            // kalau lebih dari 1 file → stay di list saja
           }}
         />
 

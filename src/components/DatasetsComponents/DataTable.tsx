@@ -38,6 +38,15 @@ const pill = (v: string) => {
   return v || "";
 };
 
+const formatValue = (v: string) => {
+  if (!v) return "";
+  const num = Number(v);
+  if (!isNaN(num)) {
+    return new Intl.NumberFormat("en-US").format(num);
+  }
+  return v;
+};
+
 const DataTable: React.FC<DataTableProps> = ({
   headers,
   rows,
@@ -113,15 +122,22 @@ const DataTable: React.FC<DataTableProps> = ({
                 </tr>
               ) : (
                 slice.map((r, i) => (
-                  <tr key={i} className="even:bg-black/10">
-                    {headers.map((h) => (
-                      <td
-                        key={h}
-                        className="px-3 py-2 border-b border-[#2a2b32]"
-                      >
-                        {pill(r[h])}
-                      </td>
-                    ))}
+                  <tr
+                    key={i}
+                    className="even:bg-[#2a2b32]/30 hover:bg-[#2a2b32]/60 transition-colors"
+                  >
+                    {headers.map((h) => {
+                      const val = formatValue(r[h]);
+                      return (
+                        <td
+                          key={h}
+                          className="px-3 py-2 border-b border-[#2a2b32] max-w-[200px] truncate hover:whitespace-normal hover:bg-[#2a2b32]/40 transition"
+                          title={val}
+                        >
+                          {pill(val)}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))
               )}
@@ -157,14 +173,14 @@ const DataTable: React.FC<DataTableProps> = ({
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1 rounded-md border border-[#2a2b32] bg-[#1f2024] disabled:opacity-50"
+              className="px-3 py-1 rounded-md border border-[#2a2b32] bg-[#1f2024] hover:bg-[#2a2b32] disabled:opacity-50"
             >
               Previous
             </button>
             <button
               disabled={page >= pages}
               onClick={() => setPage((p) => Math.min(pages, p + 1))}
-              className="px-3 py-1 rounded-md border border-[#2a2b32] bg-[#1f2024] disabled:opacity-50"
+              className="px-3 py-1 rounded-md border border-[#2a2b32] bg-[#1f2024] hover:bg-[#2a2b32] disabled:opacity-50"
             >
               Next
             </button>

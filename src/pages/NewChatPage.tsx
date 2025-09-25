@@ -1,7 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import HistorySidebar from "../components/ChatComponents/HistorySidebar";
-// import toast from "react-hot-toast"; // Dihapus
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
 import AnimatedMessageBubble from "../components/ChatComponents/AnimatedMessageBubble";
 import { queryDomain } from "../utils/queryDomain";

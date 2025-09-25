@@ -1,11 +1,16 @@
 // components/DatasetsComponents/UploadDropzone.tsx
 import React, { useRef, useState } from "react";
 import { FiUploadCloud } from "react-icons/fi";
+import { saveDatasetBlob } from "../../utils/fileStore";
 
 export type UploadDropzoneProps = {
-  onUploaded: (files: File[]) => void;
+  section: string;
+  onUploaded?: (files: File[]) => void;
   maxSize?: number;
 };
+
+const API_BASE =
+  "https://mlbi-pipeline-services-32684464346.asia-southeast2.run.app";
 
 type UploadItem = {
   id: string;
@@ -16,6 +21,7 @@ type UploadItem = {
 };
 
 const UploadDropzone: React.FC<UploadDropzoneProps> = ({
+  section,
   onUploaded,
   maxSize = 50 * 1024 * 1024,
 }) => {
@@ -86,18 +92,34 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
   }
 
   async function runUpload(queue: UploadItem[]) {
-    // set status uploading
     setItems((prev) =>
       prev.map((p) =>
         queue.find((q) => q.id === p.id) ? { ...p, status: "uploading" } : p
       )
     );
 
-    // progress simulasi paralel
     await Promise.all(
       queue.map(async (it) => {
         try {
+          // 1. Simpan ke IndexedDB
+          const arrBuf = await it.file.arrayBuffer();
+          const blobObj = new Blob([arrBuf]);
+          await saveDatasetBlob(it.file.name, blobObj);
+
+          // 2. Upload ke backend API (GCS)
+          if (!section) throw new Error("Section is required for API upload");
+          const form = new FormData();
+          form.append("files", it.file);
+
+          const res = await fetch(`${API_BASE}/upload_datasets/${section}`, {
+            method: "POST",
+            body: form,
+          });
+          if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+
+          // progress UX
           await fakeUpload(it.id);
+
           setItems((prev) =>
             prev.map((p) =>
               p.id === it.id ? { ...p, status: "done", progress: 100 } : p
@@ -122,18 +144,10 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
       })
     );
 
-    const doneFiles = queue
-      .filter((it) => {
-        const cur = items.find((x) => x.id === it.id);
-        return (cur?.status ?? it.status) !== "error";
-      })
-      .map((it) => it.file);
+    const doneFiles = queue.map((it) => it.file);
+    if (doneFiles.length > 0 && onUploaded) onUploaded(doneFiles);
 
-    if (doneFiles.length > 0) onUploaded(doneFiles);
-
-    setTimeout(() => {
-      setItems([]);
-    }, 1500);
+    setTimeout(() => setItems([]), 1500);
   }
 
   async function handleFiles(fileList: FileList | File[]) {

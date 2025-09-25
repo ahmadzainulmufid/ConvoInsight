@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import AppShell from "../components/DatasetsComponents/AppShell";
 import DataTable from "../components/DatasetsComponents/DataTable";
 import type { Row } from "../components/DatasetsComponents/DataTable";
+import { getDatasetBlob } from "../utils/fileStore";
 
 type Props = { userName: string };
 
@@ -22,15 +23,33 @@ const DatasetDetailPage: React.FC<Props> = ({ userName }) => {
   useEffect(() => {
     async function load() {
       if (!id || !section) return;
-
       try {
-        const encodedId = encodeURIComponent(id);
+        // 1. cek dulu di IndexedDB
+        const blob = await getDatasetBlob(id);
+        if (blob) {
+          const text = await blob.text();
+          const lines = text.split("\n").filter(Boolean);
+          const headers = lines[0].split(",");
+          const rows = lines.slice(1, 21).map((line) => {
+            const cols = line.split(",");
+            return Object.fromEntries(
+              headers.map((h, i) => [h, cols[i] || ""])
+            );
+          });
 
+          setHeaders(headers);
+          setRows(rows);
+          setTotalRows(lines.length - 1);
+          setWarn(null);
+          return;
+        }
+
+        // 2. fallback ke API preview
+        const encodedId = encodeURIComponent(id);
         const res = await fetch(
           `${API_BASE}/domains/${section}/datasets/${encodedId}/preview`
         );
         if (!res.ok) throw new Error(`Failed to fetch preview: ${res.status}`);
-
         const data = await res.json();
         setHeaders(data.columns || []);
         setRows(data.rows || []);
