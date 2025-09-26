@@ -5,6 +5,7 @@ import {
   HiOutlineUser,
   HiOutlineHome,
   HiOutlineCollection,
+  HiOutlineCog,
 } from "react-icons/hi";
 import { NavLink, useNavigate } from "react-router-dom";
 import { FiLogOut } from "react-icons/fi";
@@ -12,6 +13,44 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../utils/firebaseSetup";
 import toast from "react-hot-toast";
 
+// --- Sidebar Item Reusable ---
+function SidebarItem({
+  to,
+  label,
+  icon: Icon,
+  collapsed,
+  baseItem,
+  labelClass,
+}: {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  collapsed: boolean;
+  baseItem: string;
+  labelClass: string;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end
+      title={label}
+      className={({ isActive }) =>
+        [
+          baseItem,
+          collapsed ? "justify-center px-0 gap-0" : "justify-start px-3 gap-3",
+          isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]",
+        ].join(" ")
+      }
+    >
+      <div className={collapsed ? "w-6 flex justify-center" : ""}>
+        <Icon className="shrink-0" />
+      </div>
+      <span className={labelClass}>{label}</span>
+    </NavLink>
+  );
+}
+
+// --- Main Sidebar ---
 export type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
@@ -30,7 +69,7 @@ export default function Sidebar({
   const profileBtnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close popover jika klik di luar / tekan ESC
+  // Tutup popover jika klik di luar atau tekan ESC
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (!menuOpen) return;
@@ -55,22 +94,17 @@ export default function Sidebar({
     };
   }, [menuOpen]);
 
+  // Transition label
   const textTransition =
     "whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200";
-
   const labelClass = `${textTransition} ${
     collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[12rem]"
   }`;
 
-  // baseItem tanpa px/gap — kita kondisikan per state collapsed/expanded
   const baseItem =
     "flex items-center h-10 rounded-md text-sm transition-colors";
 
-  const navItems = [
-    { to: "/home", label: "Home", icon: HiOutlineHome, end: true },
-    { to: "/domain", label: "Domain", icon: HiOutlineCollection, end: true },
-  ];
-
+  // Handle sign out
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -80,6 +114,18 @@ export default function Sidebar({
       toast.error("Gagal sign out, coba lagi");
     }
   };
+
+  // --- Menu utama ---
+  const mainNav = [
+    { to: "/home", label: "Home", icon: HiOutlineHome },
+    { to: "/domain", label: "Domain", icon: HiOutlineCollection },
+  ];
+
+  // --- Menu tambahan ---
+  const extraNav = [
+    { to: "/domain/new", label: "New Domain", icon: HiOutlinePlus },
+    { to: "/configuser", label: "Configuration User", icon: HiOutlineCog },
+  ];
 
   return (
     <aside
@@ -94,9 +140,9 @@ export default function Sidebar({
           onClick={onToggle}
           aria-label="Toggle sidebar"
           className={`flex items-center w-full h-12
-    ${collapsed ? "justify-center" : "justify-between"}
-    bg-transparent hover:bg-white/5
-    focus:outline-none focus:ring-0 px-3`}
+            ${collapsed ? "justify-center" : "justify-between"}
+            bg-transparent hover:bg-white/5
+            focus:outline-none focus:ring-0 px-3`}
         >
           <span
             className={`font-semibold text-lg ${textTransition} ${
@@ -112,48 +158,29 @@ export default function Sidebar({
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-2">
         <div className="space-y-2">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end} // ⬅ penting: bikin match-nya exact
-              title={label}
-              className={({ isActive }) =>
-                [
-                  baseItem,
-                  collapsed
-                    ? "justify-center px-0 gap-0"
-                    : "justify-start px-3 gap-3",
-                  isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]",
-                ].join(" ")
-              }
-            >
-              <div className={collapsed ? "w-6 flex justify-center" : ""}>
-                <Icon className="shrink-0" />
-              </div>
-              <span className={labelClass}>{label}</span>
-            </NavLink>
+          {/* Main nav */}
+          {mainNav.map((item) => (
+            <SidebarItem
+              key={item.to}
+              {...item}
+              collapsed={collapsed}
+              baseItem={baseItem}
+              labelClass={labelClass}
+            />
           ))}
 
-          {/* New Domain */}
-          <NavLink
-            to="/domain/new"
-            title="New Domain"
-            className={({ isActive }) =>
-              [
-                baseItem,
-                collapsed
-                  ? "justify-center px-0 gap-0"
-                  : "justify-start px-3 gap-3",
-                isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]",
-              ].join(" ")
-            }
-          >
-            <div className={collapsed ? "w-6 flex justify-center" : ""}>
-              <HiOutlinePlus className="shrink-0" />
-            </div>
-            <span className={labelClass}>New Domain</span>
-          </NavLink>
+          <hr className="border-[#2A2B32] my-2" />
+
+          {/* Extra nav */}
+          {extraNav.map((item) => (
+            <SidebarItem
+              key={item.to}
+              {...item}
+              collapsed={collapsed}
+              baseItem={baseItem}
+              labelClass={labelClass}
+            />
+          ))}
         </div>
       </nav>
 
