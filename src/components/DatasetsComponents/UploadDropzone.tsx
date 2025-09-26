@@ -1,7 +1,6 @@
 // components/DatasetsComponents/UploadDropzone.tsx
 import React, { useRef, useState } from "react";
 import { FiUploadCloud } from "react-icons/fi";
-import { saveDatasetBlob } from "../../utils/fileStore";
 
 export type UploadDropzoneProps = {
   section: string;
@@ -34,7 +33,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
     name.toLowerCase().endsWith(".csv") ||
     name.toLowerCase().endsWith(".parquet");
 
-  // fake upload per file supaya ada UX feedback
+  // Simulasi progress upload untuk UX
   const fakeUpload = (itemId: string) =>
     new Promise<void>((resolve) => {
       let p = 0;
@@ -91,6 +90,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
     return { accepted, rejected, summary };
   }
 
+  /** 🚀 Upload langsung ke API deploy */
   async function runUpload(queue: UploadItem[]) {
     setItems((prev) =>
       prev.map((p) =>
@@ -101,13 +101,8 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
     await Promise.all(
       queue.map(async (it) => {
         try {
-          // 1. Simpan ke IndexedDB
-          const arrBuf = await it.file.arrayBuffer();
-          const blobObj = new Blob([arrBuf]);
-          await saveDatasetBlob(it.file.name, blobObj);
-
-          // 2. Upload ke backend API (GCS)
           if (!section) throw new Error("Section is required for API upload");
+
           const form = new FormData();
           form.append("files", it.file);
 
@@ -115,9 +110,10 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
             method: "POST",
             body: form,
           });
+
           if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
 
-          // progress UX
+          // Progress UX
           await fakeUpload(it.id);
 
           setItems((prev) =>
@@ -158,9 +154,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
 
     if (summary) {
       setErrorSummary(summary);
-      setTimeout(() => {
-        setErrorSummary(null);
-      }, 4000);
+      setTimeout(() => setErrorSummary(null), 4000);
     }
 
     setItems((prev) => [...prev, ...rejected, ...accepted]);
@@ -195,6 +189,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         connector.
       </p>
 
+      {/* Dropzone */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -221,13 +216,13 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
           </label>
         </p>
         <p className="text-sm text-gray-400 mt-2">
-          You can select multiple files or sigle files • Max <b>50 MB</b> each
+          You can select multiple files • Max <b>50 MB</b> each
         </p>
         <input
           id="fileInput"
           ref={fileInputRef}
           type="file"
-          multiple // ⬅️ penting: allow multi
+          multiple
           accept=".csv,.parquet,text/csv,application/vnd.apache.parquet"
           className="sr-only"
           onChange={(e) => {
@@ -237,7 +232,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         />
       </div>
 
-      {/* Daftar queue + progress */}
+      {/* Upload Queue */}
       {items.length > 0 && (
         <div className="mt-4 grid gap-3">
           {items.map((it) => (
@@ -271,6 +266,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         </div>
       )}
 
+      {/* Error Summary */}
       {errorSummary && (
         <div className="mt-4 flex items-start gap-2 text-red-300 bg-red-900/30 border border-red-700 rounded-lg px-3 py-2 whitespace-pre-wrap">
           <span>⚠️</span>

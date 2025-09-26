@@ -1,21 +1,27 @@
-// src/pages/NewChatPage.tsx
 import { useRef, useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import HistorySidebar from "../components/ChatComponents/HistorySidebar";
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
 import AnimatedMessageBubble from "../components/ChatComponents/AnimatedMessageBubble";
-import ChartGallery, { type ChartItem } from "../components/ChatComponents/ChartGallery";
+import { queryDomain } from "../utils/queryDomain";
+import ChartGallery, {
+  type ChartItem,
+} from "../components/ChatComponents/ChartGallery";
 import { useChatHistory } from "../hooks/useChatHistory";
 import { fetchChartHtml } from "../utils/fetchChart";
-import { queryDomain } from "../utils/queryDomain";
-import { saveChatMessage, listenMessages, getDomainDocId } from "../service/chatStore";
+import {
+  saveChatMessage,
+  listenMessages,
+  getDomainDocId,
+} from "../service/chatStore";
 import { FiCopy, FiEdit2, FiCheck, FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
 
-/* ----------------------------- Types ----------------------------- */
+/** Type Definitions **/
 type Msg = {
   role: "user" | "assistant";
   content: string;
+  cleanText?: string;
   chartUrl?: string | null;
   charts?: ChartItem[];
   animate?: boolean;
@@ -23,73 +29,63 @@ type Msg = {
 
 type DatasetApiItem = {
   filename: string;
-  gcs_path?: string;
-  size?: number;
+  gcs_path: string;
+  size: number;
   updated?: string;
 };
 
-type QueryOk = {
-  session_id: string;
-  response?: unknown; // may be string or object in edge cases
-  chart_url?: string | null;
-  diagram_signed_url?: string | null;
-  diagram_kind?: "charts" | "tables" | "";
-  execution_time?: number;
-  need_visualizer?: boolean;
-  need_analyzer?: boolean;
-  need_manipulator?: boolean;
-};
-
-type QueryErr = {
-  code?: string;
-  detail?: string;
-};
-
-/* ----------------------------- Helpers ----------------------------- */
-/** Coerce any unknown value (string/object/array/number) into a readable string */
-function asPlainText(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  try {
-    // Favor a compact single-line first; if too long, pretty print
-    const s = JSON.stringify(v);
-    if (s && s.length <= 1200) return s;
-    return JSON.stringify(v, null, 2);
-  } catch {
-    return String(v);
-  }
+/** 🧹 Bersihkan teks dari noise, URL, undefined, dsb */
+function cleanResponseText(text: string): string {
+  return (
+    text
+      // Hapus baris dengan link .html
+      .replace(/[\w/\\-]*\.html[`']?/gi, "")
+      // Hapus kalimat "See chart ..." dan sejenisnya
+      .replace(/See chart.*(\r?\n)?/gi, "")
+      // Hapus "For a detailed breakdown..."
+      .replace(/[*-]\s*For a detailed breakdown.*(\r?\n)?/gi, "")
+      // Hapus kata "undefined"
+      .replace(/\bundefined\b/gi, "")
+      // Rapikan spasi berlebih
+      .replace(/[ \t]+$/gm, "")
+      // Gabungkan baris kosong berlebih
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
-function cleanResponseText(input: unknown): string {
-  const text = asPlainText(input);
-  return text
-    // remove noisy tail references to HTML file paths or generic placeholders
-    .replace(/[*]\s*For a detailed breakdown.*(\r?\n)?/gi, "")
-    .replace(/The chart.*\.html[`']?\.?(\r?\n)?/gi, "")
-    .replace(/\/?[\w/\\.-]+\.html[`']?/gi, "")
-    .replace(/\bundefined\b/gi, "")
-    .replace(/\n{2,}/g, "\n\n")
-    .trim();
+/** ✨ Ubah teks bersih jadi HTML dengan format kaya */
+function formatResponseText(text: string): string {
+  let formatted = cleanResponseText(text);
+
+  // Bold: **text**
+  formatted = formatted.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+  // Italic: *text*
+  formatted = formatted.replace(/(^|\s)\*(.*?)\*(\s|$)/g, "$1<em>$2</em>$3");
+
+  // Bullet list: * atau -
+  formatted = formatted.replace(/^\s*[-*]\s+(.*)$/gm, "<li>$1</li>");
+
+  // Numbered list: 1. 2. dst
+  formatted = formatted.replace(/^\s*\d+\.\s+(.*)$/gm, "<li>$1</li>");
+
+  // Bungkus <li> dengan <ul>
+  formatted = formatted.replace(/(<li>.*<\/li>)/gs, (match) => {
+    const items = match.split(/\n+/).filter(Boolean);
+    return `<ul class="list-disc pl-5 space-y-1">${items.join("")}</ul>`;
+  });
+
+  // Ubah double newline jadi paragraf
+  formatted = formatted.replace(/\n{2,}/g, "</p><p>");
+
+  // Pastikan dibungkus <p>
+  if (!/^<p>/.test(formatted)) formatted = `<p>${formatted}</p>`;
+
+  return formatted.trim();
 }
 
-function normalizeResponse(text: string): string {
-  let out = text;
-  // drop bold markdown
-  out = out.replace(/\*\*(.*?)\*\*/g, "$1");
-  // normalize section headers -> newline based
-  out = out.replace(/Next actions:?/gi, "Next actions\n");
-  out = out.replace(/Over-performance Drivers:?/gi, "Over-performance Drivers\n");
-  out = out.replace(/Under-performance Drivers:?/gi, "Under-performance Drivers\n");
-  out = out.replace(/Caveats:?/gi, "Caveats\n");
-  out = out.replace(/Confidence:?/gi, "Confidence\n");
-  // bullet -> numbered list
-  let counter = 1;
-  out = out.replace(/^\s*[*-]\s+/gm, () => `${counter++}. `);
-  out = out.replace(/\n{3,}/g, "\n\n");
-  return out.trim();
-}
-
-/* Lightweight input for the inline composer on the message list view */
+/** Chat Input Component **/
 function ChatInput({
   value,
   onChange,
@@ -131,7 +127,6 @@ function ChatInput({
         <button
           onClick={onStop}
           className="ml-2 flex items-center justify-center w-8 h-8 rounded-md bg-transparent opacity-60 text-white transition"
-          title="Stop"
         >
           ⏹
         </button>
@@ -139,10 +134,7 @@ function ChatInput({
         <button
           onClick={hasText ? onSend : undefined}
           disabled={disabled}
-          className={`ml-2 flex items-center justify-center w-8 h-8 rounded-md transition ${
-            hasText ? "bg-transparent text-white opacity-60" : "bg-transparent text-white opacity-60"
-          }`}
-          title="Send"
+          className="ml-2 flex items-center justify-center w-8 h-8 rounded-md transition bg-transparent text-white opacity-60"
         >
           {hasText ? "↑" : "➤"}
         </button>
@@ -151,7 +143,7 @@ function ChatInput({
   );
 }
 
-/* ----------------------------- Page ----------------------------- */
+/** Main Chat Page **/
 export default function NewChatPage() {
   const { section: domain } = useParams();
   const [searchParams] = useSearchParams();
@@ -177,25 +169,28 @@ export default function NewChatPage() {
   const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
   const [selectedDataset, setSelectedDataset] = useState<string>("general");
 
-  const API_BASE = import.meta.env.VITE_API_URL || "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
+  const API_BASE =
+    import.meta.env.VITE_API_URL ||
+    "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
-  /* Resolve Firestore domain doc id, but don't crash if blocked/unauth */
+  /** Resolve Firestore Domain ID **/
   useEffect(() => {
     if (!domain) return;
     (async () => {
       try {
         const id = await getDomainDocId(domain);
-        setDomainDocId(id ?? null);
+        if (!id) console.error(`Domain "${domain}" not found`);
+        setDomainDocId(id);
       } catch (e) {
-        console.error("Failed to resolve domain docId (continuing without Firestore):", e);
-        setDomainDocId(null);
+        console.error("Failed to resolve domain docId", e);
       }
     })();
   }, [domain]);
 
-  /* Subscribe to existing messages if we have Firestore & a chat id */
+  /** Listen to Saved Messages **/
   useEffect(() => {
     if (!domainDocId || !openedId) return;
+
     const unsub = listenMessages(domainDocId, openedId, (msgs) => {
       const mapped: Msg[] = msgs.map((m) => {
         const charts = m.chartHtml ? [{ html: m.chartHtml }] : undefined;
@@ -204,19 +199,22 @@ export default function NewChatPage() {
       setMessages(mapped);
       setTimeout(() => scrollToBottom("auto"), 0);
     });
+
     return () => unsub();
   }, [domainDocId, openedId]);
 
-  /* Load dataset filenames for selector (supports items|datasets variant) */
+  /** Fetch Datasets **/
   useEffect(() => {
     if (!domain) return;
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/domains/${domain}/datasets`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const arr: DatasetApiItem[] = (data.datasets ?? data.items ?? []) as DatasetApiItem[];
-        setAvailableDatasets(arr.map((d) => d.filename).filter(Boolean));
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableDatasets(
+            (data.datasets as DatasetApiItem[]).map((d) => d.filename)
+          );
+        }
       } catch (err) {
         console.error("Failed to load datasets", err);
       }
@@ -233,18 +231,11 @@ export default function NewChatPage() {
     ? `Chat on domain “${domain}” (uses all uploaded datasets in this domain)`
     : "Select a domain in the URL to start";
 
-  const safeSave = async (...args: Parameters<typeof saveChatMessage>) => {
-    try {
-      await saveChatMessage(...args);
-    } catch (e) {
-      // Ad blockers or expired Firebase key will throw here; don't break chat UX
-      console.warn("Skipping Firestore save:", (e as Error)?.message ?? e);
-    }
-  };
-
+  /** Handle Send **/
   const handleSend = async () => {
     const text = message.trim();
     if (!text || sending) return;
+    if (!domainDocId) return console.error("Domain not found");
 
     const nextMsgs: Msg[] = [...messages, { role: "user", content: text }];
     setMessages(nextMsgs);
@@ -255,17 +246,18 @@ export default function NewChatPage() {
     const abortCtrl = new AbortController();
     setController(abortCtrl);
 
-    // Create a chat id locally (URL param) if first user message
     const userMsgCount = nextMsgs.filter((m) => m.role === "user").length;
     let sessionId = searchParams.get("id");
+
+    // New chat session
     if (!openedId && userMsgCount === 1) {
       const id = `${Date.now()}`;
       sessionId = id;
-
       const next = new URLSearchParams(searchParams);
       next.set("id", id);
-      navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, { replace: true });
-
+      navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, {
+        replace: true,
+      });
       add({
         id,
         title: text.length > 50 ? text.slice(0, 50) + "…" : text,
@@ -274,13 +266,10 @@ export default function NewChatPage() {
       });
     }
 
-    // best-effort persistence of the user message
-    if (domainDocId) {
-      await safeSave(domainDocId, sessionId!, "user", text);
-    }
-
     try {
-      const res: QueryOk & QueryErr = await queryDomain({
+      await saveChatMessage(domainDocId, sessionId!, "user", text);
+
+      const res = await queryDomain({
         apiBase: API_BASE,
         domain: domain!,
         prompt: text,
@@ -289,23 +278,13 @@ export default function NewChatPage() {
         dataset: selectedDataset !== "general" ? selectedDataset : undefined,
       });
 
-      // Server-side error surfaced cleanly
-      if ((res as QueryErr).detail || (res as QueryErr).code) {
-        const errText = `${(res as QueryErr).code ?? "ERROR"} — ${(res as QueryErr).detail ?? "Request failed."}`;
-        const assistantErr: Msg = { role: "assistant", content: errText, animate: true };
-        setMessages((cur) => [...cur, assistantErr]);
-        setTimeout(() => scrollToBottom("smooth"), 0);
-        if (domainDocId) await safeSave(domainDocId, sessionId!, "assistant", errText);
-        return;
-      }
-
-      // Try chart sources (local dev chart_url first; otherwise GCS signed URL)
       let charts: ChartItem[] | undefined;
       let chartHtml: string | undefined;
+      const chartUrl: string | null | undefined = res.chart_url ?? null;
 
-      const tryLoadChart = async (url: string) => {
+      if (chartUrl) {
         try {
-          const html = await fetchChartHtml(API_BASE, url);
+          const html = await fetchChartHtml(API_BASE, chartUrl);
           if (html) {
             chartHtml = html;
             charts = [{ html }];
@@ -313,86 +292,81 @@ export default function NewChatPage() {
         } catch (e) {
           console.warn("Fetch chart HTML failed:", e);
         }
-      };
-
-      if (res.chart_url) {
-        await tryLoadChart(res.chart_url);
-      } else if (res.diagram_signed_url) {
-        try {
-          const r = await fetch(res.diagram_signed_url);
-          if (r.ok) {
-            const html = await r.text();
-            chartHtml = html;
-            charts = [{ html }];
-          }
-        } catch (e) {
-          console.warn("Fetch diagram_signed_url failed:", e);
-        }
       }
 
-      // Normalize response text regardless of type
-      const cleaned = cleanResponseText(res.response ?? "(empty)");
+      const cleanResponse = cleanResponseText(res.response ?? "(empty)");
+
+      // ✨ Format ke HTML (bold, list, paragraph)
+      const formatted = formatResponseText(cleanResponse);
+
+      // 💬 Buat pesan assistant
       const assistantMsg: Msg = {
         role: "assistant",
-        chartUrl: res.chart_url ?? null,
+        chartUrl,
         charts,
         animate: true,
-        content: normalizeResponse(cleaned),
+        content: formatted, // 👉 ini HTML siap render
+        cleanText: cleanResponse, // 👉 ini teks polos (tanpa tag)
       };
 
       setMessages((cur) => [...cur, assistantMsg]);
       setTimeout(() => scrollToBottom("smooth"), 0);
 
-      if (domainDocId) {
-        await safeSave(domainDocId, sessionId!, "assistant", assistantMsg.content, chartHtml);
-      }
+      await saveChatMessage(
+        domainDocId,
+        sessionId!,
+        "assistant",
+        assistantMsg.content,
+        chartHtml
+      );
     } catch (err: unknown) {
-      let fallbackMsg: Msg;
-
-      if (err instanceof DOMException && err.name === "AbortError") {
-        fallbackMsg = { role: "assistant", content: "Response terminated by user", animate: true };
-      } else {
-        const errorMsg = err instanceof Error ? err.message : "Failed to process the request";
-        console.error(errorMsg);
-        fallbackMsg = {
-          role: "assistant",
-          content:
-            "There was a problem processing the message.\n\nTip: ensure your backend has a valid GEMINI_API_KEY and Plotly installed; if you’re on local dev without GCS/Firebase, that’s fine—chat will still work.",
-          animate: true,
-        };
-      }
-
+      console.error(err);
+      const fallbackMsg: Msg = {
+        role: "assistant",
+        content: "⚠️ There was a problem processing the message.",
+        animate: true,
+      };
       setMessages((cur) => [...cur, fallbackMsg]);
       setTimeout(() => scrollToBottom("smooth"), 0);
 
-      if (domainDocId) {
-        await safeSave(domainDocId, sessionId!, "assistant", fallbackMsg.content);
-      }
+      await saveChatMessage(
+        domainDocId,
+        sessionId!,
+        "assistant",
+        fallbackMsg.content
+      );
     } finally {
       setSending(false);
       setIsGenerating(false);
     }
   };
 
+  /** UI **/
   return (
     <div className="relative min-h-screen p-4 sm:p-6">
       {isNewConversation ? (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-6 max-w-7xl mx-auto min-h-[60vh] place-content-center">
           <div className="w-full flex flex-col items-center">
             <div className="mb-6 text-center px-2 sm:px-0">
-              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">{title}</h1>
+              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
+                {title}
+              </h1>
               <p className="mt-2 text-sm text-gray-400">{subtitle}</p>
             </div>
 
+            {/* Dataset Selector */}
             <div className="w-full flex justify-center">
               <div className="w-full max-w-2xl md:max-w-3xl px-2 sm:px-0">
-                {/* Dataset Selector */}
                 <div className="mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">Dataset</label>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Dataset
+                  </label>
                   <select
                     value={selectedDataset}
                     onChange={(e) => setSelectedDataset(e.target.value)}
-                    className="w-full rounded-md bg-[#1f2024] border border-[#2a2b32] text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-indigo-500"
+                    className="w-full rounded-md bg-[#1f2024] border border-[#2a2b32] 
+                   text-gray-100 text-sm px-3 py-2 focus:outline-none 
+                   focus:border-indigo-500"
                   >
                     <option value="general">General (all datasets)</option>
                     {availableDatasets.map((ds) => (
@@ -403,7 +377,6 @@ export default function NewChatPage() {
                   </select>
                 </div>
 
-                {/* Chat Input */}
                 <ChatComposer
                   value={message}
                   onChange={setMessage}
@@ -419,7 +392,8 @@ export default function NewChatPage() {
             </div>
 
             <p className="mt-2 text-xs text-gray-500 text-center px-3">
-              Tips: “Compare revenue m1 vs m0”, “Top 3 drivers of churn”, “QoQ growth by channel”
+              Tips: “Compare revenue m1 vs m0”, “Top 3 drivers of churn”, “QoQ
+              growth by channel”
             </p>
           </div>
 
@@ -430,15 +404,31 @@ export default function NewChatPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6 max-w-7xl mx-auto">
           <div className="flex flex-col h-[calc(100vh-3rem)] sm:h-[calc(100vh-4rem)]">
-            <div ref={chatScrollRef} className="flex-1 space-y-6 py-4 overflow-y-auto scrollbar-hide">
+            <div
+              ref={chatScrollRef}
+              className="flex-1 space-y-6 py-4 overflow-y-auto scrollbar-hide"
+            >
+              {/* Fade atas */}
               <div className="sticky top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#1a1b1e] to-transparent z-10 pointer-events-none" />
 
               {messages.map((m, i) => (
-                <div key={i} className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
+                <div
+                  key={i}
+                  className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl"
+                >
                   {m.role === "assistant" ? (
                     <div className="space-y-3">
-                      {m.charts && m.charts.length > 0 && <ChartGallery charts={m.charts} />}
-                      <p className="text-gray-200 leading-relaxed whitespace-pre-line">{m.content}</p>
+                      {m.charts && m.charts.length > 0 && (
+                        <ChartGallery charts={m.charts} />
+                      )}
+
+                      {/* 🔹 Render formatted HTML */}
+                      <div
+                        className="text-gray-200 leading-relaxed prose prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: formatResponseText(m.content),
+                        }}
+                      />
                     </div>
                   ) : (
                     <div className="mb-8 relative group">
@@ -472,7 +462,10 @@ export default function NewChatPage() {
                         </div>
                       ) : (
                         <>
-                          <AnimatedMessageBubble message={{ role: m.role, content: m.content }} animate={m.animate ?? false} />
+                          <AnimatedMessageBubble
+                            message={{ role: m.role, content: m.content }}
+                            animate={m.animate ?? false}
+                          />
                           <div className="flex justify-end gap-2 mt-2 opacity-0 group-hover:opacity-100 transition">
                             <button
                               onClick={() => {
@@ -508,21 +501,29 @@ export default function NewChatPage() {
                 </div>
               )}
               {messages.length === 0 && (
-                <div className="text-gray-400 text-sm pl-4 w-full max-w-3xl px-2 sm:px-0">No Message Yet</div>
+                <div className="text-gray-400 text-sm pl-4 w-full max-w-3xl px-2 sm:px-0">
+                  No Message Yet
+                </div>
               )}
 
+              {/* Fade bawah */}
               <div className="sticky bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#1a1b1e] to-transparent z-10 pointer-events-none" />
             </div>
 
+            {/* Input Section */}
             <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
               <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
                 {/* Dataset Selector */}
                 <div className="mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">Dataset</label>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Dataset
+                  </label>
                   <select
                     value={selectedDataset}
                     onChange={(e) => setSelectedDataset(e.target.value)}
-                    className="w-full rounded-md bg-[#1f2024] border border-[#2a2b32] text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-indigo-500"
+                    className="w-full rounded-md bg-[#1f2024] border border-[#2a2b32] 
+                   text-gray-100 text-sm px-3 py-2 focus:outline-none 
+                   focus:border-indigo-500"
                   >
                     <option value="general">General (all datasets)</option>
                     {availableDatasets.map((ds) => (
@@ -533,7 +534,6 @@ export default function NewChatPage() {
                   </select>
                 </div>
 
-                {/* Chat Input */}
                 <ChatInput
                   value={message}
                   onChange={setMessage}

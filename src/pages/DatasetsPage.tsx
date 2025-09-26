@@ -39,7 +39,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
         (d) => ({
           id: d.filename,
           name: d.filename,
-          size: d.size,
+          size: typeof d.size === "number" && !isNaN(d.size) ? d.size : 0,
           uploadedAt: d.updated
             ? new Date(d.updated).toLocaleDateString("en-US", {
                 year: "numeric",
@@ -53,7 +53,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
       setItems(datasets);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load datasets");
+      toast.error("⚠️ Failed to load datasets");
       setItems([]);
     } finally {
       setLoading(false);
@@ -63,6 +63,30 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
   useEffect(() => {
     fetchDatasets();
   }, [fetchDatasets]);
+
+  const handleDelete = async (ds: DatasetItem) => {
+    if (!section) return;
+
+    try {
+      const encoded = encodeURIComponent(ds.id);
+      const res = await fetch(`${API_BASE}/datasets/${section}/${encoded}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+
+      const json = await res.json();
+      if (json.deleted) {
+        toast.success(`✅ Dataset "${ds.name}" deleted`);
+        setItems((prev) => prev.filter((x) => x.id !== ds.id));
+      } else {
+        toast.error(`⚠️ Failed to delete "${ds.name}"`);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(`⚠️ Error deleting "${ds.name}"`);
+    }
+  };
 
   return (
     <AppShell userName={userName}>
@@ -79,14 +103,12 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
         <UploadDropzone
           section={section}
           onUploaded={async (files) => {
-            toast.success("Dataset uploaded & saved!");
+            toast.success("Dataset uploaded successfully!");
             await fetchDatasets();
 
             if (files.length === 1) {
-              // kalau cuma 1 file → redirect ke detail
               navigate(`/domain/${section}/datasets/${files[0].name}`);
             }
-            // kalau lebih dari 1 file → stay di list saja
           }}
         />
 
@@ -94,14 +116,13 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
 
         {loading ? (
           <p className="text-sm text-gray-400">Loading datasets…</p>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-gray-400">No datasets uploaded yet.</p>
         ) : (
           <DatasetList
             items={items}
             onView={(ds) => navigate(`/domain/${section}/datasets/${ds.id}`)}
-            onDelete={(ds) => {
-              const next = items.filter((x) => x.id !== ds.id);
-              setItems(next);
-            }}
+            onDelete={handleDelete}
           />
         )}
       </div>

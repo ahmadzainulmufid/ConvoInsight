@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { toast } from "react-hot-toast";
 
 export type DatasetItem = {
   id: string;
@@ -25,7 +24,6 @@ const DatasetList: React.FC<{
   const confirmDelete = () => {
     if (selected && onDelete) {
       onDelete(selected);
-      toast.success(`Dataset "${selected.name}" successfully deleted`);
     }
     setSelected(null);
   };
@@ -42,9 +40,18 @@ const DatasetList: React.FC<{
             >
               <div>
                 <p className="font-medium text-white">{d.name}</p>
-                <p className="text-sm text-gray-400">
-                  {humanSize(d.size)} • Uploaded {d.uploadedAt}
-                </p>
+                {(d.size > 0 || (d.uploadedAt && d.uploadedAt !== "-")) && (
+                  <p className="text-sm text-gray-400">
+                    {d.size > 0 && <>{humanSize(d.size)}</>}
+                    {d.size > 0 &&
+                      d.uploadedAt &&
+                      d.uploadedAt !== "-" &&
+                      " • "}
+                    {d.uploadedAt && d.uploadedAt !== "-" && (
+                      <>Uploaded {d.uploadedAt}</>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="flex gap-3">
                 {onView && (
@@ -69,13 +76,12 @@ const DatasetList: React.FC<{
         </ul>
       </div>
 
-      {/* Modal */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">
             <h2 className="text-lg font-semibold">Delete Dataset?</h2>
             <p className="text-sm text-gray-300">
-              Are you sure you want to delete the dataset?{" "}
+              Are you sure you want to delete the dataset{" "}
               <span className="font-semibold text-white">
                 "{selected.name}"
               </span>
