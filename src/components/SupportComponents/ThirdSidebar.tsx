@@ -5,6 +5,7 @@ import {
   HiOutlineHome,
   HiOutlineCog,
   HiOutlineCollection,
+  HiOutlineArrowLeft,
 } from "react-icons/hi";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { FiLogOut } from "react-icons/fi";
@@ -180,6 +181,16 @@ export default function Sidebar({
           ref={menuRef}
           className="absolute bottom-16 left-2 right-2 rounded-md border border-[#3a3b42] bg-[#2A2B32] shadow-xl p-1"
         >
+          <button
+            onClick={() => navigate("/domain")}
+            className="w-full flex items-center gap-2 px-3 py-2 mb-2 rounded hover:bg-[#343541] text-sm"
+          >
+            <HiOutlineArrowLeft />
+            <span className={labelClass.replace("max-w-[12rem]", "max-w-none")}>
+              Back Domain
+            </span>
+          </button>
+
           <button
             onClick={handleSignOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-[#343541] text-sm"
