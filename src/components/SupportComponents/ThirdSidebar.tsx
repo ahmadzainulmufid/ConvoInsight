@@ -33,7 +33,6 @@ export default function Sidebar({
   const profileBtnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // close popover jika klik di luar / tekan ESC
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (!menuOpen) return;
@@ -116,7 +115,6 @@ export default function Sidebar({
         collapsed ? "w-16" : "w-64"
       }`}
     >
-      {/* Header / Toggle */}
       <div className="shrink-0 border-b border-[#202123]">
         <button
           onClick={onToggle}
@@ -136,7 +134,6 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-2">
         <div className="space-y-2">
           {navItems.map(({ to, label, icon: Icon }) => (
@@ -159,7 +156,6 @@ export default function Sidebar({
         </div>
       </nav>
 
-      {/* Profile + Popover */}
       <div className="shrink-0 border-t border-[#2A2B32] bg-[#2A2B32]">
         <button
           ref={profileBtnRef}
@@ -175,7 +171,6 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Popover menu (muncul di dalam sidebar, di atas tombol profil) */}
       {menuOpen && (
         <div
           ref={menuRef}
