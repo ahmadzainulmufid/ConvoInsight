@@ -13,7 +13,6 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../utils/firebaseSetup";
 import toast from "react-hot-toast";
 
-// --- Sidebar Item Reusable ---
 function SidebarItem({
   to,
   label,
@@ -50,7 +49,6 @@ function SidebarItem({
   );
 }
 
-// --- Main Sidebar ---
 export type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
@@ -69,7 +67,6 @@ export default function Sidebar({
   const profileBtnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Tutup popover jika klik di luar atau tekan ESC
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (!menuOpen) return;
@@ -94,7 +91,6 @@ export default function Sidebar({
     };
   }, [menuOpen]);
 
-  // Transition label
   const textTransition =
     "whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200";
   const labelClass = `${textTransition} ${
@@ -104,7 +100,6 @@ export default function Sidebar({
   const baseItem =
     "flex items-center h-10 rounded-md text-sm transition-colors";
 
-  // Handle sign out
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -115,13 +110,11 @@ export default function Sidebar({
     }
   };
 
-  // --- Menu utama ---
   const mainNav = [
     { to: "/home", label: "Home", icon: HiOutlineHome },
     { to: "/domain", label: "Domain", icon: HiOutlineCollection },
   ];
 
-  // --- Menu tambahan ---
   const extraNav = [
     { to: "/domain/new", label: "New Domain", icon: HiOutlinePlus },
     { to: "/configuser", label: "Configuration User", icon: HiOutlineCog },
@@ -134,7 +127,6 @@ export default function Sidebar({
         collapsed ? "w-16" : "w-64"
       }`}
     >
-      {/* Header / Toggle */}
       <div className="shrink-0 border-b border-[#202123]">
         <button
           onClick={onToggle}
@@ -155,10 +147,8 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-2">
         <div className="space-y-2">
-          {/* Main nav */}
           {mainNav.map((item) => (
             <SidebarItem
               key={item.to}
@@ -171,7 +161,6 @@ export default function Sidebar({
 
           <hr className="border-[#2A2B32] my-2" />
 
-          {/* Extra nav */}
           {extraNav.map((item) => (
             <SidebarItem
               key={item.to}
@@ -184,7 +173,6 @@ export default function Sidebar({
         </div>
       </nav>
 
-      {/* Profile + Popover */}
       <div className="shrink-0 border-t border-[#2A2B32] bg-[#2A2B32]">
         <button
           ref={profileBtnRef}
@@ -202,7 +190,6 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* Popover menu */}
       {menuOpen && (
         <div
           ref={menuRef}
