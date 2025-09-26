@@ -8,7 +8,7 @@ import { getDatasetBlob } from "../utils/fileStore";
 type Props = { userName: string };
 
 const API_BASE =
-  "https://mlbi-pipeline-services-32684464346.asia-southeast2.run.app";
+  "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
 const DatasetDetailPage: React.FC<Props> = ({ userName }) => {
   const { section, id } = useParams();

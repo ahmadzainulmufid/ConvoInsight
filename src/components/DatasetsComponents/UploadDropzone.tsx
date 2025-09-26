@@ -10,7 +10,7 @@ export type UploadDropzoneProps = {
 };
 
 const API_BASE =
-  "https://mlbi-pipeline-services-32684464346.asia-southeast2.run.app";
+  "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
 type UploadItem = {
   id: string;
