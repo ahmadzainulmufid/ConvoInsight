@@ -26,6 +26,7 @@ import DashboardPage from "./pages/DashboardPage";
 import NewChatPage from "./pages/NewChatPage";
 import DashboardSettingPage from "./pages/DashboardSettingPage";
 import ManageSettingsPage from "./pages/ManageSettings";
+import ConfigurationUserPage from "./pages/ConfigurationUserPage";
 
 function LegacyDatasetRedirect() {
   const { id } = useParams();
@@ -86,6 +87,7 @@ const App: React.FC = () => {
             <Route path="/home" element={<HomePage />} />
             <Route path="/domain" element={<DomainPage />} />
             <Route path="/domain/new" element={<CreateDomainPage />} />
+            <Route path="/configuser" element={<ConfigurationUserPage />} />
             <Route path="/domain/:section">
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="dashboard/newchat" element={<NewChatPage />} />
