@@ -3,11 +3,17 @@ import { useNavigate } from "react-router-dom";
 import AppShell from "../components/DatasetsComponents/AppShell";
 import UploadDropzone from "../components/DatasetsComponents/UploadDropzone";
 import ConnectorsRow from "../components/DatasetsComponents/ConnectorsRow";
+// BARU: Impor tipe DatasetItem secara langsung
 import DatasetList, {
   type DatasetItem,
 } from "../components/DatasetsComponents/DatasetList";
 import useSectionFromPath from "../utils/useSectionFromPath";
 import { toast } from "react-hot-toast";
+import {
+  saveDatasetBlob,
+  getDatasetBlob,
+  deleteDatasetBlob,
+} from "../utils/fileStore";
 
 type Props = { userName: string };
 
@@ -39,6 +45,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
         (d) => ({
           id: d.filename,
           name: d.filename,
+          gcs_path: d.gcs_path,
           size: typeof d.size === "number" && !isNaN(d.size) ? d.size : 0,
           uploadedAt: d.updated
             ? new Date(d.updated).toLocaleDateString("en-US", {
@@ -51,6 +58,27 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
       );
 
       setItems(datasets);
+
+      console.log("Starting background sync for local dataset blobs...");
+      datasets.forEach(async (ds) => {
+        const hasBlob = await getDatasetBlob(ds.id);
+        if (!hasBlob) {
+          console.log(
+            `Blob for "${ds.name}" not found locally, downloading...`
+          );
+          try {
+            const fileRes = await fetch(
+              `${API_BASE}/datasets/${section}/${encodeURIComponent(ds.id)}`
+            );
+            if (!fileRes.ok) throw new Error("Download failed");
+            const blob = await fileRes.blob();
+            await saveDatasetBlob(ds.id, blob);
+            console.log(`Successfully cached "${ds.name}" locally.`);
+          } catch (err) {
+            console.error(`Failed to download and cache "${ds.name}".`, err);
+          }
+        }
+      });
     } catch (err) {
       console.error(err);
       toast.error("⚠️ Failed to load datasets");
@@ -77,14 +105,22 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
 
       const json = await res.json();
       if (json.deleted) {
-        toast.success(`✅ Dataset "${ds.name}" deleted`);
+        toast.success(`Dataset "${ds.name}" deleted success`);
+
+        try {
+          await deleteDatasetBlob(ds.id);
+        } catch (blobError) {
+          console.error("Failed to delete blob:", blobError);
+          toast.error(`Could not remove "${ds.name}" from local storage.`);
+        }
+
         setItems((prev) => prev.filter((x) => x.id !== ds.id));
       } else {
-        toast.error(`⚠️ Failed to delete "${ds.name}"`);
+        toast.error(`Failed to delete "${ds.name}"`);
       }
     } catch (err) {
       console.error(err);
-      toast.error(`⚠️ Error deleting "${ds.name}"`);
+      toast.error(`Error deleting "${ds.name}"`);
     }
   };
 
@@ -104,6 +140,16 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
           section={section}
           onUploaded={async (files) => {
             toast.success("Dataset uploaded successfully!");
+            try {
+              const savePromises = files.map((file) =>
+                saveDatasetBlob(file.name, file)
+              );
+              await Promise.all(savePromises);
+            } catch (err) {
+              console.error("Failed to save blobs locally:", err);
+              toast.error("Could not save dataset to local storage.");
+            }
+
             await fetchDatasets();
 
             if (files.length === 1) {
