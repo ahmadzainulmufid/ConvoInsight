@@ -6,12 +6,49 @@ import {
   HiOutlineCog,
   HiOutlineCollection,
   HiOutlineArrowLeft,
+  HiOutlinePlus,
 } from "react-icons/hi";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { FiLogOut } from "react-icons/fi";
 import { signOut } from "firebase/auth";
 import { auth } from "../../utils/firebaseSetup";
 import toast from "react-hot-toast";
+
+function SidebarItem({
+  to,
+  label,
+  icon: Icon,
+  collapsed,
+  baseItem,
+  labelClass,
+}: {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  collapsed: boolean;
+  baseItem: string;
+  labelClass: string;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end
+      title={label}
+      className={({ isActive }) =>
+        [
+          baseItem,
+          collapsed ? "justify-center px-0 gap-0" : "justify-start px-3 gap-3",
+          isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]",
+        ].join(" ")
+      }
+    >
+      <div className={collapsed ? "w-6 flex justify-center" : ""}>
+        <Icon className="shrink-0" />
+      </div>
+      <span className={labelClass}>{label}</span>
+    </NavLink>
+  );
+}
 
 export type SidebarProps = {
   collapsed: boolean;
@@ -68,7 +105,7 @@ export default function Sidebar({
 
   const section = location.pathname.match(/^\/domain\/([^/]+)/)?.[1] || "";
 
-  const navItems = [
+  const mainNav = [
     {
       to: `/domain/${section}/dashboard`,
       label: "Dashboard",
@@ -83,6 +120,19 @@ export default function Sidebar({
       to: `/domain/${section}/configuration`,
       label: "Configuration Domain",
       icon: HiOutlineCog,
+    },
+  ];
+
+  const extraNav = [
+    {
+      to: `/domain/${section}/dashboard/newchat`,
+      label: "New Chat",
+      icon: HiOutlinePlus,
+    },
+    {
+      to: `/domain`,
+      label: "Back Domain",
+      icon: HiOutlineArrowLeft,
     },
   ];
 
@@ -136,22 +186,26 @@ export default function Sidebar({
 
       <nav className="flex-1 overflow-y-auto p-2">
         <div className="space-y-2">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              title={label}
-              className={({ isActive }) =>
-                [
-                  baseItem,
-                  collapsed ? "justify-center px-0" : "justify-start px-3",
-                  isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]",
-                ].join(" ")
-              }
-            >
-              <Icon className="shrink-0" />
-              <span className={labelClass}>{label}</span>
-            </NavLink>
+          {mainNav.map((item) => (
+            <SidebarItem
+              key={item.to}
+              {...item}
+              collapsed={collapsed}
+              baseItem={baseItem}
+              labelClass={labelClass}
+            />
+          ))}
+
+          <hr className="border-[#2A2B32] my-2" />
+
+          {extraNav.map((item) => (
+            <SidebarItem
+              key={item.to}
+              {...item}
+              collapsed={collapsed}
+              baseItem={baseItem}
+              labelClass={labelClass}
+            />
           ))}
         </div>
       </nav>
@@ -176,16 +230,6 @@ export default function Sidebar({
           ref={menuRef}
           className="absolute bottom-16 left-2 right-2 rounded-md border border-[#3a3b42] bg-[#2A2B32] shadow-xl p-1"
         >
-          <button
-            onClick={() => navigate("/domain")}
-            className="w-full flex items-center gap-2 px-3 py-2 mb-2 rounded hover:bg-[#343541] text-sm"
-          >
-            <HiOutlineArrowLeft />
-            <span className={labelClass.replace("max-w-[12rem]", "max-w-none")}>
-              Back Domain
-            </span>
-          </button>
-
           <button
             onClick={handleSignOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-[#343541] text-sm"

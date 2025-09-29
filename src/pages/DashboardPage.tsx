@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FiPlus, FiSettings } from "react-icons/fi";
+import { FiSettings } from "react-icons/fi";
 import CardStat from "../components/SupportComponents/Card";
 import ChartGallery from "../components/ChatComponents/ChartGallery";
 import {
@@ -48,9 +48,6 @@ const DashboardPage: React.FC = () => {
 
   const handleDashboardSettings = () => {
     navigate(`/domain/${section}/dashboard/dashboardSetting`);
-  };
-  const handleNewChat = () => {
-    navigate(`/domain/${section}/dashboard/newchat`);
   };
 
   useEffect(() => {
@@ -150,15 +147,6 @@ const DashboardPage: React.FC = () => {
           )}
         </>
       )}
-
-      {/* Floating Action Button */}
-      <button
-        onClick={handleNewChat}
-        className="fixed bottom-6 right-6 flex items-center gap-2 px-5 py-3 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-lg transition"
-      >
-        <FiPlus size={20} />
-        <span>New Chat</span>
-      </button>
 
       <button
         onClick={handleDashboardSettings}
