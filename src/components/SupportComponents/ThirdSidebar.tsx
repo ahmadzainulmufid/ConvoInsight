@@ -81,7 +81,7 @@ export default function Sidebar({
     },
     {
       to: `/domain/${section}/configuration`,
-      label: "Configuration",
+      label: "Configuration Domain",
       icon: HiOutlineCog,
     },
   ];

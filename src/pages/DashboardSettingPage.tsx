@@ -17,6 +17,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { DragEndEvent } from "@dnd-kit/core";
+import KPIConfigurator from "../components/SupportComponents/KPIConfigurator";
+import { BUILTIN_KPIS } from "../constants/kpiConstants";
+import { classNames } from "../utils/classNames";
 
 function SortableItem({
   id,
@@ -73,6 +76,8 @@ function SortableItem({
 
 export default function DashboardSettingPage() {
   const { section: domainDocId } = useParams();
+  const [active, setActive] = useState(false);
+  const [selectedBuiltin, setSelectedBuiltin] = useState("");
   const { group, addGroup, removeGroup, updateGroupOrder, uid } =
     useDashboardSetting(domainDocId || "");
   const [items, setItems] = useState(group.map((g) => g.id));
@@ -194,6 +199,38 @@ export default function DashboardSettingPage() {
             </SortableContext>
           </DndContext>
         )}
+      </section>
+
+      <KPIConfigurator section={domainDocId || null} />
+      <section className="bg-[#2A2B32] p-4 rounded-lg space-y-4">
+        <h3 className="text-white font-medium">Builtin KPI Picker</h3>
+
+        <div className="flex gap-3 items-center">
+          <button
+            onClick={() => setActive(!active)}
+            className={classNames(
+              "px-3 py-2 rounded transition",
+              active
+                ? "bg-indigo-600 text-white"
+                : "bg-[#2A2B32] text-gray-200 hover:bg-[#343541]"
+            )}
+          >
+            {active ? "Active" : "Inactive"}
+          </button>
+
+          <select
+            value={selectedBuiltin}
+            onChange={(e) => setSelectedBuiltin(e.target.value)}
+            className="w-full rounded bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white"
+          >
+            <option value="">Select KPI</option>
+            {BUILTIN_KPIS.map((kpi) => (
+              <option key={kpi.key} value={kpi.key}>
+                {kpi.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </section>
 
       {groupToDelete && (
