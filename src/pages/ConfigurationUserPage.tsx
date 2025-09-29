@@ -343,6 +343,7 @@ export default function ConfigurationUserPage() {
               <label className="block text-sm font-medium mb-2">
                 Select Provider
               </label>
+
               <select
                 value={provider}
                 onChange={(e) => {
@@ -357,11 +358,22 @@ export default function ConfigurationUserPage() {
                     ? "bg-gray-700 border-gray-600 cursor-not-allowed opacity-70"
                     : "bg-gray-800 border-gray-700"
                 }`}
-              />
+              >
+                <option value="">-- Choose --</option>
+                {Object.entries(PROVIDERS).map(([key, p]) => (
+                  <option key={key} value={key}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+
               {history.length > 0 && (
-                <p className="text-xs text-gray-400 mt-1">
-                  You already have a saved provider. Delete it first to change.
-                </p>
+                <>
+                  <p className="text-xs text-gray-400 mt-1">
+                    You already have a saved provider. Delete it first to
+                    change.
+                  </p>
+                </>
               )}
             </div>
 
