@@ -18,7 +18,7 @@ export async function queryDomain({
   prompt: string;
   sessionId?: string | null;
   signal?: AbortSignal;
-  dataset?: string;
+  dataset?: string[];
 }): Promise<DomainQueryResp> {
   const r = await fetch(`${apiBase}/query`, {
     method: "POST",

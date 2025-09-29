@@ -16,6 +16,8 @@ import {
 } from "../service/chatStore";
 import { FiCopy, FiEdit2, FiCheck, FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
+import MultiSelectDropdown from "../components/ChatComponents/MultiSelectDropdown";
+import SuggestedQuestions from "../components/ChatComponents/SuggestedQuestions";
 
 /** Type Definitions **/
 type Msg = {
@@ -34,54 +36,31 @@ type DatasetApiItem = {
   updated?: string;
 };
 
-/** 🧹 Bersihkan teks dari noise, URL, undefined, dsb */
+/** 🧹 Clean text from noise, URLs, undefined, etc. */
 function cleanResponseText(text: string): string {
-  return (
-    text
-      // Hapus baris dengan link .html
-      .replace(/[\w/\\-]*\.html[`']?/gi, "")
-      // Hapus kalimat "See chart ..." dan sejenisnya
-      .replace(/See chart.*(\r?\n)?/gi, "")
-      // Hapus "For a detailed breakdown..."
-      .replace(/[*-]\s*For a detailed breakdown.*(\r?\n)?/gi, "")
-      // Hapus kata "undefined"
-      .replace(/\bundefined\b/gi, "")
-      // Rapikan spasi berlebih
-      .replace(/[ \t]+$/gm, "")
-      // Gabungkan baris kosong berlebih
-      .replace(/\n{3,}/g, "\n\n")
-      .trim()
-  );
+  return text
+    .replace(/[\w/\\-]*\.html[`']?/gi, "")
+    .replace(/See chart.*(\r?\n)?/gi, "")
+    .replace(/[*-]\s*For a detailed breakdown.*(\r?\n)?/gi, "")
+    .replace(/\bundefined\b/gi, "")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
-/** ✨ Ubah teks bersih jadi HTML dengan format kaya */
+/** ✨ Convert clean text to rich formatted HTML */
 function formatResponseText(text: string): string {
   let formatted = cleanResponseText(text);
-
-  // Bold: **text**
   formatted = formatted.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-
-  // Italic: *text*
   formatted = formatted.replace(/(^|\s)\*(.*?)\*(\s|$)/g, "$1<em>$2</em>$3");
-
-  // Bullet list: * atau -
   formatted = formatted.replace(/^\s*[-*]\s+(.*)$/gm, "<li>$1</li>");
-
-  // Numbered list: 1. 2. dst
   formatted = formatted.replace(/^\s*\d+\.\s+(.*)$/gm, "<li>$1</li>");
-
-  // Bungkus <li> dengan <ul>
   formatted = formatted.replace(/(<li>.*<\/li>)/gs, (match) => {
     const items = match.split(/\n+/).filter(Boolean);
     return `<ul class="list-disc pl-5 space-y-1">${items.join("")}</ul>`;
   });
-
-  // Ubah double newline jadi paragraf
   formatted = formatted.replace(/\n{2,}/g, "</p><p>");
-
-  // Pastikan dibungkus <p>
   if (!/^<p>/.test(formatted)) formatted = `<p>${formatted}</p>`;
-
   return formatted.trim();
 }
 
@@ -122,7 +101,6 @@ function ChatInput({
         rows={1}
         disabled={disabled}
       />
-
       {isGenerating ? (
         <button
           onClick={onStop}
@@ -167,7 +145,7 @@ export default function NewChatPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
-  const [selectedDataset, setSelectedDataset] = useState<string>("general");
+  const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
 
   const API_BASE =
     import.meta.env.VITE_API_URL ||
@@ -228,12 +206,12 @@ export default function NewChatPage() {
 
   const title = "ConvoInsight";
   const subtitle = domain
-    ? `Chat on domain “${domain}” (uses all uploaded datasets in this domain)`
+    ? `Chat on domain “${domain}” (uses selected datasets in this domain)`
     : "Select a domain in the URL to start";
 
   /** Handle Send **/
-  const handleSend = async () => {
-    const text = message.trim();
+  const handleSend = async (prompt?: string) => {
+    const text = (prompt || message).trim();
     if (!text || sending) return;
     if (!domainDocId) return console.error("Domain not found");
 
@@ -249,7 +227,6 @@ export default function NewChatPage() {
     const userMsgCount = nextMsgs.filter((m) => m.role === "user").length;
     let sessionId = searchParams.get("id");
 
-    // New chat session
     if (!openedId && userMsgCount === 1) {
       const id = `${Date.now()}`;
       sessionId = id;
@@ -275,7 +252,7 @@ export default function NewChatPage() {
         prompt: text,
         sessionId,
         signal: abortCtrl.signal,
-        dataset: selectedDataset !== "general" ? selectedDataset : undefined,
+        dataset: selectedDatasets.length > 0 ? selectedDatasets : undefined,
       });
 
       let charts: ChartItem[] | undefined;
@@ -295,18 +272,15 @@ export default function NewChatPage() {
       }
 
       const cleanResponse = cleanResponseText(res.response ?? "(empty)");
-
-      // ✨ Format ke HTML (bold, list, paragraph)
       const formatted = formatResponseText(cleanResponse);
 
-      // 💬 Buat pesan assistant
       const assistantMsg: Msg = {
         role: "assistant",
         chartUrl,
         charts,
         animate: true,
-        content: formatted, // 👉 ini HTML siap render
-        cleanText: cleanResponse, // 👉 ini teks polos (tanpa tag)
+        content: formatted,
+        cleanText: cleanResponse,
       };
 
       setMessages((cur) => [...cur, assistantMsg]);
@@ -354,33 +328,24 @@ export default function NewChatPage() {
               <p className="mt-2 text-sm text-gray-400">{subtitle}</p>
             </div>
 
-            {/* Dataset Selector */}
             <div className="w-full flex justify-center">
               <div className="w-full max-w-2xl md:max-w-3xl px-2 sm:px-0">
                 <div className="mb-3">
                   <label className="block text-xs text-gray-400 mb-1">
                     Dataset
                   </label>
-                  <select
-                    value={selectedDataset}
-                    onChange={(e) => setSelectedDataset(e.target.value)}
-                    className="w-full rounded-md bg-[#1f2024] border border-[#2a2b32] 
-                   text-gray-100 text-sm px-3 py-2 focus:outline-none 
-                   focus:border-indigo-500"
-                  >
-                    <option value="general">General (all datasets)</option>
-                    {availableDatasets.map((ds) => (
-                      <option key={ds} value={ds}>
-                        {ds}
-                      </option>
-                    ))}
-                  </select>
+                  <MultiSelectDropdown
+                    options={availableDatasets}
+                    selectedOptions={selectedDatasets}
+                    onChange={setSelectedDatasets}
+                    placeholder="General (all datasets)"
+                  />
                 </div>
 
                 <ChatComposer
                   value={message}
                   onChange={setMessage}
-                  onSend={handleSend}
+                  onSend={() => handleSend()}
                   isGenerating={isGenerating}
                   onStop={() => {
                     controller?.abort();
@@ -391,10 +356,7 @@ export default function NewChatPage() {
               </div>
             </div>
 
-            <p className="mt-2 text-xs text-gray-500 text-center px-3">
-              Tips: “Compare revenue m1 vs m0”, “Top 3 drivers of churn”, “QoQ
-              growth by channel”
-            </p>
+            <SuggestedQuestions onQuestionClick={handleSend} />
           </div>
 
           <div className="hidden lg:block self-start">
@@ -408,7 +370,6 @@ export default function NewChatPage() {
               ref={chatScrollRef}
               className="flex-1 space-y-6 py-4 overflow-y-auto scrollbar-hide"
             >
-              {/* Fade atas */}
               <div className="sticky top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#1a1b1e] to-transparent z-10 pointer-events-none" />
 
               {messages.map((m, i) => (
@@ -421,8 +382,6 @@ export default function NewChatPage() {
                       {m.charts && m.charts.length > 0 && (
                         <ChartGallery charts={m.charts} />
                       )}
-
-                      {/* 🔹 Render formatted HTML */}
                       <div
                         className="text-gray-200 leading-relaxed prose prose-invert max-w-none"
                         dangerouslySetInnerHTML={{
@@ -506,38 +465,27 @@ export default function NewChatPage() {
                 </div>
               )}
 
-              {/* Fade bawah */}
               <div className="sticky bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#1a1b1e] to-transparent z-10 pointer-events-none" />
             </div>
 
-            {/* Input Section */}
             <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
               <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
-                {/* Dataset Selector */}
                 <div className="mb-3">
                   <label className="block text-xs text-gray-400 mb-1">
                     Dataset
                   </label>
-                  <select
-                    value={selectedDataset}
-                    onChange={(e) => setSelectedDataset(e.target.value)}
-                    className="w-full rounded-md bg-[#1f2024] border border-[#2a2b32] 
-                   text-gray-100 text-sm px-3 py-2 focus:outline-none 
-                   focus:border-indigo-500"
-                  >
-                    <option value="general">General (all datasets)</option>
-                    {availableDatasets.map((ds) => (
-                      <option key={ds} value={ds}>
-                        {ds}
-                      </option>
-                    ))}
-                  </select>
+                  <MultiSelectDropdown
+                    options={availableDatasets}
+                    selectedOptions={selectedDatasets}
+                    onChange={setSelectedDatasets}
+                    placeholder="General (all datasets)"
+                  />
                 </div>
 
                 <ChatInput
                   value={message}
                   onChange={setMessage}
-                  onSend={handleSend}
+                  onSend={() => handleSend()}
                   placeholder="Ask Anything"
                   disabled={sending}
                   isGenerating={isGenerating}
