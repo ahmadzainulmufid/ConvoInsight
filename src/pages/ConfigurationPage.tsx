@@ -1,594 +1,261 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { toast } from "react-hot-toast";
-import useSectionFromPath from "../utils/useSectionFromPath";
-import { getDatasetBlob } from "../utils/fileStore";
+import { useState, useEffect, useCallback } from "react";
+import toast, { Toaster } from "react-hot-toast";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "../utils/firebaseSetup";
+import { useAuthUser } from "../utils/firebaseSetup";
+import { useParams } from "react-router-dom";
 
-type BuiltInKPIKey =
-  | "active_users"
-  | "conversion_rate"
-  | "total_revenue"
-  | "retention_rate"
-  | "avg_session_duration"
-  | "ctr"
-  | "cpa";
-
-type KPIKey = BuiltInKPIKey | `column:${string}`;
-
-type KPIItem = {
-  key: KPIKey;
-  label: string;
-  unit?: string;
-};
-
-type TabKey = "data" | "llm";
-
-type DatasetMeta = {
+type InstructionItem = {
   id: string;
-  name: string;
-  size: number;
-  uploadedAt: string;
+  text: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 };
 
-type DatasetsList = DatasetMeta[];
+export default function ConfigurationUserPage() {
+  const { uid: userId, loading: authLoading } = useAuthUser();
 
-const BUILTIN_KPIS: KPIItem[] = [
-  { key: "active_users", label: "Active Users" },
-  { key: "conversion_rate", label: "Conversion Rate", unit: "%" },
-  { key: "total_revenue", label: "Total Revenue", unit: "IDR" },
-  { key: "retention_rate", label: "Retention Rate", unit: "%" },
-  { key: "avg_session_duration", label: "Avg. Session Duration", unit: "min" },
-  { key: "ctr", label: "CTR", unit: "%" },
-  { key: "cpa", label: "CPA", unit: "IDR" },
-];
+  const [instruction, setInstruction] = useState("");
+  const [instructions, setInstructions] = useState<InstructionItem[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { section: domainDocId } = useParams<{ section: string }>();
 
-const kpiLSKey = (section: string | null) =>
-  `config_selected_kpis_${section ?? "default"}`;
-
-function classNames(...arr: Array<string | false | undefined>) {
-  return arr.filter(Boolean).join(" ");
-}
-
-function splitCSVLine(line: string): string[] {
-  const out: string[] = [];
-  let cur = "";
-  let q = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"') {
-      if (q && line[i + 1] === '"') {
-        cur += '"';
-        i++;
-      } else q = !q;
-    } else if (c === "," && !q) {
-      out.push(cur);
-      cur = "";
-    } else {
-      cur += c;
-    }
-  }
-  out.push(cur);
-  return out;
-}
-
-function normalize(s: string) {
-  return s
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, " ");
-}
-
-function mapColumnToBuiltinKPI(column: string): KPIItem | null {
-  const n = normalize(column);
-  if (["active users", "users_active", "activeusers"].includes(n))
-    return { key: "active_users", label: "Active Users" };
-  if (["conversion rate", "conv rate", "cr"].includes(n))
-    return { key: "conversion_rate", label: "Conversion Rate", unit: "%" };
-  if (["revenue", "total revenue", "pendapatan"].includes(n))
-    return { key: "total_revenue", label: "Total Revenue", unit: "IDR" };
-  if (["retention", "retention rate"].includes(n))
-    return { key: "retention_rate", label: "Retention Rate", unit: "%" };
-  if (
-    [
-      "avg session duration",
-      "average session duration",
-      "session duration",
-    ].includes(n)
-  )
-    return {
-      key: "avg_session_duration",
-      label: "Avg. Session Duration",
-      unit: "min",
-    };
-  if (["ctr", "click through rate"].includes(n))
-    return { key: "ctr", label: "CTR", unit: "%" };
-  if (["cpa", "cost per acquisition"].includes(n))
-    return { key: "cpa", label: "CPA", unit: "IDR" };
-  return null;
-}
-
-function Pill({
-  children,
-  onRemove,
-}: {
-  children: React.ReactNode;
-  onRemove?: () => void;
-}) {
-  return (
-    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2A2B32] text-gray-200 border border-[#3a3b42]">
-      {children}
-      {onRemove && (
-        <button
-          onClick={onRemove}
-          className="text-gray-400 hover:text-gray-200"
-          aria-label="Remove"
-          title="Remove"
-        >
-          ×
-        </button>
-      )}
-    </span>
-  );
-}
-
-function Button({
-  children,
-  onClick,
-  variant = "primary",
-  disabled,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: "primary" | "secondary" | "danger" | "ghost";
-  disabled?: boolean;
-}) {
-  const base =
-    "px-3 py-2 rounded-md text-sm transition disabled:opacity-60 disabled:cursor-not-allowed";
-  const styles: Record<typeof variant, string> = {
-    primary: "bg-indigo-600 hover:bg-indigo-500 text-white",
-    secondary:
-      "bg-[#2A2B32] hover:bg-[#343541] text-gray-100 border border-[#3a3b42]",
-    danger: "bg-rose-600 hover:bg-rose-500 text-white",
-    ghost: "bg-transparent hover:bg-[#2A2B32] text-gray-200",
-  };
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={classNames(base, styles[variant])}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Select({
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: Array<{ value: string; label: string }>;
-  placeholder?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      className="w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-60"
-    >
-      <option value="">{placeholder || "Select..."}</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-async function fetchLlmSuggestions(): Promise<KPIItem[]> {
-  await new Promise((r) => setTimeout(r, 600));
-  return [
-    { key: "conversion_rate", label: "Conversion Rate", unit: "%" },
-    { key: "total_revenue", label: "Total Revenue", unit: "IDR" },
-    { key: "retention_rate", label: "Retention Rate", unit: "%" },
-  ];
-}
-
-const ConfigurationPage: React.FC = () => {
-  const section = useSectionFromPath();
-
-  const [selectedKpis, setSelectedKpis] = useState<KPIItem[]>(() => {
-    const raw = localStorage.getItem(kpiLSKey(section));
-    if (!raw) return [];
+  const fetchInstructions = useCallback(async () => {
+    if (!userId || !domainDocId) return;
+    setLoading(true);
     try {
-      const parsed = JSON.parse(raw) as KPIItem[];
-      return parsed.filter((x) => !!x?.key && !!x?.label);
-    } catch {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem(kpiLSKey(section), JSON.stringify(selectedKpis));
-  }, [selectedKpis, section]);
-
-  const [showAddPanel, setShowAddPanel] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>("data");
-
-  const [datasets, setDatasets] = useState<DatasetsList>([]);
-  const [selectedDatasetId, setSelectedDatasetId] = useState<string>("");
-  const [datasetColumns, setDatasetColumns] = useState<string[]>([]);
-  const [selectedColumn, setSelectedColumn] = useState<string>("");
-  const [loadingColumns, setLoadingColumns] = useState(false);
-
-  useEffect(() => {
-    const storageKey = section ? `datasets_${section}` : "datasets";
-    const raw = localStorage.getItem(storageKey);
-    const list: DatasetsList = raw ? JSON.parse(raw) : [];
-    setDatasets(list);
-  }, [section]);
-
-  useEffect(() => {
-    async function loadColumns() {
-      setDatasetColumns([]);
-      setSelectedColumn("");
-      if (!selectedDatasetId) return;
-
-      setLoadingColumns(true);
-      try {
-        const blob = await getDatasetBlob(selectedDatasetId);
-        if (!blob) {
-          toast.error("File content not found for this dataset.");
-          return;
-        }
-
-        const kind =
-          sessionStorage.getItem(`ds_file_kind_${selectedDatasetId}`) || "csv";
-        if (kind !== "csv") {
-          toast.error("Only CSV preview is supported for now.");
-          return;
-        }
-
-        const text = await blob.text();
-        const lines = text.split(/\r?\n/).filter((l) => l.trim().length);
-        if (!lines.length) {
-          toast("Empty file.");
-          return;
-        }
-        const hdrs = splitCSVLine(lines[0])
-          .map((h) => h.trim())
-          .filter(Boolean);
-        setDatasetColumns(hdrs);
-      } catch {
-        toast.error("Failed to read CSV headers");
-      } finally {
-        setLoadingColumns(false);
-      }
-    }
-    void loadColumns();
-  }, [selectedDatasetId]);
-
-  const datasetOptions = useMemo(
-    () =>
-      datasets.map((d) => ({
-        value: d.id,
-        label: d.name,
-      })),
-    [datasets]
-  );
-
-  const columnOptions = useMemo(
-    () => datasetColumns.map((c) => ({ value: c, label: c })),
-    [datasetColumns]
-  );
-
-  function addKpiFromDatasetColumn() {
-    if (!selectedDatasetId || !selectedColumn) {
-      toast("Pick dataset and column first");
-      return;
-    }
-    const builtin = mapColumnToBuiltinKPI(selectedColumn);
-    let newItem: KPIItem;
-    if (builtin) {
-      newItem = builtin;
-    } else {
-      const key: KPIKey = `column:${selectedDatasetId}:${selectedColumn}`;
-      newItem = { key, label: selectedColumn };
-    }
-
-    if (selectedKpis.some((k) => k.key === newItem.key)) {
-      toast("KPI already added");
-      return;
-    }
-    setSelectedKpis((prev) => [...prev, newItem]);
-    toast.success(`Added KPI: ${newItem.label}`);
-    setSelectedColumn("");
-  }
-
-  const [llmLoading, setLlmLoading] = useState(false);
-  const [llmOptions, setLlmOptions] = useState<KPIItem[]>([]);
-  const [pickedFromLlm, setPickedFromLlm] = useState("");
-
-  const llmOptionsForSelect = useMemo(
-    () =>
-      llmOptions
-        .filter((x) => !selectedKpis.some((s) => s.key === x.key))
-        .map((x) => ({ value: x.key, label: x.label })),
-    [llmOptions, selectedKpis]
-  );
-
-  async function handleFetchLLM() {
-    setLlmLoading(true);
-    try {
-      const suggestions = await fetchLlmSuggestions();
-      setLlmOptions(suggestions);
-      if (suggestions.length === 0) toast("No suggestions from LLM");
-      else toast.success("LLM suggestions loaded");
-    } catch {
-      toast.error("Failed to load LLM suggestions");
+      const ref = collection(
+        db,
+        "users",
+        userId,
+        "domains",
+        domainDocId,
+        "instructionsDom"
+      );
+      const snapshot = await getDocs(ref);
+      const items = snapshot.docs.map((d) => ({
+        id: d.id,
+        text: d.data().text,
+        is_active: d.data().is_active ?? false,
+        created_at: d.data().created_at?.toDate?.().toLocaleString(),
+      }));
+      setInstructions(items);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to load instructions");
     } finally {
-      setLlmLoading(false);
+      setLoading(false);
     }
-  }
+  }, [userId, domainDocId]);
 
-  function addKpiFromLLM() {
-    if (!pickedFromLlm) {
-      toast("Pick an LLM KPI first");
-      return;
-    }
-    const found =
-      BUILTIN_KPIS.find((x) => x.key === (pickedFromLlm as BuiltInKPIKey)) ??
-      llmOptions.find((x) => x.key === (pickedFromLlm as KPIKey));
-    if (!found) {
-      toast("Invalid KPI");
-      return;
-    }
-    if (selectedKpis.some((k) => k.key === found.key)) {
-      toast("KPI already added");
-      return;
-    }
-    setSelectedKpis((prev) => [...prev, found]);
-    toast.success(`Added KPI: ${found.label}`);
-    setPickedFromLlm("");
-  }
+  useEffect(() => {
+    if (!authLoading && userId) fetchInstructions();
+  }, [authLoading, userId, fetchInstructions]);
 
-  const [showRemovePanel, setShowRemovePanel] = useState(false);
-  const [toRemove, setToRemove] = useState<Set<KPIKey>>(new Set());
-  function removeSelectedKeys() {
-    if (toRemove.size === 0) {
-      toast("No KPI selected to remove");
+  const handleSaveInstruction = async () => {
+    if (!instruction.trim()) {
+      toast.error("Instruction cannot be empty!");
       return;
     }
-    setSelectedKpis((prev) => prev.filter((k) => !toRemove.has(k.key)));
-    setToRemove(new Set());
-    setShowRemovePanel(false);
-    toast.success("Removed selected KPIs");
-  }
+    if (!userId) {
+      toast.error("User not logged in!");
+      return;
+    }
+
+    try {
+      if (editingId) {
+        const docRef = doc(
+          db,
+          "users",
+          userId,
+          "domains",
+          domainDocId!,
+          "instructionsDom",
+          editingId
+        );
+        await updateDoc(docRef, {
+          text: instruction.trim(),
+          updated_at: serverTimestamp(),
+        });
+        toast.success("Instruction updated successfully");
+      } else {
+        const ref = collection(
+          db,
+          "users",
+          userId,
+          "domains",
+          domainDocId!,
+          "instructionsDom"
+        );
+        await addDoc(ref, {
+          text: instruction.trim(),
+          is_active: false,
+          created_at: serverTimestamp(),
+        });
+        toast.success("Instruction saved successfully");
+      }
+
+      setInstruction("");
+      setEditingId(null);
+      fetchInstructions();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to save instruction");
+    }
+  };
+
+  const handleDeleteInstruction = async (id: string) => {
+    if (!userId) return toast.error("User not logged in!");
+    try {
+      const ref = doc(
+        db,
+        "users",
+        userId,
+        "domains",
+        domainDocId!,
+        "instructionsDom",
+        id
+      );
+      await deleteDoc(ref);
+      toast.success("Instruction deleted successfully");
+      fetchInstructions();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete instruction");
+    }
+  };
+
+  const toggleActiveInstruction = async (id: string, currentState: boolean) => {
+    if (!userId) return toast.error("User not logged in!");
+
+    try {
+      const docRef = doc(
+        db,
+        "users",
+        userId,
+        "domains",
+        domainDocId!,
+        "instructionsDom",
+        id
+      );
+      await updateDoc(docRef, {
+        is_active: !currentState,
+        updated_at: serverTimestamp(),
+      });
+
+      toast.success(
+        !currentState ? "Instruction activated" : "Instruction deactivated"
+      );
+
+      fetchInstructions();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to toggle instruction state");
+    }
+  };
 
   return (
-    <div className="relative min-h-screen flex bg-[#1a1b1e]">
-      <main className="flex-1 overflow-y-auto pb-40 px-6 md:px-8 py-6 space-y-8">
-        <section className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">
-            Configuration Settings
-          </h2>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setShowAddPanel((s) => !s);
-                setShowRemovePanel(false);
-              }}
-            >
-              + Add KPI
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setShowRemovePanel((s) => !s);
-                setShowAddPanel(false);
-              }}
-            >
-              − Remove KPI
-            </Button>
-          </div>
+    <div className="relative min-h-screen flex bg-[#1a1b1e] text-white">
+      <Toaster position="top-right" />
+      <main className="flex-1 overflow-y-auto pb-20 px-6 md:px-10 py-8">
+        <h2 className="text-lg font-semibold mb-8">Configuration Domain</h2>
+
+        <label className="block text-sm font-medium mb-2">
+          Domain Instructions
+        </label>
+
+        {/* Input Section */}
+        <section className="space-y-4">
+          <textarea
+            placeholder="Tambahkan instruksi agar AI lebih paham konteks kamu..."
+            value={instruction}
+            onChange={(e) => setInstruction(e.target.value)}
+            className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white resize-none"
+            rows={3}
+            disabled={loading}
+          />
+
+          <button
+            onClick={handleSaveInstruction}
+            disabled={loading}
+            className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
+          >
+            {editingId ? "Update Instruction" : "Save Instruction"}
+          </button>
         </section>
 
-        <section className="space-y-3">
-          <p className="text-sm text-gray-300">Selected KPIs</p>
-          {selectedKpis.length === 0 ? (
-            <div className="text-gray-400 text-sm">
-              No KPIs selected yet. Click <b>Add KPI</b> to start.
-            </div>
+        {/* History List */}
+        <section className="space-y-2 mt-8">
+          <h3 className="text-base font-semibold mb-4">Instruction History</h3>
+          {loading ? (
+            <p className="text-gray-400 text-sm">Loading...</p>
+          ) : instructions.length === 0 ? (
+            <p className="text-gray-500 text-sm">
+              There are no instructions stored yet
+            </p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {selectedKpis.map((k) => (
-                <Pill
-                  key={k.key}
-                  onRemove={() => {
-                    setSelectedKpis((prev) =>
-                      prev.filter((x) => x.key !== k.key)
-                    );
-                    toast.success(`Removed: ${k.label}`);
-                  }}
-                >
-                  {k.label}
-                </Pill>
-              ))}
-            </div>
+            instructions.map((ins) => (
+              <div
+                key={ins.id}
+                className={`flex items-center justify-between bg-gray-800 p-3 rounded border ${
+                  ins.is_active ? "border-green-500" : "border-gray-700"
+                }`}
+              >
+                <div className="flex flex-col">
+                  <p className="text-sm text-gray-200">{ins.text}</p>
+                  {ins.is_active && (
+                    <span className="text-xs text-green-400 mt-1">
+                      ✅ Active
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() =>
+                      toggleActiveInstruction(ins.id, ins.is_active ?? false)
+                    }
+                    className={`px-3 py-1 text-sm rounded ${
+                      ins.is_active
+                        ? "bg-gray-600 hover:bg-gray-500"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                  >
+                    {ins.is_active ? "Deactivate" : "Activate"}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setInstruction(ins.text);
+                      setEditingId(ins.id);
+                    }}
+                    className="px-3 py-1 text-sm bg-yellow-600 rounded hover:bg-yellow-700"
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteInstruction(ins.id)}
+                    className="px-3 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
           )}
         </section>
-
-        {showAddPanel && (
-          <section className="rounded-xl border border-[#2a2b32] bg-[#232427] p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-white font-medium">Add KPI</h3>
-              <div className="inline-flex rounded-md overflow-hidden border border-[#3a3b42]">
-                <button
-                  className={classNames(
-                    "px-3 py-1 text-sm",
-                    activeTab === "data"
-                      ? "bg-[#343541] text-white"
-                      : "text-gray-300 hover:bg-[#2A2B32]"
-                  )}
-                  onClick={() => setActiveTab("data")}
-                >
-                  From Data
-                </button>
-                <button
-                  className={classNames(
-                    "px-3 py-1 text-sm",
-                    activeTab === "llm"
-                      ? "bg-[#343541] text-white"
-                      : "text-gray-300 hover:bg-[#2A2B32]"
-                  )}
-                  onClick={() => setActiveTab("llm")}
-                >
-                  From LLM
-                </button>
-              </div>
-            </div>
-
-            {activeTab === "data" && (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-300">
-                  Pick a dataset & column:
-                </p>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <Select
-                    value={selectedDatasetId}
-                    onChange={setSelectedDatasetId}
-                    options={datasetOptions}
-                    placeholder={
-                      datasets.length ? "Select Dataset" : "No datasets found"
-                    }
-                    disabled={!datasets.length}
-                  />
-                  <Select
-                    value={selectedColumn}
-                    onChange={setSelectedColumn}
-                    options={columnOptions}
-                    placeholder={
-                      loadingColumns ? "Loading columns..." : "Select Column"
-                    }
-                    disabled={
-                      !selectedDatasetId ||
-                      loadingColumns ||
-                      !datasetColumns.length
-                    }
-                  />
-                  <Button
-                    onClick={addKpiFromDatasetColumn}
-                    disabled={!selectedDatasetId || !selectedColumn}
-                  >
-                    Add
-                  </Button>
-                </div>
-                <div className="text-xs text-gray-400">
-                  Tips: columns with similar names{" "}
-                  <i>“active users, revenue, conversion rate”</i> automatically
-                  mapped to the default KPIs. Additionally, they will be added
-                  as column-based custom KPIs.
-                </div>
-              </div>
-            )}
-
-            {activeTab === "llm" && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-gray-300 flex-1">
-                    Fetch suggested KPIs from LLM, then select one to add.
-                  </p>
-                  <Button
-                    variant="secondary"
-                    onClick={handleFetchLLM}
-                    disabled={llmLoading}
-                  >
-                    {llmLoading ? "Loading..." : "Get Suggestions"}
-                  </Button>
-                </div>
-                <div className="grid md:grid-cols-[1fr_auto] gap-3">
-                  <Select
-                    value={pickedFromLlm}
-                    onChange={setPickedFromLlm}
-                    options={llmOptionsForSelect}
-                    placeholder={
-                      llmOptions.length === 0
-                        ? "Fetch suggestions first"
-                        : "Select KPI"
-                    }
-                    disabled={llmOptions.length === 0}
-                  />
-                  <Button onClick={addKpiFromLLM} disabled={!llmOptions.length}>
-                    Add
-                  </Button>
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        {showRemovePanel && (
-          <section className="rounded-xl border border-[#2a2b32] bg-[#232427] p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-white font-medium">Remove KPI</h3>
-            </div>
-            {selectedKpis.length === 0 ? (
-              <div className="text-gray-400 text-sm">
-                No KPIs to remove. Add some first.
-              </div>
-            ) : (
-              <>
-                <div className="grid gap-2">
-                  {selectedKpis.map((k) => {
-                    const checked = toRemove.has(k.key);
-                    return (
-                      <label
-                        key={k.key}
-                        className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-[#2A2B32] text-gray-200"
-                      >
-                        <input
-                          type="checkbox"
-                          className="accent-indigo-500"
-                          checked={checked}
-                          onChange={(e) => {
-                            setToRemove((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(k.key);
-                              else next.delete(k.key);
-                              return next;
-                            });
-                          }}
-                        />
-                        <span>{k.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowRemovePanel(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button variant="danger" onClick={removeSelectedKeys}>
-                    Remove Selected
-                  </Button>
-                </div>
-              </>
-            )}
-          </section>
-        )}
       </main>
     </div>
   );
-};
-
-export default ConfigurationPage;
+}
