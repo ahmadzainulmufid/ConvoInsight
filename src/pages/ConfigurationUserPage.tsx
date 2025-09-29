@@ -7,9 +7,10 @@ import {
   addDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   doc,
   serverTimestamp,
+  query,
+  limit,
 } from "firebase/firestore";
 import { db } from "../utils/firebaseSetup";
 
@@ -32,7 +33,15 @@ type ProviderItem = {
   updated_at?: string;
 };
 
-const API_BASE = "http://127.0.0.1:8000";
+type InstructionItem = {
+  id: string;
+  text: string;
+  is_active: boolean;
+};
+
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
 export default function ConfigurationUserPage() {
   const { uid: userId, loading: authLoading } = useAuthUser();
@@ -60,11 +69,12 @@ export default function ConfigurationUserPage() {
   const [newApiKey, setNewApiKey] = useState("");
   const [updating, setUpdating] = useState(false);
 
+  // New states for managing a single global instruction
   const [instruction, setInstruction] = useState("");
-  const [instructions, setInstructions] = useState<
-    { id: string; text: string; created_at?: string }[]
-  >([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [globalInstruction, setGlobalInstruction] =
+    useState<InstructionItem | null>(null);
+  const [isEditingInstruction, setIsEditingInstruction] = useState(false);
+  const [instructionLoading, setInstructionLoading] = useState(true);
 
   // --- Fetch History ---
   const fetchHistory = useCallback(async () => {
@@ -89,11 +99,44 @@ export default function ConfigurationUserPage() {
     }
   }, [userId]);
 
+  // --- Fetch Global Instruction ---
+  const fetchInstructions = useCallback(async () => {
+    if (!userId) return;
+    setInstructionLoading(true);
+    try {
+      const ref = collection(db, "users", userId, "instructions");
+      const q = query(ref, limit(1));
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        const data = {
+          id: doc.id,
+          text: doc.data().text,
+          is_active: doc.data().is_active ?? false,
+        };
+        setGlobalInstruction(data);
+        setInstruction(data.text);
+        setIsEditingInstruction(false);
+      } else {
+        setGlobalInstruction(null);
+        setInstruction("");
+        setIsEditingInstruction(true); // Allow user to create first instruction
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to load global instruction");
+    } finally {
+      setInstructionLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     if (!authLoading && userId) {
       fetchHistory();
+      fetchInstructions();
     }
-  }, [authLoading, userId, fetchHistory]);
+  }, [authLoading, userId, fetchHistory, fetchInstructions]);
 
   // --- Validate Key ---
   const handleValidate = async () => {
@@ -145,76 +188,67 @@ export default function ConfigurationUserPage() {
     }
   };
 
+  // --- Handle Instruction Save/Update ---
   const handleSaveInstruction = async () => {
     if (!instruction.trim()) {
-      toast.error("Iinstructions cannot be empty!");
+      toast.error("Instructions cannot be empty!");
       return;
     }
     if (!userId) {
-      toast.error("User no login!");
+      toast.error("User not logged in!");
       return;
     }
 
     try {
-      const ref = collection(db, "users", userId, "instructions");
-
-      if (editingId) {
-        // update
-        const docRef = doc(db, "users", userId, "instructions", editingId);
+      if (globalInstruction) {
+        // Update existing instruction
+        const docRef = doc(
+          db,
+          "users",
+          userId,
+          "instructions",
+          globalInstruction.id
+        );
         await updateDoc(docRef, {
           text: instruction.trim(),
           updated_at: serverTimestamp(),
         });
-        toast.success("Instruction update success");
+        toast.success("Instruction updated successfully");
       } else {
-        // create
+        // Create new instruction
+        const ref = collection(db, "users", userId, "instructions");
         await addDoc(ref, {
           text: instruction.trim(),
+          is_active: true, // Active by default
           created_at: serverTimestamp(),
         });
-        toast.success("Instruction save success");
+        toast.success("Instruction saved successfully");
       }
-
-      setInstruction("");
-      setEditingId(null);
-      fetchInstructions();
+      fetchInstructions(); // Refetch to update state and exit edit mode
     } catch (e) {
       console.error(e);
-      toast.error("failed save instruction");
+      toast.error("Failed to save instruction");
     }
   };
 
-  const fetchInstructions = useCallback(async () => {
-    if (!userId) return;
+  // --- Handle Instruction Activation/Deactivation ---
+  const handleToggleInstructionActive = async (newStatus: boolean) => {
+    if (!userId || !globalInstruction) return;
+
     try {
-      const ref = collection(db, "users", userId, "instructions");
-      const snapshot = await getDocs(ref);
-      const items = snapshot.docs.map((d) => ({
-        id: d.id,
-        text: d.data().text,
-        created_at: d.data().created_at?.toDate?.().toLocaleString(),
-      }));
-      setInstructions(items);
+      const docRef = doc(
+        db,
+        "users",
+        userId,
+        "instructions",
+        globalInstruction.id
+      );
+      await updateDoc(docRef, { is_active: newStatus });
+      toast.success(`Instruction ${newStatus ? "activated" : "deactivated"}`);
+      fetchInstructions(); // Refetch to update button state
     } catch (e) {
       console.error(e);
-      toast.error("failed load instruction");
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (!authLoading && userId) fetchInstructions();
-  }, [authLoading, userId, fetchInstructions]);
-
-  const handleDeleteInstruction = async (id: string) => {
-    if (!userId) return toast.error("User no login!");
-    try {
-      const ref = doc(db, "users", userId, "instructions", id);
-      await deleteDoc(ref);
-      toast.success("Instruction delete success");
-      fetchInstructions();
-    } catch (e) {
-      console.error(e);
-      toast.error("Gagal menghapus instruction");
+      toast.error("Failed to update instruction status");
     }
   };
 
@@ -264,7 +298,7 @@ export default function ConfigurationUserPage() {
 
       const data = await res.json();
       if (data.updated) {
-        toast.success(`API Key for ${updateProvider} update`);
+        toast.success(`API Key for ${updateProvider} updated`);
         setShowUpdateModal(false);
         fetchHistory();
       } else {
@@ -272,7 +306,7 @@ export default function ConfigurationUserPage() {
       }
     } catch (e) {
       console.error(e);
-      toast.error("an error occurred during the update");
+      toast.error("An error occurred during the update");
     } finally {
       setUpdating(false);
     }
@@ -295,14 +329,14 @@ export default function ConfigurationUserPage() {
 
       const data = await res.json();
       if (data.deleted) {
-        toast.success(`Provider ${prov} success dihapus`);
+        toast.success(`Provider ${prov} successfully deleted`);
         setHistory((prev) => prev.filter((h) => h.provider !== prov));
       } else {
-        toast.error(data.error ?? "failed menghapus");
+        toast.error(data.error ?? "Failed to delete");
       }
     } catch (e) {
       console.error(e);
-      toast.error("failed delete provider");
+      toast.error("Failed to delete provider");
     }
   };
 
@@ -334,7 +368,6 @@ export default function ConfigurationUserPage() {
       <main className="flex-1 overflow-y-auto pb-20 px-6 md:px-10 py-8">
         <h2 className="text-lg font-semibold mb-8">Configuration User</h2>
 
-        {/* GRID: Left = form, Right = history */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Left: Configuration Form */}
           <div className="space-y-6">
@@ -497,31 +530,9 @@ export default function ConfigurationUserPage() {
                 </button>
               </>
             )}
-
-            {/* Instruction Section */}
-            {history.length > 0 && (
-              <section className="mt-10 space-y-4">
-                <h3 className="text-base font-semibold">Custom Instruction</h3>
-
-                <textarea
-                  placeholder="Tambahkan instruksi agar AI lebih paham konteks kamu..."
-                  value={instruction}
-                  onChange={(e) => setInstruction(e.target.value)}
-                  className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white resize-none"
-                  rows={3}
-                />
-
-                <button
-                  onClick={handleSaveInstruction}
-                  className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-                >
-                  {editingId ? "Update Instruction" : "Save Instruction"}
-                </button>
-              </section>
-            )}
           </div>
 
-          {/* Right: History */}
+          {/* Right: API Key History */}
           <div>
             <h3 className="text-base font-semibold mb-4">API Key History</h3>
             {loadingHistory ? (
@@ -561,46 +572,78 @@ export default function ConfigurationUserPage() {
                 ))}
               </div>
             )}
-
-            {/* History List */}
-            <div className="space-y-2 mt-4">
-              <h3 className="text-base font-semibold mb-4">
-                Instruction History
-              </h3>
-              {instructions.length === 0 ? (
-                <p className="text-gray-500 text-sm">
-                  There are no instructions stored yet
-                </p>
-              ) : (
-                instructions.map((ins) => (
-                  <div
-                    key={ins.id}
-                    className="flex items-center justify-between bg-gray-800 p-3 rounded border border-gray-700"
-                  >
-                    <p className="text-sm text-gray-200">{ins.text}</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setInstruction(ins.text);
-                          setEditingId(ins.id);
-                        }}
-                        className="px-3 py-1 text-sm bg-yellow-600 rounded hover:bg-yellow-700"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteInstruction(ins.id)}
-                        className="px-3 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
           </div>
         </div>
+
+        {/* --- Global Instruction Section (Full Width) --- */}
+        {history.length > 0 && (
+          <section className="mt-10 space-y-4">
+            <h3 className="text-base font-semibold">Global Instruction</h3>
+
+            {instructionLoading ? (
+              <p className="text-gray-400">Loading instruction...</p>
+            ) : (
+              <>
+                <textarea
+                  placeholder="Add instructions so the AI better understands your context..."
+                  value={instruction}
+                  onChange={(e) => setInstruction(e.target.value)}
+                  className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white resize-none disabled:opacity-70 disabled:cursor-not-allowed"
+                  rows={5}
+                  disabled={!isEditingInstruction}
+                />
+
+                <div className="flex items-center gap-3">
+                  {isEditingInstruction ? (
+                    <>
+                      <button
+                        onClick={handleSaveInstruction}
+                        className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+                      >
+                        Save
+                      </button>
+                      {globalInstruction && (
+                        <button
+                          onClick={() => {
+                            setIsEditingInstruction(false);
+                            setInstruction(globalInstruction.text);
+                          }}
+                          className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </>
+                  ) : globalInstruction ? (
+                    <>
+                      <button
+                        onClick={() => setIsEditingInstruction(true)}
+                        className="px-4 py-2 bg-yellow-600 rounded hover:bg-yellow-700"
+                      >
+                        Update
+                      </button>
+                      {globalInstruction.is_active ? (
+                        <button
+                          onClick={() => handleToggleInstructionActive(false)}
+                          className="px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                        >
+                          Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleInstructionActive(true)}
+                          className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+                        >
+                          Activate
+                        </button>
+                      )}
+                    </>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </section>
+        )}
       </main>
       {showUpdateModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
@@ -610,7 +653,7 @@ export default function ConfigurationUserPage() {
             </h3>
             <input
               type="password"
-              placeholder="Masukkan API Key baru..."
+              placeholder="Enter new API Key..."
               value={newApiKey}
               onChange={(e) => setNewApiKey(e.target.value)}
               className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white mb-4"
@@ -628,7 +671,7 @@ export default function ConfigurationUserPage() {
                 disabled={updating}
                 className="px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-700 disabled:opacity-60"
               >
-                {updating ? "Menyimpan..." : "Update"}
+                {updating ? "Saving..." : "Update"}
               </button>
             </div>
           </div>
