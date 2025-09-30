@@ -18,9 +18,11 @@ import {
 type Props = { userName: string };
 
 type DatasetApiItem = {
+  domain: string;
   filename: string;
-  gcs_path: string;
-  size: number;
+  gs_uri?: string;
+  size_bytes?: number;
+  signed_url?: string;
   updated?: string;
 };
 
@@ -35,32 +37,39 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
 
   const fetchDatasets = useCallback(async () => {
     if (!section) return;
+
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/domains/${section}/datasets`);
+
+      const res = await fetch(`${API_BASE}/datasets?domain=${section}`);
       if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+
       const data = await res.json();
 
-      const datasets: DatasetItem[] = (data.datasets as DatasetApiItem[]).map(
-        (d) => ({
-          id: d.filename,
-          name: d.filename,
-          gcs_path: d.gcs_path,
-          size: typeof d.size === "number" && !isNaN(d.size) ? d.size : 0,
-          uploadedAt: d.updated
-            ? new Date(d.updated).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })
-            : "-",
-        })
-      );
+      const rawItems = (data.items ?? []) as DatasetApiItem[];
+
+      const datasets: DatasetItem[] = rawItems.map((d) => ({
+        id: d.filename,
+        name: d.filename,
+        gcs_path: d.gs_uri ?? "",
+        size:
+          typeof d.size_bytes === "number" && !isNaN(d.size_bytes)
+            ? d.size_bytes
+            : 0,
+        uploadedAt: d.updated
+          ? new Date(d.updated).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : "-",
+      }));
 
       setItems(datasets);
 
       console.log("Starting background sync for local dataset blobs...");
-      datasets.forEach(async (ds) => {
+
+      for (const ds of datasets) {
         const hasBlob = await getDatasetBlob(ds.id);
         if (!hasBlob) {
           console.log(
@@ -68,20 +77,22 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
           );
           try {
             const fileRes = await fetch(
-              `${API_BASE}/datasets/${section}/${encodeURIComponent(ds.id)}`
+              `${API_BASE}/datasets/${section}/${encodeURIComponent(
+                ds.id
+              )}?as=csv`
             );
             if (!fileRes.ok) throw new Error("Download failed");
             const blob = await fileRes.blob();
             await saveDatasetBlob(ds.id, blob);
-            console.log(`Successfully cached "${ds.name}" locally.`);
+            console.log(`Cached "${ds.name}" locally.`);
           } catch (err) {
-            console.error(`Failed to download and cache "${ds.name}".`, err);
+            console.error(`Failed to download and cache "${ds.name}"`, err);
           }
         }
-      });
+      }
     } catch (err) {
-      console.error(err);
-      toast.error("⚠️ Failed to load datasets");
+      console.error("Error loading datasets:", err);
+      toast.error("Failed to load datasets");
       setItems([]);
     } finally {
       setLoading(false);
