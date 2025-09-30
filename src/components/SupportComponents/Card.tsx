@@ -18,7 +18,7 @@ type CardStatProps = {
   value: string | number;
   change: string;
   type: keyof typeof icons;
-  onClick?: () => void; // ✅ tambahkan
+  onClick?: () => void;
 };
 
 type InfoCardProps = {
@@ -36,7 +36,7 @@ const CardStat = ({ title, value, change, type, onClick }: CardStatProps) => {
   return (
     <div
       className="bg-white dark:bg-[#1e1f23] rounded-lg p-5 shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center cursor-pointer hover:ring-2 hover:ring-indigo-400 transition"
-      onClick={onClick} // ✅ tambahkan
+      onClick={onClick}
     >
       <div>
         <h4 className="text-sm text-gray-500">{title}</h4>

@@ -13,23 +13,21 @@ export default function Layout() {
 
   const userName = user?.email || user?.displayName || "Account";
 
-  const isManageDomain = location.pathname === "/domain/new"; // <= ⬅️ tambahkan
-  const inDomainRoot = location.pathname === "/domain"; // root
+  const isManageDomain = location.pathname === "/domain/new";
+  const inDomainRoot = location.pathname === "/domain";
   const inDomainSection =
-    /^\/domain\/[^/]+(?:\/|$)/.test(location.pathname) && !isManageDomain; // <= kecualikan /domain/new
+    /^\/domain\/[^/]+(?:\/|$)/.test(location.pathname) && !isManageDomain;
 
   const primaryWidth = collapsed ? 64 : 256;
   const secondaryWidth = collapsed ? 64 : 256;
   const thirdWidth = collapsed ? 64 : 256;
 
-  // Final paddingLeft
-  let paddingLeft = primaryWidth; // default: cuma sidebar1
-  if (inDomainRoot) paddingLeft += secondaryWidth; // sidebar1 + sidebar2
-  if (inDomainSection) paddingLeft = thirdWidth; // hanya sidebar3
+  let paddingLeft = primaryWidth;
+  if (inDomainRoot) paddingLeft += secondaryWidth;
+  if (inDomainSection) paddingLeft = thirdWidth;
 
   return (
     <div className="min-h-screen w-screen bg-[#202123]">
-      {/* Sidebar1 tampil di semua halaman KECUALI halaman section (bukan /domain & bukan /domain/new) */}
       {!inDomainSection && (
         <Sidebar
           collapsed={collapsed}
@@ -38,12 +36,10 @@ export default function Layout() {
         />
       )}
 
-      {/* Sidebar2 hanya di /domain (bukan /domain/new) */}
       {inDomainRoot && !isManageDomain && (
         <SecondarySidebar open leftOffset={primaryWidth} />
       )}
 
-      {/* Sidebar3 hanya di halaman section */}
       {inDomainSection && (
         <ThirdSidebar
           collapsed={collapsed}
