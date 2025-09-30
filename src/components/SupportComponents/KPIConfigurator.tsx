@@ -1,5 +1,5 @@
 // src/components/SupportComponents/KPIConfigurator.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { getDatasetBlob } from "../../utils/fileStore";
 
@@ -57,7 +57,7 @@ export default function KPIConfigurator({
     setDatasets(list);
   }, [section]);
 
-  async function loadColumns() {
+  const loadColumns = useCallback(async () => {
     if (!selectedDatasetId) return;
     try {
       const blob = await getDatasetBlob(selectedDatasetId);
@@ -73,11 +73,11 @@ export default function KPIConfigurator({
     } catch {
       toast.error("Failed to load headers");
     }
-  }
+  }, [selectedDatasetId]);
 
   useEffect(() => {
     loadColumns();
-  }, [selectedDatasetId]);
+  }, [loadColumns]);
 
   const datasetOptions = useMemo(
     () => datasets.map((d) => ({ value: d.id, label: d.name })),
