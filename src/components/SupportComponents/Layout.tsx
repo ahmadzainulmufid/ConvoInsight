@@ -1,8 +1,8 @@
 // components/SupportComponents/Layout.tsx
 import { useState, useContext } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import Sidebar from "../HomeComponents/Sidebar";
-import SecondarySidebar from "../DomainComponents/SecondarySidebar";
+import Sidebar from "./Sidebar";
+import SecondarySidebar from "./SecondarySidebar";
 import ThirdSidebar from "./ThirdSidebar";
 import { AuthContext } from "../../context/AuthContext";
 
