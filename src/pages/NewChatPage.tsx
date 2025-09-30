@@ -370,7 +370,7 @@ export default function NewChatPage() {
               ref={chatScrollRef}
               className="flex-1 space-y-6 py-4 overflow-y-auto scrollbar-hide"
             >
-              <div className="sticky top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#1a1b1e] to-transparent z-10 pointer-events-none" />
+              <div className="sticky top-0 left-0 right-0 bg-gradient-to-b from-[#1a1b1e] to-transparent z-10 pointer-events-none" />
 
               {messages.map((m, i) => (
                 <div

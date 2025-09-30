@@ -59,17 +59,14 @@ export function useChatHistory(section?: string) {
 
   const remove = useCallback(
     async (sessionId: string) => {
-      // hapus dari localStorage
       const cur = read();
       const next = cur.filter((x) => x.id !== sessionId);
       write(next);
       setItems(next);
 
-      // hapus semua message dari Firestore
       const user = auth.currentUser;
       if (user && section) {
         try {
-          // 🔑 resolve domain docId dari nama (misal "Campaign" → Firestore docId)
           const domainDocId = await getDomainDocId(section);
           if (!domainDocId) {
             console.warn("Domain not found in Firestore:", section);
@@ -90,10 +87,10 @@ export function useChatHistory(section?: string) {
           await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 
           console.log(
-            `✅ Semua messages dengan sessionId=${sessionId} dihapus dari Firestore`
+            `Semua messages dengan sessionId=${sessionId} dihapus dari Firestore`
           );
         } catch (err) {
-          console.error("❌ Gagal hapus messages dari Firestore:", err);
+          console.error("Gagal hapus messages dari Firestore:", err);
         }
       }
     },

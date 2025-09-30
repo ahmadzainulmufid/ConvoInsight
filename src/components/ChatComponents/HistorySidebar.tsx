@@ -39,7 +39,6 @@ export default function HistorySidebar({
   }, []);
 
   const handleNewChat = () => {
-    // buka halaman newchat tanpa id, lalu tutup sidebar
     navigate(`/domain/${section}/dashboard/newchat`, { replace: true });
     onClose();
   };
@@ -55,9 +54,8 @@ export default function HistorySidebar({
 
       const msgs: (ChatMessage & { chartHtml?: string })[] = [];
 
-      // ambil snapshot sekali
       const unsub = listenMessages(domainDocId, id, (snap) => {
-        msgs.splice(0, msgs.length, ...snap); // replace array isi
+        msgs.splice(0, msgs.length, ...snap);
       });
       unsub();
 
@@ -78,7 +76,6 @@ export default function HistorySidebar({
     remove(id);
     setMenuOpenId(null);
 
-    // jika yang dihapus adalah chat yang sedang dibuka → balik ke landing
     if (openedId === id) {
       navigate(`/domain/${section}/dashboard/newchat`, { replace: true });
     }
@@ -117,7 +114,7 @@ export default function HistorySidebar({
         className="p-2 space-y-2 overflow-y-auto h-[calc(100%-3rem)]"
       >
         {items.length === 0 && (
-          <p className="text-sm text-gray-400 px-2">Belum ada history.</p>
+          <p className="text-sm text-gray-400 px-2">There is no history yet</p>
         )}
 
         {items.map((it) => (
@@ -130,7 +127,7 @@ export default function HistorySidebar({
                 onClick={() =>
                   navigate(`/domain/${section}/dashboard/newchat?id=${it.id}`)
                 }
-                className="flex-1 text-left text-sm text-indigo-300 hover:underline truncate"
+                className="flex-1 text-left text-sm text-white hover:underline truncate"
                 title={it.title}
               >
                 {it.title}
