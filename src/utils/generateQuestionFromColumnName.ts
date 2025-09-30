@@ -25,6 +25,5 @@ export function generateQuestionFromColumnName(columnName: string): string {
     return `Analisis distribusi dan variasi waktu dari kolom "${columnName}". Tampilkan histogram atau tren.`;
   }
 
-  // fallback default
   return `Tampilkan analisis deskriptif dan visualisasi chart untuk kolom "${columnName}".`;
 }
