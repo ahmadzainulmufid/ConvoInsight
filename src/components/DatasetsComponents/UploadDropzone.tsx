@@ -1,4 +1,3 @@
-// components/DatasetsComponents/UploadDropzone.tsx
 import React, { useRef, useState } from "react";
 import { FiUploadCloud } from "react-icons/fi";
 
@@ -29,11 +28,16 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
   const [errorSummary, setErrorSummary] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const acceptOk = (name: string) =>
-    name.toLowerCase().endsWith(".csv") ||
-    name.toLowerCase().endsWith(".parquet");
+  const acceptOk = (name: string) => {
+    const lower = name.toLowerCase();
+    return (
+      lower.endsWith(".csv") ||
+      lower.endsWith(".parquet") ||
+      lower.endsWith(".xls") ||
+      lower.endsWith(".xlsx")
+    );
+  };
 
-  // Simulasi progress upload untuk UX
   const fakeUpload = (itemId: string) =>
     new Promise<void>((resolve) => {
       let p = 0;
@@ -49,8 +53,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
     });
 
   function toUploadItems(fileList: FileList | File[]): UploadItem[] {
-    const arr = Array.from(fileList);
-    return arr.map((f) => ({
+    return Array.from(fileList).map((f) => ({
       id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       file: f,
       progress: 0,
@@ -61,12 +64,13 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
   function validateQueue(q: UploadItem[]) {
     const rejected: UploadItem[] = [];
     const accepted: UploadItem[] = [];
+
     for (const it of q) {
       if (!acceptOk(it.file.name)) {
         rejected.push({
           ...it,
           status: "skipped",
-          error: "Only .csv or .parquet files are allowed.",
+          error: "Only .csv, .parquet, .xls, or .xlsx files are allowed.",
         });
         continue;
       }
@@ -90,7 +94,6 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
     return { accepted, rejected, summary };
   }
 
-  /** 🚀 Upload langsung ke API deploy */
   async function runUpload(queue: UploadItem[]) {
     setItems((prev) =>
       prev.map((p) =>
@@ -113,7 +116,6 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
 
           if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
 
-          // Progress UX
           await fakeUpload(it.id);
 
           setItems((prev) =>
@@ -148,7 +150,6 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
 
   async function handleFiles(fileList: FileList | File[]) {
     setErrorSummary(null);
-
     const newQueue = toUploadItems(fileList);
     const { accepted, rejected, summary } = validateQueue(newQueue);
 
@@ -165,10 +166,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
       );
     }, 4000);
 
-    if (accepted.length > 0) {
-      await runUpload(accepted);
-    }
-
+    if (accepted.length > 0) await runUpload(accepted);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -176,17 +174,15 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setDragging(false);
-    if (e.dataTransfer?.files?.length) {
-      void handleFiles(e.dataTransfer.files);
-    }
+    if (e.dataTransfer?.files?.length) void handleFiles(e.dataTransfer.files);
   };
 
   return (
     <div className="bg-[#232427] rounded-2xl shadow-sm border border-[#2a2b32] p-5 md:p-6">
       <h2 className="text-xl font-bold text-white">Add datasets</h2>
       <p className="text-gray-300 mt-1">
-        Upload one or more <b>CSV</b> / <b>Parquet</b> files, or use a
-        connector.
+        Upload one or more <b>CSV</b>, <b>Excel</b> (<b>.xls</b>, <b>.xlsx</b>),
+        or <b>Parquet</b> files.
       </p>
 
       {/* Dropzone */}
@@ -218,12 +214,13 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         <p className="text-sm text-gray-400 mt-2">
           You can select multiple files • Max <b>50 MB</b> each
         </p>
+
         <input
           id="fileInput"
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".csv,.parquet,text/csv,application/vnd.apache.parquet"
+          accept=".csv,.xls,.xlsx,.parquet,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.apache.parquet"
           className="sr-only"
           onChange={(e) => {
             const list = e.target.files;

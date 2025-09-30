@@ -27,6 +27,7 @@ import NewChatPage from "./pages/NewChatPage";
 import DashboardSettingPage from "./pages/DashboardSettingPage";
 import ManageSettingsPage from "./pages/ManageSettings";
 import ConfigurationUserPage from "./pages/ConfigurationUserPage";
+import DatasetEditPage from "./pages/DatasetEditPage";
 
 function LegacyDatasetRedirect() {
   const { id } = useParams();
@@ -107,6 +108,10 @@ const App: React.FC = () => {
               <Route
                 path="datasets/:id"
                 element={<DatasetDetailPage userName={""} />}
+              />
+              <Route
+                path="datasets/:id/edit"
+                element={<DatasetEditPage userName={""} />}
               />
               <Route
                 path="datasets/connect"

@@ -31,7 +31,10 @@ const DatasetDetailPage: React.FC<Props> = ({ userName }) => {
         const cached = await getDatasetBlobText(id);
         if (cached) {
           console.log("Loaded from local cache:", id);
-          const parsed = Papa.parse(cached, { header: true });
+          const parsed = Papa.parse(cached, {
+            header: true,
+            skipEmptyLines: true,
+          });
           const records = parsed.data as Row[];
 
           if (records.length > 0) {

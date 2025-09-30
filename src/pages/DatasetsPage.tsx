@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import AppShell from "../components/DatasetsComponents/AppShell";
 import UploadDropzone from "../components/DatasetsComponents/UploadDropzone";
 import ConnectorsRow from "../components/DatasetsComponents/ConnectorsRow";
-// BARU: Impor tipe DatasetItem secara langsung
 import DatasetList, {
   type DatasetItem,
 } from "../components/DatasetsComponents/DatasetList";
@@ -178,6 +177,9 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
         ) : (
           <DatasetList
             items={items}
+            onEdit={(ds) =>
+              navigate(`/domain/${section}/datasets/${ds.id}/edit`)
+            }
             onView={(ds) => navigate(`/domain/${section}/datasets/${ds.id}`)}
             onDelete={handleDelete}
           />

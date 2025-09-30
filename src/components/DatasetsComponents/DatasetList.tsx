@@ -14,9 +14,10 @@ const humanSize = (b: number) =>
 
 const DatasetList: React.FC<{
   items: DatasetItem[];
+  onEdit?: (item: DatasetItem) => void;
   onView?: (item: DatasetItem) => void;
   onDelete?: (item: DatasetItem) => void;
-}> = ({ items, onView, onDelete }) => {
+}> = ({ items, onEdit, onView, onDelete }) => {
   const [selected, setSelected] = useState<DatasetItem | null>(null);
 
   if (items.length === 0) return null;
@@ -54,6 +55,14 @@ const DatasetList: React.FC<{
                 )}
               </div>
               <div className="flex gap-3">
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(d)}
+                    className="text-indigo-400 text-sm hover:underline"
+                  >
+                    Edit
+                  </button>
+                )}
                 {onView && (
                   <button
                     onClick={() => onView(d)}
