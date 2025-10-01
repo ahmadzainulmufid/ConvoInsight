@@ -121,7 +121,7 @@ export default function Sidebar({
   const extraNav = [
     {
       to: `/domain/${section}/datasets`,
-      label: "datasets",
+      label: "Datasets",
       icon: HiOutlineCollection,
     },
     {
