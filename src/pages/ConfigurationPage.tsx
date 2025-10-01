@@ -1,16 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import {
   collection,
   addDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   doc,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../utils/firebaseSetup";
-import { useAuthUser } from "../utils/firebaseSetup";
+import { db, useAuthUser } from "../utils/firebaseSetup";
 import { useParams } from "react-router-dom";
 
 type InstructionItem = {
@@ -23,14 +21,18 @@ type InstructionItem = {
 
 export default function ConfigurationUserPage() {
   const { uid: userId, loading: authLoading } = useAuthUser();
-
-  const [instruction, setInstruction] = useState("");
-  const [instructions, setInstructions] = useState<InstructionItem[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const { section: domainDocId } = useParams<{ section: string }>();
 
-  const fetchInstructions = useCallback(async () => {
+  const [instruction, setInstruction] = useState("");
+  const [instructionDoc, setInstructionDoc] = useState<InstructionItem | null>(
+    null
+  );
+  const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 🔹 Fetch hanya satu instruction
+  const fetchInstruction = useCallback(async () => {
     if (!userId || !domainDocId) return;
     setLoading(true);
     try {
@@ -43,26 +45,41 @@ export default function ConfigurationUserPage() {
         "instructionsDom"
       );
       const snapshot = await getDocs(ref);
-      const items = snapshot.docs.map((d) => ({
-        id: d.id,
-        text: d.data().text,
-        is_active: d.data().is_active ?? false,
-        created_at: d.data().created_at?.toDate?.().toLocaleString(),
-      }));
-      setInstructions(items);
+      if (!snapshot.empty) {
+        const d = snapshot.docs[0];
+        const data = d.data();
+        const item: InstructionItem = {
+          id: d.id,
+          text: data.text,
+          is_active: data.is_active ?? false,
+          created_at: data.created_at?.toDate?.().toLocaleString(),
+        };
+        setInstruction(item.text);
+        setInstructionDoc(item);
+      }
     } catch (e) {
       console.error(e);
-      toast.error("Failed to load instructions");
+      toast.error("Failed to load instruction");
     } finally {
       setLoading(false);
     }
   }, [userId, domainDocId]);
 
   useEffect(() => {
-    if (!authLoading && userId) fetchInstructions();
-  }, [authLoading, userId, fetchInstructions]);
+    if (!authLoading && userId) fetchInstruction();
+  }, [authLoading, userId, fetchInstruction]);
 
-  const handleSaveInstruction = async () => {
+  // 🔹 Auto expand textarea sesuai isi
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    }
+  }, [instruction]);
+
+  // 🔹 Simpan / Update instruction
+  const handleSaveOrUpdate = async () => {
     if (!instruction.trim()) {
       toast.error("Instruction cannot be empty!");
       return;
@@ -72,23 +89,28 @@ export default function ConfigurationUserPage() {
       return;
     }
 
+    setLoading(true);
     try {
-      if (editingId) {
-        const docRef = doc(
+      if (instructionDoc) {
+        // Update
+        const ref = doc(
           db,
           "users",
           userId,
           "domains",
           domainDocId!,
           "instructionsDom",
-          editingId
+          instructionDoc.id
         );
-        await updateDoc(docRef, {
+        await updateDoc(ref, {
           text: instruction.trim(),
           updated_at: serverTimestamp(),
         });
         toast.success("Instruction updated successfully");
+        setIsEditing(false);
+        fetchInstruction();
       } else {
+        // Save baru
         const ref = collection(
           db,
           "users",
@@ -97,25 +119,29 @@ export default function ConfigurationUserPage() {
           domainDocId!,
           "instructionsDom"
         );
-        await addDoc(ref, {
+        const newDoc = await addDoc(ref, {
           text: instruction.trim(),
           is_active: false,
           created_at: serverTimestamp(),
         });
+        setInstructionDoc({
+          id: newDoc.id,
+          text: instruction.trim(),
+          is_active: false,
+        });
         toast.success("Instruction saved successfully");
       }
-
-      setInstruction("");
-      setEditingId(null);
-      fetchInstructions();
     } catch (e) {
       console.error(e);
       toast.error("Failed to save instruction");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteInstruction = async (id: string) => {
-    if (!userId) return toast.error("User not logged in!");
+  // 🔹 Toggle Active
+  const toggleActiveInstruction = async () => {
+    if (!userId || !instructionDoc) return toast.error("No instruction found!");
     try {
       const ref = doc(
         db,
@@ -124,40 +150,20 @@ export default function ConfigurationUserPage() {
         "domains",
         domainDocId!,
         "instructionsDom",
-        id
+        instructionDoc.id
       );
-      await deleteDoc(ref);
-      toast.success("Instruction deleted successfully");
-      fetchInstructions();
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to delete instruction");
-    }
-  };
-
-  const toggleActiveInstruction = async (id: string, currentState: boolean) => {
-    if (!userId) return toast.error("User not logged in!");
-
-    try {
-      const docRef = doc(
-        db,
-        "users",
-        userId,
-        "domains",
-        domainDocId!,
-        "instructionsDom",
-        id
-      );
-      await updateDoc(docRef, {
-        is_active: !currentState,
+      await updateDoc(ref, {
+        is_active: !instructionDoc.is_active,
         updated_at: serverTimestamp(),
       });
-
       toast.success(
-        !currentState ? "Instruction activated" : "Instruction deactivated"
+        !instructionDoc.is_active
+          ? "Instruction activated"
+          : "Instruction deactivated"
       );
-
-      fetchInstructions();
+      setInstructionDoc((prev) =>
+        prev ? { ...prev, is_active: !prev.is_active } : prev
+      );
     } catch (e) {
       console.error(e);
       toast.error("Failed to toggle instruction state");
@@ -171,89 +177,79 @@ export default function ConfigurationUserPage() {
         <h2 className="text-lg font-semibold mb-8">Configuration Domain</h2>
 
         <label className="block text-sm font-medium mb-2">
-          Domain Instructions
+          Domain Instruction
         </label>
 
         {/* Input Section */}
         <section className="space-y-4">
           <textarea
+            ref={textareaRef}
             placeholder="Tambahkan instruksi agar AI lebih paham konteks kamu..."
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white resize-none"
-            rows={3}
-            disabled={loading}
+            className={`w-full p-3 rounded bg-gray-800 border border-gray-700 text-white resize-none overflow-hidden ${
+              instructionDoc && !isEditing
+                ? "pointer-events-none select-none opacity-70"
+                : ""
+            }`}
+            rows={1}
+            readOnly={!!instructionDoc && !isEditing}
           />
 
-          <button
-            onClick={handleSaveInstruction}
-            disabled={loading}
-            className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
-          >
-            {editingId ? "Update Instruction" : "Save Instruction"}
-          </button>
-        </section>
-
-        {/* History List */}
-        <section className="space-y-2 mt-8">
-          <h3 className="text-base font-semibold mb-4">Instruction History</h3>
-          {loading ? (
-            <p className="text-gray-400 text-sm">Loading...</p>
-          ) : instructions.length === 0 ? (
-            <p className="text-gray-500 text-sm">
-              There are no instructions stored yet
-            </p>
-          ) : (
-            instructions.map((ins) => (
-              <div
-                key={ins.id}
-                className={`flex items-center justify-between bg-gray-800 p-3 rounded border ${
-                  ins.is_active ? "border-green-500" : "border-gray-700"
-                }`}
+          <div className="flex gap-3">
+            {/* Save / Update / Edit Button */}
+            {!instructionDoc ? (
+              <button
+                onClick={handleSaveOrUpdate}
+                disabled={loading}
+                className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
               >
-                <div className="flex flex-col">
-                  <p className="text-sm text-gray-200">{ins.text}</p>
-                  {ins.is_active && (
-                    <span className="text-xs text-green-400 mt-1">
-                      ✅ Active
-                    </span>
-                  )}
-                </div>
+                Save Instruction
+              </button>
+            ) : isEditing ? (
+              <button
+                onClick={handleSaveOrUpdate}
+                disabled={loading}
+                className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
+              >
+                Save Instruction
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-4 py-2 bg-yellow-600 rounded hover:bg-yellow-700"
+              >
+                Update Instruction
+              </button>
+            )}
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() =>
-                      toggleActiveInstruction(ins.id, ins.is_active ?? false)
-                    }
-                    className={`px-3 py-1 text-sm rounded ${
-                      ins.is_active
-                        ? "bg-gray-600 hover:bg-gray-500"
-                        : "bg-blue-600 hover:bg-blue-700"
-                    }`}
-                  >
-                    {ins.is_active ? "Deactivate" : "Activate"}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setInstruction(ins.text);
-                      setEditingId(ins.id);
-                    }}
-                    className="px-3 py-1 text-sm bg-yellow-600 rounded hover:bg-yellow-700"
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={() => handleDeleteInstruction(ins.id)}
-                    className="px-3 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+            {/* Activate / Cancel Button */}
+            {instructionDoc &&
+              (isEditing ? (
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setInstruction(instructionDoc.text);
+                  }}
+                  disabled={loading}
+                  className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
+                >
+                  Cancel
+                </button>
+              ) : (
+                <button
+                  onClick={toggleActiveInstruction}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded ${
+                    instructionDoc.is_active
+                      ? "bg-gray-600 hover:bg-gray-500"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  {instructionDoc.is_active ? "Deactivate" : "Activate"}
+                </button>
+              ))}
+          </div>
         </section>
       </main>
     </div>

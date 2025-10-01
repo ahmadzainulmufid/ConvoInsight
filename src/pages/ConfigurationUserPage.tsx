@@ -600,7 +600,7 @@ export default function ConfigurationUserPage() {
                         onClick={handleSaveInstruction}
                         className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
                       >
-                        Save
+                        Save Instruction
                       </button>
                       {globalInstruction && (
                         <button
@@ -620,7 +620,7 @@ export default function ConfigurationUserPage() {
                         onClick={() => setIsEditingInstruction(true)}
                         className="px-4 py-2 bg-yellow-600 rounded hover:bg-yellow-700"
                       >
-                        Update
+                        Update Instruction
                       </button>
                       {globalInstruction.is_active ? (
                         <button
