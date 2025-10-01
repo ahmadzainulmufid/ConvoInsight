@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   HiOutlineMenu,
-  HiOutlinePlus,
   HiOutlineUser,
   HiOutlineHome,
   HiOutlineCollection,
@@ -116,7 +115,6 @@ export default function Sidebar({
   ];
 
   const extraNav = [
-    { to: "/domain/new", label: "New Domain", icon: HiOutlinePlus },
     { to: "/configuser", label: "Configuration User", icon: HiOutlineCog },
   ];
 
@@ -158,8 +156,6 @@ export default function Sidebar({
               labelClass={labelClass}
             />
           ))}
-
-          <hr className="border-[#2A2B32] my-2" />
 
           {extraNav.map((item) => (
             <SidebarItem
