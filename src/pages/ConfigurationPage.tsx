@@ -187,7 +187,11 @@ export default function ConfigurationUserPage() {
             placeholder="Tambahkan instruksi agar AI lebih paham konteks kamu..."
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            className={`w-full p-3 rounded bg-gray-800 border border-gray-700 text-white resize-none overflow-hidden ${
+            className={`w-full p-3 rounded text-white resize-none overflow-hidden transition-all duration-300 ${
+              instructionDoc?.is_active
+                ? "bg-gray-800 border-2 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]"
+                : "bg-gray-800 border border-gray-700"
+            } ${
               instructionDoc && !isEditing
                 ? "pointer-events-none select-none opacity-70"
                 : ""

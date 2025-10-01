@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { PROVIDERS } from "../constants/providers";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuthUser } from "../utils/firebaseSetup";
@@ -75,6 +75,27 @@ export default function ConfigurationUserPage() {
     useState<InstructionItem | null>(null);
   const [isEditingInstruction, setIsEditingInstruction] = useState(false);
   const [instructionLoading, setInstructionLoading] = useState(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+
+    // Reset dulu
+    el.style.height = "auto";
+
+    // Hitung tinggi sesuai konten
+    const newHeight = el.scrollHeight;
+    el.style.height = `${newHeight}px`;
+
+    // Hilangkan scrollbar
+    el.style.overflowY = "hidden";
+  }, [
+    instruction,
+    isEditingInstruction,
+    instructionLoading,
+    globalInstruction,
+  ]);
 
   // --- Fetch History ---
   const fetchHistory = useCallback(async () => {
@@ -585,11 +606,16 @@ export default function ConfigurationUserPage() {
             ) : (
               <>
                 <textarea
+                  ref={textareaRef}
                   placeholder="Add instructions so the AI better understands your context..."
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
-                  className="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white resize-none disabled:opacity-70 disabled:cursor-not-allowed"
-                  rows={5}
+                  className={`w-full p-3 rounded text-white resize-none overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed ${
+                    globalInstruction?.is_active
+                      ? "bg-gray-800 border-2 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]"
+                      : "bg-gray-800 border border-gray-700"
+                  }`}
+                  style={{ minHeight: "3rem" }}
                   disabled={!isEditingInstruction}
                 />
 
