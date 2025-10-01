@@ -101,7 +101,7 @@ export default function Sidebar({
   }`;
 
   const baseItem =
-    "flex items-center gap-3 px-3 h-10 rounded-md text-sm transition-colors";
+    "flex items-center h-10 rounded-md text-sm transition-colors";
 
   const section = location.pathname.match(/^\/domain\/([^/]+)/)?.[1] || "";
 
@@ -177,9 +177,11 @@ export default function Sidebar({
           } bg-[#2A2B32] hover:bg-[#2F3038] focus:outline-none focus:ring-2 focus:ring-white/20`}
         >
           <span
-            className={`font-semibold text-lg ${textTransition} ${
+            onClick={() => navigate("/domain")}
+            className={`font-semibold text-lg cursor-pointer hover:underline hover:text-gray-300 transition-colors ${textTransition} ${
               collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[10rem]"
             }`}
+            title="Back to Domain"
           >
             {headerTitle}
           </span>

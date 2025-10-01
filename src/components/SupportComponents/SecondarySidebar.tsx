@@ -25,8 +25,14 @@ export default function SecondarySidebar({
       ].join(" ")}
       style={{ left: leftOffset }}
     >
-      <div className="h-12 border-b border-[#3a3b42] flex items-center px-3">
-        <span className="text-sm font-semibold">Domain</span>
+      <div className="h-12 border-b border-[#3a3b42] flex items-center px-3 transition-all duration-300">
+        <span
+          className={`text-sm font-semibold whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200 ${
+            open ? "opacity-100 max-w-[10rem]" : "opacity-0 max-w-0"
+          }`}
+        >
+          Domain
+        </span>
       </div>
 
       <nav className="p-2 space-y-2">

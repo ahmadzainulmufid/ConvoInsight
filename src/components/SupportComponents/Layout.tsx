@@ -19,7 +19,7 @@ export default function Layout() {
     /^\/domain\/[^/]+(?:\/|$)/.test(location.pathname) && !isManageDomain;
 
   const primaryWidth = collapsed ? 64 : 256;
-  const secondaryWidth = collapsed ? 64 : 256;
+  const secondaryWidth = 224;
   const thirdWidth = collapsed ? 64 : 256;
 
   let paddingLeft = primaryWidth;
@@ -36,10 +36,12 @@ export default function Layout() {
         />
       )}
 
+      {/* SecondarySidebar muncul di halaman /domain */}
       {inDomainRoot && !isManageDomain && (
         <SecondarySidebar open leftOffset={primaryWidth} />
       )}
 
+      {/* ThirdSidebar hanya di halaman /domain/[name] */}
       {inDomainSection && (
         <ThirdSidebar
           collapsed={collapsed}
@@ -48,6 +50,7 @@ export default function Layout() {
         />
       )}
 
+      {/* Tambahkan paddingLeft sesuai sidebar aktif */}
       <main
         className="min-h-screen w-screen overflow-x-hidden transition-[padding] duration-300 bg-[#1a1b1e] text-[#ECECF1]"
         style={{ paddingLeft }}
