@@ -1,4 +1,4 @@
-// HistorySidebar.tsx
+// src\components\ChatComponents\HistorySidebar.tsx
 import { useChatHistory } from "../../hooks/useChatHistory";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";

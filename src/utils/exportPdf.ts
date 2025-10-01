@@ -1,4 +1,4 @@
-// exportPdf.ts
+// src\utils\exportPdf.ts
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { ChatMessage } from "../service/chatStore";
