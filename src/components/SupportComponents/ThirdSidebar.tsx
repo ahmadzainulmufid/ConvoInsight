@@ -112,6 +112,14 @@ export default function Sidebar({
       icon: HiOutlineHome,
     },
     {
+      to: `/domain/${section}/dashboard/newchat`,
+      label: "New Chat",
+      icon: HiOutlinePlus,
+    },
+  ];
+
+  const extraNav = [
+    {
       to: `/domain/${section}/datasets`,
       label: "datasets",
       icon: HiOutlineCollection,
@@ -123,12 +131,7 @@ export default function Sidebar({
     },
   ];
 
-  const extraNav = [
-    {
-      to: `/domain/${section}/dashboard/newchat`,
-      label: "New Chat",
-      icon: HiOutlinePlus,
-    },
+  const extraNav1 = [
     {
       to: `/domain`,
       label: "Back Domain",
@@ -199,6 +202,18 @@ export default function Sidebar({
           <hr className="border-[#2A2B32] my-2" />
 
           {extraNav.map((item) => (
+            <SidebarItem
+              key={item.to}
+              {...item}
+              collapsed={collapsed}
+              baseItem={baseItem}
+              labelClass={labelClass}
+            />
+          ))}
+
+          <hr className="border-[#2A2B32] my-2" />
+
+          {extraNav1.map((item) => (
             <SidebarItem
               key={item.to}
               {...item}
