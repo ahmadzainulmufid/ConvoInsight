@@ -1,3 +1,4 @@
+// HistorySidebar.tsx
 import { useChatHistory } from "../../hooks/useChatHistory";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
@@ -22,11 +23,11 @@ export default function HistorySidebar({
   const [searchParams] = useSearchParams();
   const openedId = searchParams.get("id");
 
-  // state untuk kebab per-item
+  // kebab per-item
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // tutup kebab kalau klik di luar
+  // close kebab ketika klik di luar
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!containerRef.current) return;
@@ -43,33 +44,46 @@ export default function HistorySidebar({
     onClose();
   };
 
+  // Ambil snapshot pertama dari Firestore via listener lalu ekspor
   const handleExportPdf = async (id: string) => {
     try {
       if (!section) return;
       const domainDocId = await getDomainDocId(section);
       if (!domainDocId) {
-        console.warn("Domain not found:", section);
+        alert("Domain tidak ditemukan.");
         return;
       }
 
-      const msgs: (ChatMessage & { chartHtml?: string })[] = [];
+      // one-shot snapshot dengan listenMessages
+      const msgs = await new Promise<(ChatMessage & { chartHtml?: string })[]>(
+        (resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error("Timeout mengambil pesan"));
+          }, 8000);
+          const unsub = listenMessages(domainDocId, id, (snap) => {
+            clearTimeout(timeout);
+            unsub();
+            resolve(snap);
+          });
+        }
+      );
 
-      const unsub = listenMessages(domainDocId, id, (snap) => {
-        msgs.splice(0, msgs.length, ...snap);
+      if (!msgs || msgs.length === 0) {
+        alert("Tidak ada messages pada sesi ini.");
+        return;
+      }
+
+      await exportChatToPdf(msgs, `chat-${id}.pdf`, {
+        domain: section ?? "-",
+        sessionId: id,
+        generatedAt: new Date(),
       });
-      unsub();
-
-      if (msgs.length === 0) {
-        alert("Tidak ada messages");
-        return;
-      }
-
-      await exportChatToPdf(msgs, `chat-${id}.pdf`);
     } catch (e) {
       console.error("Export PDF gagal:", e);
+      alert("Export PDF gagal. Coba lagi.");
+    } finally {
+      setMenuOpenId(null);
     }
-
-    setMenuOpenId(null);
   };
 
   const handleDelete = (id: string) => {
@@ -107,7 +121,6 @@ export default function HistorySidebar({
           </button>
         </div>
       </div>
-
       {/* LIST */}
       <div
         ref={containerRef}
@@ -133,7 +146,7 @@ export default function HistorySidebar({
                 {it.title}
               </button>
 
-              {/* Kebab menu (titik 3) */}
+              {/* Kebab menu (⋮) */}
               <div className="relative">
                 <button
                   onClick={(e) => {
