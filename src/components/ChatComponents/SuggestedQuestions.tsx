@@ -8,12 +8,7 @@ type Props = {
 };
 
 // Daftar pertanyaan didefinisikan di dalam komponen ini
-const questions = [
-  "Compare revenue m1 vs m0",
-  "Top 3 drivers of churn",
-  "QoQ growth by channel",
-  "Show total revenue this month",
-];
+const questions = ["Compare revenue m1 vs m0", "Top 3 drivers of churn"];
 
 const SuggestedQuestions: React.FC<Props> = ({ onQuestionClick }) => {
   return (
