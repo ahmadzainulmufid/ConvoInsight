@@ -18,6 +18,7 @@ import { FiCopy, FiEdit2, FiCheck, FiX } from "react-icons/fi";
 import toast from "react-hot-toast";
 import MultiSelectDropdown from "../components/ChatComponents/MultiSelectDropdown";
 import SuggestedQuestions from "../components/ChatComponents/SuggestedQuestions";
+import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
 
 /** Type Definitions **/
 type Msg = {
@@ -35,34 +36,6 @@ type DatasetApiItem = {
   size: number;
   updated?: string;
 };
-
-/** 🧹 Clean text from noise, URLs, undefined, etc. */
-function cleanResponseText(text: string): string {
-  return text
-    .replace(/[\w/\\-]*\.html[`']?/gi, "")
-    .replace(/See chart.*(\r?\n)?/gi, "")
-    .replace(/[*-]\s*For a detailed breakdown.*(\r?\n)?/gi, "")
-    .replace(/\bundefined\b/gi, "")
-    .replace(/[ \t]+$/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-/** ✨ Convert clean text to rich formatted HTML */
-function formatResponseText(text: string): string {
-  let formatted = cleanResponseText(text);
-  formatted = formatted.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-  formatted = formatted.replace(/(^|\s)\*(.*?)\*(\s|$)/g, "$1<em>$2</em>$3");
-  formatted = formatted.replace(/^\s*[-*]\s+(.*)$/gm, "<li>$1</li>");
-  formatted = formatted.replace(/^\s*\d+\.\s+(.*)$/gm, "<li>$1</li>");
-  formatted = formatted.replace(/(<li>.*<\/li>)/gs, (match) => {
-    const items = match.split(/\n+/).filter(Boolean);
-    return `<ul class="list-disc pl-5 space-y-1">${items.join("")}</ul>`;
-  });
-  formatted = formatted.replace(/\n{2,}/g, "</p><p>");
-  if (!/^<p>/.test(formatted)) formatted = `<p>${formatted}</p>`;
-  return formatted.trim();
-}
 
 /** Chat Input Component **/
 function ChatInput({
@@ -172,8 +145,14 @@ export default function NewChatPage() {
     const unsub = listenMessages(domainDocId, openedId, (msgs) => {
       const mapped: Msg[] = msgs.map((m) => {
         const charts = m.chartHtml ? [{ html: m.chartHtml }] : undefined;
-        return { role: m.role, content: m.text, charts, animate: false };
+        return {
+          role: m.role,
+          content: cleanHtmlResponse(m.text),
+          charts,
+          animate: false,
+        };
       });
+
       setMessages(mapped);
       setTimeout(() => scrollToBottom("auto"), 0);
     });
@@ -271,16 +250,15 @@ export default function NewChatPage() {
         }
       }
 
-      const cleanResponse = cleanResponseText(res.response ?? "(empty)");
-      const formatted = formatResponseText(cleanResponse);
+      const rawResponse = res.response ?? "(empty)";
+      const cleaned = cleanHtmlResponse(rawResponse);
 
       const assistantMsg: Msg = {
         role: "assistant",
         chartUrl,
         charts,
         animate: true,
-        content: formatted,
-        cleanText: cleanResponse,
+        content: cleaned, // ← pakai yang sudah dibersihkan & tanpa div luar
       };
 
       setMessages((cur) => [...cur, assistantMsg]);
@@ -382,11 +360,26 @@ export default function NewChatPage() {
                       {m.charts && m.charts.length > 0 && (
                         <ChartGallery charts={m.charts} />
                       )}
+
                       <div
-                        className="text-gray-200 leading-relaxed prose prose-invert max-w-none"
-                        dangerouslySetInnerHTML={{
-                          __html: formatResponseText(m.content),
-                        }}
+                        className={[
+                          "text-gray-200 leading-relaxed",
+                          "space-y-2",
+                          "[&_p]:my-2",
+                          "[&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6",
+                          "[&_li]:my-1",
+                          "[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-4",
+                          "[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-3",
+                          "[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-2",
+                          "[&_blockquote]:border-l-4 [&_blockquote]:border-gray-600 [&_blockquote]:pl-3 [&_blockquote]:italic",
+                          "[&_code]:rounded [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:bg-gray-800",
+                          "[&_pre]:bg-gray-800 [&_pre]:rounded [&_pre]:p-3 [&_pre]:overflow-auto",
+                          "[&_table]:w-full [&_table]:border-collapse",
+                          "[&_th]:border [&_th]:border-gray-700 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left",
+                          "[&_td]:border [&_td]:border-gray-700 [&_td]:px-2 [&_td]:py-1",
+                          "[&_a]:underline [&_a]:underline-offset-2",
+                        ].join(" ")}
+                        dangerouslySetInnerHTML={{ __html: m.content }}
                       />
                     </div>
                   ) : (
