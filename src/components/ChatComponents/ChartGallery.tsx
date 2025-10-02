@@ -23,7 +23,10 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
         // HTML chart
         if ("html" in c && typeof c.html === "string") {
           return (
-            <div key={key} className="w-full">
+            <div
+              key={key}
+              className="w-full overflow-hidden rounded-xl bg-gray-800/30"
+            >
               <iframe
                 srcDoc={c.html}
                 title={key}
@@ -31,10 +34,8 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
                 style={{
                   height: "clamp(320px, 60vh, 640px)",
                   border: "none",
-                  overflow: "hidden",
                 }}
               />
-              <hr className="border-t border-gray-700 my-6 opacity-50" />
             </div>
           );
         }
@@ -43,7 +44,10 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
         if ("plotly" in c && c.plotly) {
           const p: PlotlySpec = c.plotly;
           return (
-            <div key={key} className="w-full">
+            <div
+              key={key}
+              className="w-full overflow-hidden rounded-xl bg-gray-800/30"
+            >
               <Plot
                 data={p.data}
                 layout={{
@@ -58,7 +62,6 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
                 style={{ width: "100%", height: "clamp(320px, 60vh, 640px)" }}
                 useResizeHandler
               />
-              <hr className="border-t border-gray-700 my-6 opacity-50" />
             </div>
           );
         }
@@ -66,13 +69,15 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
         // Image
         if ("data_uri" in c && c.data_uri) {
           return (
-            <div key={key} className="w-full">
+            <div
+              key={key}
+              className="w-full overflow-hidden rounded-xl bg-gray-800/30"
+            >
               <img
                 src={c.data_uri}
                 alt={key}
-                className="w-full rounded object-contain"
+                className="w-full object-contain"
               />
-              <hr className="border-t border-gray-700 my-6 opacity-50" />
             </div>
           );
         }
