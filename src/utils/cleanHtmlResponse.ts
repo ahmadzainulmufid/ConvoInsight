@@ -85,7 +85,6 @@ function sanitizeTree(node: Node, doc: Document) {
 }
 
 function unwrapOuterDiv(doc: Document) {
-  // Kalau respons dibungkus satu <div> besar → ambil innerHTML-nya saja
   const body = doc.body;
   if (
     body.children.length === 1 &&
@@ -111,11 +110,8 @@ function wrapOrphansIntoP(doc: Document) {
 }
 
 function stripMarkdownFences(s: string) {
-  // ```lang\n ... \n```
   s = s.replace(/```(?:[^\n`]*)?\n?([\s\S]*?)\n?```/g, "$1");
-  // ~~~lang\n ... \n~~~
   s = s.replace(/~~~(?:[^\n~]*)?\n?([\s\S]*?)\n?~~~/g, "$1");
-  // kasus satu-baris: ```something```
   s = s.replace(/```([\s\S]*?)```/g, "$1");
   return s;
 }
@@ -133,7 +129,7 @@ export function cleanHtmlResponse(input: string): string {
   const parser = new DOMParser();
   const doc = parser.parseFromString(s, "text/html");
 
-  unwrapOuterDiv(doc); // ⬅️ buang <div> terluar
+  unwrapOuterDiv(doc);
   for (const ch of [...doc.body.childNodes]) sanitizeTree(ch, doc);
   wrapOrphansIntoP(doc);
 

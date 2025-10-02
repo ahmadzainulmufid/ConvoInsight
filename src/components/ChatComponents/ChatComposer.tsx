@@ -20,7 +20,6 @@ export function ChatComposer({
   const ref = useRef<HTMLTextAreaElement>(null);
   const hasText = value.trim().length > 0;
 
-  // Auto-grow
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
