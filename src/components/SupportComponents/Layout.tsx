@@ -1,4 +1,4 @@
-// components/SupportComponents/Layout.tsx
+// src/components/SupportComponents/Layout.tsx
 import { useState, useContext } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";

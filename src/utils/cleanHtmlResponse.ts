@@ -1,4 +1,4 @@
-// utils/cleanHtmlResponse.ts
+// src/utils/cleanHtmlResponse.ts
 const ALLOWED_TAGS = new Set([
   "b",
   "strong",

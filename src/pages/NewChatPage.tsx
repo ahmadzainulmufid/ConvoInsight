@@ -1,3 +1,4 @@
+//src/Pages/NewChatPage.tsx
 import { useRef, useState, useEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import HistorySidebar from "../components/ChatComponents/HistorySidebar";

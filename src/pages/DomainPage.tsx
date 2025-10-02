@@ -1,4 +1,4 @@
-// pages/DomainPage.tsx
+// src/pages/DomainPage.tsx
 import { useDomains } from "../hooks/useDomains";
 
 export default function DomainPage() {

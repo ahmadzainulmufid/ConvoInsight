@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 
 type Props = {
   onQuestionClick: (question: string) => void;
-  domain?: string; // tambahkan jika mau passing domain dari luar
+  domain?: string;
   dataset?: string | string[];
 };
 

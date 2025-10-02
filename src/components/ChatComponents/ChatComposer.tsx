@@ -1,3 +1,4 @@
+// src/components/ChatComponents/ChatComposer.txt
 import React, { useEffect, useRef } from "react";
 
 const MAX_H = 160;

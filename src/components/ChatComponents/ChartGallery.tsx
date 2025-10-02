@@ -1,3 +1,4 @@
+//src/Components/ChatComponents/ChartGallery.tsx
 import Plot from "react-plotly.js";
 import type { Data } from "plotly.js";
 
