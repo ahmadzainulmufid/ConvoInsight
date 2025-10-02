@@ -5,7 +5,6 @@ import {
   HiOutlineHome,
   HiOutlineCog,
   HiOutlineCollection,
-  HiOutlineArrowLeft,
   HiOutlinePlus,
 } from "react-icons/hi";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
@@ -131,14 +130,6 @@ export default function Sidebar({
     },
   ];
 
-  const extraNav1 = [
-    {
-      to: `/domain`,
-      label: "Back Domain",
-      icon: HiOutlineArrowLeft,
-    },
-  ];
-
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -204,18 +195,6 @@ export default function Sidebar({
           <hr className="border-[#2A2B32] my-2" />
 
           {extraNav.map((item) => (
-            <SidebarItem
-              key={item.to}
-              {...item}
-              collapsed={collapsed}
-              baseItem={baseItem}
-              labelClass={labelClass}
-            />
-          ))}
-
-          <hr className="border-[#2A2B32] my-2" />
-
-          {extraNav1.map((item) => (
             <SidebarItem
               key={item.to}
               {...item}

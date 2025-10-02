@@ -340,7 +340,15 @@ export default function NewChatPage() {
               </div>
             </div>
 
-            <SuggestedQuestions onQuestionClick={handleSend} />
+            <SuggestedQuestions
+              onQuestionClick={handleSend}
+              domain={domain}
+              dataset={
+                selectedDatasets.length > 0
+                  ? selectedDatasets
+                  : availableDatasets
+              }
+            />
           </div>
 
           <div className="hidden lg:block self-start">
