@@ -120,6 +120,11 @@ export default function NewChatPage() {
   const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
 
+  const stripFences = (s: string) =>
+    s
+      .replace(/```(?:[^\n`]*)?\n?([\s\S]*?)\n?```/g, "$1")
+      .replace(/~~~(?:[^\n~]*)?\n?([\s\S]*?)\n?~~~/g, "$1");
+
   const API_BASE =
     import.meta.env.VITE_API_URL ||
     "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
@@ -145,12 +150,13 @@ export default function NewChatPage() {
     const unsub = listenMessages(domainDocId, openedId, (msgs) => {
       const mapped: Msg[] = msgs.map((m) => {
         const charts = m.chartHtml ? [{ html: m.chartHtml }] : undefined;
-        return {
-          role: m.role,
-          content: cleanHtmlResponse(m.text),
-          charts,
-          animate: false,
-        };
+
+        const content =
+          m.role === "assistant"
+            ? cleanHtmlResponse(m.text) // hanya assistant yang dirender HTML
+            : stripFences(m.text); // user: plain text, tidak dibungkus <p>
+
+        return { role: m.role, content, charts, animate: false };
       });
 
       setMessages(mapped);
@@ -394,16 +400,21 @@ export default function NewChatPage() {
                           />
                           <div className="flex gap-2 justify-end text-sm">
                             <button
-                              onClick={() => {
-                                const next = [...messages];
-                                next[i].content = editText;
-                                setMessages(next);
+                              onClick={async () => {
+                                const edited = editText.trim();
+                                if (!edited)
+                                  return toast.error("Message can't be empty");
+
                                 setEditingIndex(null);
+                                setEditText("");
+
+                                await handleSend(edited);
                               }}
                               className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
                             >
                               <FiCheck size={14} /> Save
                             </button>
+
                             <button
                               onClick={() => setEditingIndex(null)}
                               className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white flex items-center gap-1"
