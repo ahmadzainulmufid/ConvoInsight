@@ -37,10 +37,10 @@ export default function CreateDomainPage() {
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Manage Domains</h1>
         <NavLink
-          to="/domain"
+          to="/home"
           className="px-3 py-1.5 rounded bg-[#2A2B32] hover:bg-[#343541] text-sm"
         >
-          Back to Domain
+          Back to Home
         </NavLink>
       </header>
 

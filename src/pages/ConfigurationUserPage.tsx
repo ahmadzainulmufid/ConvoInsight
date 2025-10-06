@@ -14,6 +14,7 @@ import {
   limit,
 } from "firebase/firestore";
 import { db } from "../utils/firebaseSetup";
+import { useNavigate } from "react-router-dom";
 
 type ProviderKey = keyof typeof PROVIDERS;
 
@@ -45,7 +46,8 @@ const API_BASE =
   "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
 export default function ConfigurationUserPage() {
-  const { uid: userId, loading: authLoading } = useAuthUser();
+  const { user, loading: authLoading } = useAuthUser();
+  const userId = user?.uid || null;
 
   const [provider, setProvider] = useState<ProviderKey | "">("");
   const [apiKey, setApiKey] = useState("");
@@ -69,6 +71,8 @@ export default function ConfigurationUserPage() {
   const [updateProvider, setUpdateProvider] = useState<string | null>(null);
   const [newApiKey, setNewApiKey] = useState("");
   const [updating, setUpdating] = useState(false);
+
+  const navigate = useNavigate();
 
   // New states for managing a single global instruction
   const [instruction, setInstruction] = useState("");
@@ -387,8 +391,16 @@ export default function ConfigurationUserPage() {
   return (
     <div className="relative min-h-screen flex bg-[#1a1b1e] text-white">
       <Toaster position="top-right" />
-      <main className="flex-1 overflow-y-auto pb-20 px-6 md:px-10 py-8">
-        <h2 className="text-lg font-semibold mb-8">Configuration User</h2>
+      <main className="flex-1 overflow-y-auto px-6 md:px-12 py-8 mr-20 lg:mr-24">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-lg font-semibold">Configuration User</h2>
+          <button
+            onClick={() => navigate("/home")}
+            className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition"
+          >
+            Back to Home
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Left: Configuration Form */}

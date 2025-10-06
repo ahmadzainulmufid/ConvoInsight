@@ -169,11 +169,11 @@ export default function Sidebar({
           } bg-[#2A2B32] hover:bg-[#2F3038] focus:outline-none focus:ring-2 focus:ring-white/20`}
         >
           <span
-            onClick={() => navigate("/domain")}
+            onClick={() => navigate("/home")}
             className={`font-semibold text-lg cursor-pointer hover:underline hover:text-gray-300 transition-colors ${textTransition} ${
               collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[10rem]"
             }`}
-            title="Back to Domain"
+            title="Back to Home"
           >
             {headerTitle}
           </span>

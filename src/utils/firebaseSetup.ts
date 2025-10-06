@@ -1,6 +1,11 @@
 // firebasesetup.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  type User,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
@@ -13,23 +18,25 @@ const firebaseConfig = {
   appId: "1:960168074270:web:b12ebc97beb5162ba3e20f",
 };
 
+// ✅ pastikan hanya 1 instance
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
+// ✅ Custom hook: track user login
 export function useAuthUser() {
-  const [uid, setUid] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((user) => {
-      setUid(user ? user.uid : null);
+    const unsub = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  return { uid, loading };
+  return { user, loading };
 }
