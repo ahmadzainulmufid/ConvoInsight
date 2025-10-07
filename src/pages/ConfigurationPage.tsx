@@ -20,7 +20,9 @@ type InstructionItem = {
 };
 
 export default function ConfigurationUserPage() {
-  const { uid: userId, loading: authLoading } = useAuthUser();
+  const { user, loading: authLoading } = useAuthUser();
+  const userId = user?.uid || null;
+
   const { section: domainDocId } = useParams<{ section: string }>();
 
   const [instruction, setInstruction] = useState("");
