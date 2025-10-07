@@ -25,14 +25,14 @@ export default function HomeContent() {
       desc: "Add your domain to start managing datasets and building apps",
       to: "/domain/new",
     },
-    {
-      title: "Start upload datasets",
-      desc: "Upload your datasets to your domain to start building AI-powered applications",
-      to:
-        domains.length > 0
-          ? `/domain/${domains[0].name}/datasets`
-          : "/domain/new",
-    },
+    // {
+    //   title: "Start upload datasets",
+    //   desc: "Upload your datasets to your domain to start building AI-powered applications",
+    //   to:
+    //     domains.length > 0
+    //       ? `/domain/${domains[0].name}/datasets`
+    //       : "/domain/new",
+    // },
     {
       title: "Configuration User",
       desc: "Configure your user settings, preferences, and account details to personalize your experience",

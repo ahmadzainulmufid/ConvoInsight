@@ -149,21 +149,37 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
         <UploadDropzone
           section={section}
           onUploaded={async (files) => {
-            toast.success("Dataset uploaded successfully!");
             try {
+              for (const file of files) {
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("domain", section);
+
+                const res = await fetch(`${API_BASE}/datasets/upload`, {
+                  method: "POST",
+                  body: formData,
+                });
+
+                if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+              }
+
+              toast.success("Dataset uploaded successfully!");
+
+              // Cache ke lokal juga (opsional)
               const savePromises = files.map((file) =>
                 saveDatasetBlob(file.name, file)
               );
               await Promise.all(savePromises);
+
+              await fetchDatasets();
+
+              // Arahkan ke detail dataset pertama
+              if (files.length === 1) {
+                navigate(`/domain/${section}/datasets/${files[0].name}`);
+              }
             } catch (err) {
-              console.error("Failed to save blobs locally:", err);
-              toast.error("Could not save dataset to local storage.");
-            }
-
-            await fetchDatasets();
-
-            if (files.length === 1) {
-              navigate(`/domain/${section}/datasets/${files[0].name}`);
+              console.error("Failed to upload:", err);
+              toast.error("Failed to upload dataset to server.");
             }
           }}
         />
