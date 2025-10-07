@@ -17,9 +17,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { DragEndEvent } from "@dnd-kit/core";
-import KPIConfigurator from "../components/SupportComponents/KPIConfigurator";
-import { BUILTIN_KPIS } from "../constants/kpiConstants";
-import { classNames } from "../utils/classNames";
+// import KPIConfigurator from "../components/SupportComponents/KPIConfigurator";
+// import { BUILTIN_KPIS } from "../constants/kpiConstants";
+// import { classNames } from "../utils/classNames";
 
 function SortableItem({
   id,
@@ -76,8 +76,8 @@ function SortableItem({
 
 export default function DashboardSettingPage() {
   const { section: domainDocId } = useParams();
-  const [active, setActive] = useState(false);
-  const [selectedBuiltin, setSelectedBuiltin] = useState("");
+  // const [active, setActive] = useState(false);
+  // const [selectedBuiltin, setSelectedBuiltin] = useState("");
   const { group, addGroup, removeGroup, updateGroupOrder, uid } =
     useDashboardSetting(domainDocId || "");
   const [items, setItems] = useState(group.map((g) => g.id));
@@ -201,8 +201,7 @@ export default function DashboardSettingPage() {
         )}
       </section>
 
-      <KPIConfigurator section={domainDocId || null} />
-      <section className="bg-[#2A2B32] p-4 rounded-lg space-y-4">
+      {/* <section className="bg-[#2A2B32] p-4 rounded-lg space-y-4">
         <h3 className="text-white font-medium">Builtin KPI Picker</h3>
 
         <div className="flex gap-3 items-center">
@@ -231,7 +230,7 @@ export default function DashboardSettingPage() {
             ))}
           </select>
         </div>
-      </section>
+      </section> */}
 
       {groupToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

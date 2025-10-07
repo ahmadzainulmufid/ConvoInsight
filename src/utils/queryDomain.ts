@@ -3,6 +3,7 @@ export type DomainQueryResp = {
   response: string;
   chart_url?: string | null;
   execution_time: number;
+  insights?: string[];
 };
 
 export async function queryDomain({

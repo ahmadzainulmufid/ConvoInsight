@@ -42,6 +42,7 @@ export interface HistoryItem {
   prompt: string;
   output: string;
   type: string;
+  chartUrl?: string;
 }
 
 export async function getHistory(): Promise<HistoryItem[]> {

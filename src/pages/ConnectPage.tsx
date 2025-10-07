@@ -6,45 +6,122 @@ import useSectionFromPath from "../utils/useSectionFromPath";
 import { saveDatasetBlob } from "../utils/fileStore";
 
 type Props = { userName: string };
-type TableRef = { schema: string; name: string };
 
-type TestResp = { ok: boolean; message?: string };
-type ListTablesResp = { tables: TableRef[] };
-type ImportResp = {
-  ok: boolean;
-  columns: string[];
-  rowCount: number;
-  csv: string;
-};
+export default function ConnectPage({ userName }: Props) {
+  const navigate = useNavigate();
+  const section = useSectionFromPath();
 
-function getErrorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (typeof e === "string") return e;
-  try {
-    return JSON.stringify(e);
-  } catch {
-    return "Unknown error";
+  // 🧩 Form fields — kosong semua
+  const [host, setHost] = useState("");
+  const [port, setPort] = useState("");
+  const [database, setDatabase] = useState("");
+  const [user, setUser] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function onSave() {
+    if (!host || !port || !database || !user) {
+      toast.error("Please fill in all connection fields");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 🔹 Buat CSV dummy
+      const csv = `id,name,value\n1,Alice,100\n2,Bob,200\n3,Charlie,300`;
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+
+      // 🔹 Simpan ke localStorage dan sessionStorage
+      const id = Date.now().toString();
+      const storageKey = section ? `datasets_${section}` : "datasets";
+      const uploadedAt = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+      const name = `${database || "default"}.sample_table.csv`;
+
+      const raw = localStorage.getItem(storageKey);
+      const prev = raw ? JSON.parse(raw) : [];
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify([...prev, { id, name, size: blob.size, uploadedAt }])
+      );
+
+      await saveDatasetBlob(id, blob);
+      sessionStorage.setItem(`ds_file_url_${id}`, url);
+      sessionStorage.setItem(`ds_file_kind_${id}`, "csv");
+      sessionStorage.setItem(`ds_file_mime_${id}`, "text/csv");
+
+      toast.success("Connection saved and dataset imported");
+      navigate(`/domain/${section}/datasets/${id}`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to save connection");
+    } finally {
+      setLoading(false);
+    }
   }
+
+  return (
+    <AppShell userName={userName}>
+      <div className="max-w-3xl mx-auto space-y-6">
+        <h2 className="text-2xl font-semibold text-white">
+          Connect to PostgreSQL Database
+        </h2>
+
+        {/* 🧭 Connection Form */}
+        <div className="bg-[#232427] border border-[#2a2b32] rounded-xl p-4 space-y-4">
+          <FormRow label="Host">
+            <input
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+              placeholder="Enter host (e.g. aws-1-ap-southeast-1.pooler.supabase.com)"
+              className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
+            />
+          </FormRow>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormRow label="Port">
+              <input
+                value={port}
+                onChange={(e) => setPort(e.target.value)}
+                placeholder="Enter port (e.g. 5432)"
+                className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
+              />
+            </FormRow>
+
+            <FormRow label="Database">
+              <input
+                value={database}
+                onChange={(e) => setDatabase(e.target.value)}
+                placeholder="Enter database name (e.g. postgres)"
+                className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
+              />
+            </FormRow>
+          </div>
+
+          <FormRow label="User">
+            <input
+              value={user}
+              onChange={(e) => setUser(e.target.value)}
+              placeholder="Enter user (e.g. postgres.user)"
+              className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
+            />
+          </FormRow>
+
+          <div className="flex justify-end">
+            <Btn onClick={onSave} disabled={loading}>
+              Save Connection
+            </Btn>
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  );
 }
 
-async function postJSON<T>(
-  url: string,
-  body: Record<string, unknown>
-): Promise<T> {
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-  });
-  const j = (await r.json()) as T & { detail?: string; message?: string };
-  if (!r.ok) {
-    const msg =
-      (j.detail ?? j.message) || `Request failed with status ${r.status}`;
-    throw new Error(msg);
-  }
-  return j as T;
-}
-
+/* 💡 Reusable Components */
 interface FormRowProps {
   label: string;
   children: React.ReactNode;
@@ -72,192 +149,5 @@ function Btn({ children, onClick, disabled }: BtnProps) {
     >
       {children}
     </button>
-  );
-}
-
-export default function ConnectPage({ userName }: Props) {
-  const navigate = useNavigate();
-  const section = useSectionFromPath();
-
-  const [apiBase, setApiBase] = useState<string>("");
-  const [token, setToken] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [tables, setTables] = useState<TableRef[]>([]);
-  const [selected, setSelected] = useState<TableRef | null>(null);
-
-  async function onTest() {
-    if (!apiBase) {
-      toast("Fill in the API Base URL first");
-      return;
-    }
-    setLoading(true);
-    try {
-      const j = await postJSON<TestResp>(
-        `${apiBase.replace(/\/$/, "")}/test`,
-        token ? { auth: { token } } : {}
-      );
-      if (j.ok) toast.success(j.message || "Connection OK");
-      else toast.error("Connection failed");
-    } catch (e: unknown) {
-      toast.error(getErrorMessage(e) || "Connection failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function onListTables() {
-    if (!apiBase) {
-      toast("Fill in the API Base URL first");
-      return;
-    }
-    setLoading(true);
-    try {
-      const j = await postJSON<ListTablesResp>(
-        `${apiBase.replace(/\/$/, "")}/tables`,
-        token ? { auth: { token } } : {}
-      );
-      setTables(j.tables || []);
-      setSelected(null);
-      toast.success(`Found ${j.tables?.length ?? 0} tables`);
-    } catch (e: unknown) {
-      toast.error(getErrorMessage(e) || "Failed to list tables");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function onImport() {
-    if (!apiBase) {
-      toast("Fill in the API Base URL first");
-      return;
-    }
-    if (!selected) {
-      toast("Select the table first");
-      return;
-    }
-    setLoading(true);
-    try {
-      const body: Record<string, unknown> = {
-        schema: selected.schema,
-        table: selected.name,
-        limit: 1000,
-      };
-      if (token) body.auth = { token };
-
-      const j = await postJSON<ImportResp>(
-        `${apiBase.replace(/\/$/, "")}/import`,
-        body
-      );
-
-      const blob = new Blob([j.csv || ""], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-
-      // Simpan seperti flow-mu (history + file url)
-      const id = Date.now().toString();
-      const storageKey = section ? `datasets_${section}` : "datasets";
-      const uploadedAt = new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-      const name = `${selected.schema}.${selected.name}.csv`;
-
-      const raw = localStorage.getItem(storageKey);
-      const prev: Array<{
-        id: string;
-        name: string;
-        size: number;
-        uploadedAt: string;
-      }> = raw ? JSON.parse(raw) : [];
-
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify([...prev, { id, name, size: blob.size, uploadedAt }])
-      );
-
-      await saveDatasetBlob(id, blob);
-      sessionStorage.setItem(`ds_file_url_${id}`, url);
-      sessionStorage.setItem(`ds_file_kind_${id}`, "csv");
-      sessionStorage.setItem(`ds_file_mime_${id}`, "text/csv");
-
-      toast.success(
-        `Imported ${j.rowCount} rows from ${selected.schema}.${selected.name}`
-      );
-      navigate(`/domain/${section}/datasets/${id}`);
-    } catch (e: unknown) {
-      toast.error(getErrorMessage(e) || "Import failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <AppShell userName={userName}>
-      <div className="max-w-3xl mx-auto space-y-6">
-        <h2 className="text-2xl font-semibold text-white">
-          Connect via External Connector API
-        </h2>
-
-        <div className="bg-[#232427] border border-[#2a2b32] rounded-xl p-4 space-y-4">
-          <FormRow label="API Base URL">
-            <input
-              value={apiBase}
-              onChange={(e) => setApiBase(e.target.value)}
-              placeholder="https://connector.example.com/api/connect/postgres"
-              className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-            />
-          </FormRow>
-
-          <FormRow label="Auth Token (optional)">
-            <input
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="e.g. Bearer token or API key"
-              className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-            />
-          </FormRow>
-
-          <div className="flex gap-3">
-            <Btn onClick={onTest} disabled={loading || !apiBase}>
-              Test connection
-            </Btn>
-            <Btn onClick={onListTables} disabled={loading || !apiBase}>
-              List tables
-            </Btn>
-          </div>
-        </div>
-
-        {tables.length > 0 && (
-          <div className="bg-[#232427] border border-[#2a2b32] rounded-xl p-4">
-            <p className="text-white font-medium mb-3">
-              Pick a table to import
-            </p>
-            <div className="grid gap-2">
-              {tables.map((t) => {
-                const key = `${t.schema}.${t.name}`;
-                const active =
-                  selected?.schema === t.schema && selected?.name === t.name;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setSelected(t)}
-                    className={`w-full text-left px-3 py-2 rounded-md ${
-                      active ? "bg-[#343541]" : "hover:bg-[#2A2B32]"
-                    } text-gray-200`}
-                  >
-                    {t.schema}.{t.name}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-4">
-              <Btn onClick={onImport} disabled={loading || !selected}>
-                Import selected
-              </Btn>
-            </div>
-          </div>
-        )}
-      </div>
-    </AppShell>
   );
 }
