@@ -1,151 +1,148 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FiSettings } from "react-icons/fi";
-import CardStat from "../components/SupportComponents/Card";
-import ChartGallery from "../components/ChatComponents/ChartGallery";
-import {
-  askDataset,
-  type AskResult,
-  type ChartItem,
-} from "../utils/askDataset";
-import { generateQuestionFromColumnName } from "../utils/generateQuestionFromColumnName";
+import toast from "react-hot-toast";
+import { getDomainDocId, fetchMessagesOnce } from "../service/chatStore";
+import { useDashboardSetting } from "../hooks/useDashboardSettings";
+import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
 
-type KPIItem = {
-  key: string;
-  label: string;
-  unit?: string;
+type ExecutionResult = { text: string; chartHtml?: string };
+type DashboardItem = {
+  id: string;
+  type: "chart" | "table" | "kpi";
+  prompt?: string;
+  includeInsight: boolean;
 };
+type HydratedDashboardItem = DashboardItem & { result?: ExecutionResult };
 
-type CardStatItem = {
-  title: string;
-  value: string | number;
-  change: string;
-  type: "users" | "revenue" | "conversion" | "order";
-};
-
-function getKpiType(key: string): CardStatItem["type"] {
-  const lower = key.toLowerCase();
-  if (lower.includes("user")) return "users";
-  if (lower.includes("revenue") || lower.includes("cpa")) return "revenue";
-  if (
-    lower.includes("conversion") ||
-    lower.includes("ctr") ||
-    lower.includes("retention")
-  )
-    return "conversion";
-  return "order";
-}
-
-const DashboardPage: React.FC = () => {
-  const { section } = useParams();
+export default function DashboardPage() {
+  const { section: domain } = useParams();
   const navigate = useNavigate();
-
-  const [kpis, setKpis] = useState<CardStatItem[]>([]);
-  const [charts, setCharts] = useState<ChartItem[]>([]);
-  const [analysis, setAnalysis] = useState<string>("");
-  const [loadingChart, setLoadingChart] = useState(false);
-  const [parsedKpis, setParsedKpis] = useState<KPIItem[]>([]);
-
-  const handleDashboardSettings = () => {
-    navigate(`/domain/${section}/dashboard/dashboardSetting`);
-  };
+  const { group } = useDashboardSetting(domain || "");
+  const [domainDocId, setDomainDocId] = useState<string | null>(null);
+  const [hydratedGroups, setHydratedGroups] = useState<
+    { groupName: string; items: HydratedDashboardItem[] }[]
+  >([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!section) return;
-
-    const raw = localStorage.getItem(`config_selected_kpis_${section}`);
-    if (!raw) return;
-
-    try {
-      const parsed: KPIItem[] = JSON.parse(raw);
-      setParsedKpis(parsed);
-
-      const mapped = parsed.map((kpi) => ({
-        title: kpi.label,
-        value: Math.floor(Math.random() * 1000),
-        change: Math.random() > 0.5 ? "+4%" : "-3%",
-        type: getKpiType(kpi.key),
-      }));
-      setKpis(mapped);
-
-      const first = parsed[0];
-      if (first && first.key.startsWith("column:")) {
-        const parts = first.key.split(":");
-        const datasetId = parts[1];
-        const columnName = parts.slice(2).join(":");
-        fetchChartAndAnalysis(datasetId, columnName);
+    if (!domain) return;
+    (async () => {
+      try {
+        const id = await getDomainDocId(domain);
+        if (!id) {
+          toast.error("Domain not found");
+          return;
+        }
+        setDomainDocId(id);
+      } catch {
+        toast.error("Failed to get domain id");
       }
-    } catch (err) {
-      console.error("Failed to parse KPIs", err);
-    }
-  }, [section]);
+    })();
+  }, [domain]);
 
-  async function fetchChartAndAnalysis(datasetId: string, columnName: string) {
-    setLoadingChart(true);
-    try {
-      const question = generateQuestionFromColumnName(columnName);
-      const result: AskResult = await askDataset(datasetId, question);
-      setCharts(result.charts || []);
-      setAnalysis(result.analysis || "");
-    } catch (err) {
-      console.error("Failed to fetch chart/analysis:", err);
-      setCharts([]);
-      setAnalysis("Failed to load analysis");
-    } finally {
-      setLoadingChart(false);
-    }
-  }
+  useEffect(() => {
+    if (!domainDocId || group.length === 0) return;
+
+    const loadAllGroups = async () => {
+      setLoading(true);
+      const result: { groupName: string; items: HydratedDashboardItem[] }[] =
+        [];
+
+      for (const g of group) {
+        const storageKey = `dashboard_items_${g.id}`;
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) continue;
+
+        const items: DashboardItem[] = JSON.parse(raw);
+        const hydratedItems: HydratedDashboardItem[] = await Promise.all(
+          items.map(async (item) => {
+            if (!item.prompt) return item;
+            try {
+              const messages = await fetchMessagesOnce(domainDocId, item.id);
+              const assistant = messages.find((m) => m.role === "assistant");
+              if (assistant) {
+                return {
+                  ...item,
+                  result: {
+                    text: assistant.text,
+                    chartHtml: assistant.chartHtml,
+                  },
+                };
+              }
+            } catch {
+              console.warn("Failed to hydrate item:", item.id);
+            }
+            return item;
+          })
+        );
+
+        result.push({
+          groupName: g.name,
+          items: hydratedItems,
+        });
+      }
+
+      setHydratedGroups(result);
+      setLoading(false);
+    };
+
+    loadAllGroups();
+  }, [domainDocId, group]);
+
+  const handleDashboardSettings = () => {
+    navigate(`/domain/${domain}/dashboard/dashboardSetting`);
+  };
 
   return (
     <div className="relative min-h-screen p-6 bg-[#1a1b1e] text-white">
-      <h2 className="text-2xl font-bold mb-4">Dashboard {section}</h2>
+      <h2 className="text-2xl font-bold mb-4">Dashboard {domain}</h2>
 
-      {/* KPI Cards */}
-      {kpis.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-          {kpis.map((kpi, idx) => (
-            <CardStat
-              key={idx}
-              title={kpi.title}
-              value={kpi.value}
-              change={kpi.change}
-              type={kpi.type}
-              onClick={() => {
-                const selected = parsedKpis.find((x) => x.label === kpi.title);
-                if (selected?.key?.startsWith("column:")) {
-                  const parts = selected.key.split(":");
-                  const datasetId = parts[1];
-                  const columnName = parts.slice(2).join(":");
-                  fetchChartAndAnalysis(datasetId, columnName);
-                }
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Chart + Analysis */}
-      {loadingChart ? (
-        <div className="text-gray-400">Loading chart & analysis...</div>
+      {loading ? (
+        <p className="text-gray-400">Loading dashboard...</p>
+      ) : hydratedGroups.length === 0 ? (
+        <p className="text-gray-400">No dashboard groups yet.</p>
       ) : (
-        <>
-          {charts.length > 0 && (
-            <section className="mt-6 space-y-4">
-              <h3 className="text-white text-lg font-semibold">Chart</h3>
-              <ChartGallery charts={charts} />
-            </section>
-          )}
-          {analysis && (
-            <section className="mt-6 space-y-2">
-              <h3 className="text-white text-lg font-semibold">
-                Descriptive Analysis
-              </h3>
-              <p className="text-sm text-gray-300 whitespace-pre-wrap">
-                {analysis}
-              </p>
-            </section>
-          )}
-        </>
+        hydratedGroups.map((g) => (
+          <section key={g.groupName} className="mb-10">
+            <h3 className="text-xl font-semibold mb-4">{g.groupName}</h3>
+
+            {g.items.length === 0 ? (
+              <p className="text-gray-500">No items yet.</p>
+            ) : (
+              g.items.map((item) => (
+                <div
+                  key={item.id}
+                  className="mb-6 p-4 rounded-lg bg-[#2A2B32] border border-[#3a3b42] space-y-4"
+                >
+                  <h4 className="font-semibold text-lg capitalize">
+                    {item.type}
+                  </h4>
+
+                  {item.result?.chartHtml && (
+                    <div className="overflow-hidden rounded-lg bg-black/20">
+                      <iframe
+                        srcDoc={item.result.chartHtml}
+                        title={`chart-${item.id}`}
+                        className="w-full"
+                        style={{ height: "400px", border: "none" }}
+                      />
+                    </div>
+                  )}
+
+                  {item.result?.text && (
+                    <div
+                      className="text-gray-200 leading-relaxed [&_p]:my-2 [&_table]:w-full [&_td]:border [&_td]:p-2"
+                      dangerouslySetInnerHTML={{
+                        __html: cleanHtmlResponse(item.result.text),
+                      }}
+                    />
+                  )}
+                </div>
+              ))
+            )}
+          </section>
+        ))
       )}
 
       <button
@@ -156,6 +153,4 @@ const DashboardPage: React.FC = () => {
       </button>
     </div>
   );
-};
-
-export default DashboardPage;
+}

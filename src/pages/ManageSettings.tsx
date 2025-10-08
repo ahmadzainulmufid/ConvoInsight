@@ -345,7 +345,6 @@ export default function ManageSettings() {
                 items={hydratedItems}
                 onReorder={handleReorder}
                 onDelete={handleDelete}
-                // INI BAGIAN YANG DIPERBAIKI
                 onViewItem={(item) => setViewingItem(item)}
               />
             )}

@@ -17,9 +17,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { DragEndEvent } from "@dnd-kit/core";
-// import KPIConfigurator from "../components/SupportComponents/KPIConfigurator";
-// import { BUILTIN_KPIS } from "../constants/kpiConstants";
-// import { classNames } from "../utils/classNames";
 
 function SortableItem({
   id,
