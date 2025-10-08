@@ -11,16 +11,18 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import DashboardItemCard from "./ManageItemCard";
-import type { DashboardItem } from "../../pages/ManageSettings";
+import type { HydratedDashboardItem } from "../../pages/ManageSettings";
 
 export default function DashboardGroupOutput({
   items,
   onReorder,
   onDelete,
+  onViewItem,
 }: {
-  items: DashboardItem[];
-  onReorder: (items: DashboardItem[]) => void;
+  items: HydratedDashboardItem[];
+  onReorder: (items: HydratedDashboardItem[]) => void;
   onDelete: (id: string) => void;
+  onViewItem: (item: HydratedDashboardItem) => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -35,7 +37,6 @@ export default function DashboardGroupOutput({
   return (
     <section className="bg-[#2A2B32] p-4 rounded-lg space-y-3">
       <h2 className="text-sm text-gray-300 mb-3">Current Group Dashboard</h2>
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -48,6 +49,7 @@ export default function DashboardGroupOutput({
                 key={item.id}
                 item={item}
                 onDelete={() => onDelete(item.id)}
+                onView={() => onViewItem(item)}
               />
             ))}
           </ul>

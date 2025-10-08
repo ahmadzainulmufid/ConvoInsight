@@ -1,4 +1,3 @@
-// src/utils/cleanHtmlResponse.ts
 const ALLOWED_TAGS = new Set([
   "b",
   "strong",
@@ -51,14 +50,11 @@ function sanitizeTree(node: Node, doc: Document) {
   if (node.nodeType === Node.ELEMENT_NODE) {
     const el = node as HTMLElement;
     const tag = el.tagName.toLowerCase();
-
-    // drop inline event/style/class
     for (const attr of [...el.attributes]) {
       const n = attr.name.toLowerCase();
       if (n.startsWith("on") || n === "style" || n === "class")
         el.removeAttribute(attr.name);
     }
-
     if (!ALLOWED_TAGS.has(tag)) {
       const p = doc.createElement("p");
       p.textContent = el.textContent || "";
@@ -66,12 +62,10 @@ function sanitizeTree(node: Node, doc: Document) {
       sanitizeTree(p, doc);
       return;
     }
-
     const allowed = ALLOWED_ATTRS[tag] || new Set<string>();
     for (const attr of [...el.attributes]) {
       if (!allowed.has(attr.name.toLowerCase())) el.removeAttribute(attr.name);
     }
-
     if (tag === "a") {
       const a = el as HTMLAnchorElement;
       const href = (a.getAttribute("href") || "").trim();
@@ -79,7 +73,6 @@ function sanitizeTree(node: Node, doc: Document) {
       a.setAttribute("target", "_blank");
       a.setAttribute("rel", "noopener noreferrer nofollow");
     }
-
     for (const child of [...el.childNodes]) sanitizeTree(child, doc);
   }
 }
@@ -120,12 +113,21 @@ export function cleanHtmlResponse(input: string): string {
   let s = (input ?? "").trim();
   s = stripMarkdownFences(s);
   if (!s) return "";
+
+  // --> INI BAGIAN PENTINGNYA <--
+  // Baris-baris ini mengubah format Markdown menjadi tag HTML
+  // Mengubah **teks tebal** menjadi <strong>teks tebal</strong>
+  s = s.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  // Mengubah *teks miring* menjadi <em>teks miring</em>
+  s = s.replace(/\*(.*?)\*/g, "<em>$1</em>");
+
   if (!looksLikeHtml(s)) {
     return s
       .split(/\n{2,}/g)
       .map((part) => `<p>${escapeHtml(part)}</p>`)
       .join("\n");
   }
+
   const parser = new DOMParser();
   const doc = parser.parseFromString(s, "text/html");
 
