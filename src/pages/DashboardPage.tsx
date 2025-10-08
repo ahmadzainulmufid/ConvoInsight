@@ -20,11 +20,12 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { group } = useDashboardSetting(domain || "");
   const [domainDocId, setDomainDocId] = useState<string | null>(null);
-  const [hydratedGroups, setHydratedGroups] = useState<
-    { groupName: string; items: HydratedDashboardItem[] }[]
-  >([]);
+  const [hydratedItems, setHydratedItems] = useState<
+    Record<string, HydratedDashboardItem[]>
+  >({});
   const [loading, setLoading] = useState(true);
 
+  // 🔹 Ambil domainDocId dari Firestore
   useEffect(() => {
     if (!domain) return;
     (async () => {
@@ -41,21 +42,24 @@ export default function DashboardPage() {
     })();
   }, [domain]);
 
+  // 🔹 Muat item setiap group dari localStorage + hydrate dari Firestore
   useEffect(() => {
     if (!domainDocId || group.length === 0) return;
 
-    const loadAllGroups = async () => {
+    const loadAll = async () => {
       setLoading(true);
-      const result: { groupName: string; items: HydratedDashboardItem[] }[] =
-        [];
+      const allItems: Record<string, HydratedDashboardItem[]> = {};
 
       for (const g of group) {
         const storageKey = `dashboard_items_${g.id}`;
         const raw = localStorage.getItem(storageKey);
-        if (!raw) continue;
+        if (!raw) {
+          allItems[g.id] = [];
+          continue;
+        }
 
         const items: DashboardItem[] = JSON.parse(raw);
-        const hydratedItems: HydratedDashboardItem[] = await Promise.all(
+        const hydrated = await Promise.all(
           items.map(async (item) => {
             if (!item.prompt) return item;
             try {
@@ -76,18 +80,14 @@ export default function DashboardPage() {
             return item;
           })
         );
-
-        result.push({
-          groupName: g.name,
-          items: hydratedItems,
-        });
+        allItems[g.id] = hydrated;
       }
 
-      setHydratedGroups(result);
+      setHydratedItems(allItems);
       setLoading(false);
     };
 
-    loadAllGroups();
+    loadAll();
   }, [domainDocId, group]);
 
   const handleDashboardSettings = () => {
@@ -96,43 +96,38 @@ export default function DashboardPage() {
 
   return (
     <div className="relative min-h-screen p-6 bg-[#1a1b1e] text-white">
-      <h2 className="text-2xl font-bold mb-4">Dashboard {domain}</h2>
+      <h2 className="text-2xl font-bold mb-6">Dashboard {domain}</h2>
 
       {loading ? (
         <p className="text-gray-400">Loading dashboard...</p>
-      ) : hydratedGroups.length === 0 ? (
+      ) : group.length === 0 ? (
         <p className="text-gray-400">No dashboard groups yet.</p>
       ) : (
-        hydratedGroups.map((g) => (
-          <section key={g.groupName} className="mb-10">
-            <h3 className="text-xl font-semibold mb-4">{g.groupName}</h3>
+        group.map((g) => (
+          <section key={g.id} className="mb-12">
+            <h3 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">
+              {g.name}
+            </h3>
 
-            {g.items.length === 0 ? (
+            {hydratedItems[g.id]?.length === 0 ? (
               <p className="text-gray-500">No items yet.</p>
             ) : (
-              g.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="mb-6 p-4 rounded-lg bg-[#2A2B32] border border-[#3a3b42] space-y-4"
-                >
-                  <h4 className="font-semibold text-lg capitalize">
-                    {item.type}
-                  </h4>
-
+              hydratedItems[g.id]?.map((item) => (
+                <div key={item.id} className="space-y-4 mb-10">
                   {item.result?.chartHtml && (
-                    <div className="overflow-hidden rounded-lg bg-black/20">
+                    <div className="w-full overflow-hidden rounded-lg bg-black/10">
                       <iframe
                         srcDoc={item.result.chartHtml}
                         title={`chart-${item.id}`}
                         className="w-full"
-                        style={{ height: "400px", border: "none" }}
+                        style={{ height: "600px", border: "none" }}
                       />
                     </div>
                   )}
 
                   {item.result?.text && (
                     <div
-                      className="text-gray-200 leading-relaxed [&_p]:my-2 [&_table]:w-full [&_td]:border [&_td]:p-2"
+                      className="text-gray-200 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2"
                       dangerouslySetInnerHTML={{
                         __html: cleanHtmlResponse(item.result.text),
                       }}

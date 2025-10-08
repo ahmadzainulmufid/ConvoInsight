@@ -62,7 +62,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
                       srcDoc={item.result.chartHtml}
                       title="chart-detail"
                       className="w-full"
-                      style={{ height: "450px", border: "none" }}
+                      style={{ height: "500px", border: "none" }}
                     />
                   </div>
                 )}
