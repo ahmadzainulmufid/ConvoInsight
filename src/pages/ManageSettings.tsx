@@ -12,6 +12,7 @@ import {
 } from "../service/chatStore";
 import { fetchChartHtml } from "../utils/fetchChart";
 import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
+import ManageKpiOutput from "../components/ManageComponents/ManageKpiOutput";
 
 type DatasetMeta = {
   id: string;
@@ -121,7 +122,10 @@ export default function ManageSettings() {
                 return {
                   ...item,
                   result: {
-                    text: item.includeInsight ? assistantMessage.text : "",
+                    text:
+                      item.type === "kpi" || item.includeInsight
+                        ? assistantMessage.text
+                        : "",
                     chartHtml: assistantMessage.chartHtml,
                   },
                 };
@@ -247,7 +251,10 @@ export default function ManageSettings() {
       const res = await queryDomain({
         apiBase: API_BASE,
         domain,
-        prompt,
+        prompt:
+          itemType === "kpi"
+            ? `${prompt}. Only return key numeric KPIs like target, takers, and take-up rate as plain text or JSON. Do not return chart, table, or Plotly output.`
+            : prompt,
         sessionId,
         dataset: selectedDatasetIds.length > 0 ? selectedDatasetIds : undefined,
         includeInsight,
@@ -400,6 +407,7 @@ export default function ManageSettings() {
             <h2 className="text-lg font-semibold capitalize">
               {itemType} Prompt
             </h2>
+
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -407,6 +415,7 @@ export default function ManageSettings() {
               rows={4}
               className="w-full rounded bg-[#2A2B32] border border-[#3a3b42] p-3 outline-none"
             />
+
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -415,6 +424,7 @@ export default function ManageSettings() {
               />
               <span className="text-sm text-gray-300">Include Insight</span>
             </label>
+
             <div className="flex gap-3">
               <button
                 onClick={() =>
@@ -424,6 +434,7 @@ export default function ManageSettings() {
               >
                 Back
               </button>
+
               <button
                 disabled={!prompt.trim() || isExecuting}
                 onClick={handleExecutePrompt}
@@ -472,6 +483,21 @@ export default function ManageSettings() {
                       className="text-gray-200 leading-relaxed space-y-2 [&_p]:my-2 [&_table]:w-full [&_td]:border [&_td]:p-2"
                       dangerouslySetInnerHTML={{ __html: executionResult.text }}
                     />
+                  )}
+
+                  {itemType === "kpi" && kpiType && (
+                    <div className="mt-6">
+                      <h3 className="font-semibold mb-2 text-gray-300">
+                        KPI Preview
+                      </h3>
+                      <ManageKpiOutput
+                        kpiType={kpiType}
+                        datasets={datasets}
+                        selectedDatasetIds={selectedDatasetIds}
+                        selectedColumns={selectedColumns}
+                        llmResult={executionResult.text}
+                      />
+                    </div>
                   )}
                 </div>
               )}

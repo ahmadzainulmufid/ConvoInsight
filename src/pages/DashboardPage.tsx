@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { getDomainDocId, fetchMessagesOnce } from "../service/chatStore";
 import { useDashboardSetting } from "../hooks/useDashboardSettings";
 import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
+import ManageKpiOutput from "../components/ManageComponents/ManageKpiOutput";
 
 type ExecutionResult = { text: string; chartHtml?: string };
 type DashboardItem = {
@@ -69,7 +70,10 @@ export default function DashboardPage() {
                 return {
                   ...item,
                   result: {
-                    text: item.includeInsight ? assistant.text : "",
+                    text:
+                      item.type === "kpi" || item.includeInsight
+                        ? assistant.text
+                        : "",
                     chartHtml: assistant.chartHtml,
                   },
                 };
@@ -114,25 +118,41 @@ export default function DashboardPage() {
             ) : (
               hydratedItems[g.id]?.map((item) => (
                 <div key={item.id} className="space-y-4 mb-10">
-                  {item.result?.chartHtml && (
+                  {/* Bagian untuk Chart/Table (TETAP SAMA) */}
+                  {item.type !== "kpi" && item.result?.chartHtml && (
                     <div className="w-full overflow-hidden rounded-lg bg-black/10">
                       <iframe
                         srcDoc={item.result.chartHtml}
                         title={`chart-${item.id}`}
                         className="w-full"
-                        style={{ height: "500px", border: "none" }}
+                        style={{ height: "600px", border: "none" }}
                       />
                     </div>
                   )}
 
-                  {item.includeInsight && item.result?.text && (
-                    <div
-                      className="text-gray-200 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2"
-                      dangerouslySetInnerHTML={{
-                        __html: cleanHtmlResponse(item.result.text),
-                      }}
+                  {/* 👇 TAMBAHAN: Blok khusus untuk merender KPI */}
+                  {item.type === "kpi" && item.result?.text && (
+                    <ManageKpiOutput
+                      kpiType="llm"
+                      llmResult={item.result.text}
+                      // Props ini tidak perlu diisi di halaman dashboard, cukup beri array kosong
+                      datasets={[]}
+                      selectedDatasetIds={[]}
+                      selectedColumns={[]}
                     />
                   )}
+
+                  {/* Bagian untuk Insight (dengan sedikit modifikasi agar tidak merender ulang teks KPI) */}
+                  {item.type !== "kpi" &&
+                    item.includeInsight &&
+                    item.result?.text && (
+                      <div
+                        className="text-gray-200 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2"
+                        dangerouslySetInnerHTML={{
+                          __html: cleanHtmlResponse(item.result.text),
+                        }}
+                      />
+                    )}
                 </div>
               ))
             )}
