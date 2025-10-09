@@ -496,6 +496,7 @@ export default function ManageSettings() {
                         selectedDatasetIds={selectedDatasetIds}
                         selectedColumns={selectedColumns}
                         llmResult={executionResult.text}
+                        forceSingleOutput={true}
                       />
                     </div>
                   )}

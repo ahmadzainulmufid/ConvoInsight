@@ -107,57 +107,70 @@ export default function DashboardPage() {
       ) : group.length === 0 ? (
         <p className="text-gray-400">No dashboard groups yet.</p>
       ) : (
-        group.map((g) => (
-          <section key={g.id} className="mb-12">
-            <h3 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">
-              {g.name}
-            </h3>
+        group.map((g) => {
+          // --- LOGIKA PEMISAHAN RENDER KPI DAN ITEM LAIN ---
+          const kpiItems =
+            hydratedItems[g.id]?.filter((item) => item.type === "kpi") || [];
+          const otherItems =
+            hydratedItems[g.id]?.filter((item) => item.type !== "kpi") || [];
 
-            {hydratedItems[g.id]?.length === 0 ? (
-              <p className="text-gray-500">No items yet.</p>
-            ) : (
-              hydratedItems[g.id]?.map((item) => (
-                <div key={item.id} className="space-y-4 mb-10">
-                  {/* Bagian untuk Chart/Table (TETAP SAMA) */}
-                  {item.type !== "kpi" && item.result?.chartHtml && (
-                    <div className="w-full overflow-hidden rounded-lg bg-black/10">
-                      <iframe
-                        srcDoc={item.result.chartHtml}
-                        title={`chart-${item.id}`}
-                        className="w-full"
-                        style={{ height: "600px", border: "none" }}
-                      />
+          return (
+            <section key={g.id} className="mb-12">
+              <h3 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                {g.name}
+              </h3>
+
+              {hydratedItems[g.id]?.length === 0 ? (
+                <p className="text-gray-500">No items yet.</p>
+              ) : (
+                <>
+                  {/* Render semua KPI dalam satu container flexbox */}
+                  {kpiItems.length > 0 && (
+                    <div className="flex flex-wrap gap-4 mb-10">
+                      {kpiItems.map((item) =>
+                        item.result?.text ? (
+                          <ManageKpiOutput
+                            key={item.id}
+                            kpiType="llm"
+                            llmResult={item.result.text}
+                            prompt={item.prompt}
+                            datasets={[]}
+                            selectedDatasetIds={[]}
+                            selectedColumns={[]}
+                          />
+                        ) : null
+                      )}
                     </div>
                   )}
 
-                  {/* 👇 TAMBAHAN: Blok khusus untuk merender KPI */}
-                  {item.type === "kpi" && item.result?.text && (
-                    <ManageKpiOutput
-                      kpiType="llm"
-                      llmResult={item.result.text}
-                      // Props ini tidak perlu diisi di halaman dashboard, cukup beri array kosong
-                      datasets={[]}
-                      selectedDatasetIds={[]}
-                      selectedColumns={[]}
-                    />
-                  )}
-
-                  {/* Bagian untuk Insight (dengan sedikit modifikasi agar tidak merender ulang teks KPI) */}
-                  {item.type !== "kpi" &&
-                    item.includeInsight &&
-                    item.result?.text && (
-                      <div
-                        className="text-gray-200 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2"
-                        dangerouslySetInnerHTML={{
-                          __html: cleanHtmlResponse(item.result.text),
-                        }}
-                      />
-                    )}
-                </div>
-              ))
-            )}
-          </section>
-        ))
+                  {/* Render item lain (tabel/chart) secara normal (vertikal) */}
+                  {otherItems.map((item) => (
+                    <div key={item.id} className="space-y-4 mb-10">
+                      {item.result?.chartHtml && (
+                        <div className="w-full overflow-hidden rounded-lg bg-black/10">
+                          <iframe
+                            srcDoc={item.result.chartHtml}
+                            title={`chart-${item.id}`}
+                            className="w-full"
+                            style={{ height: "600px", border: "none" }}
+                          />
+                        </div>
+                      )}
+                      {item.includeInsight && item.result?.text && (
+                        <div
+                          className="text-gray-200 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2"
+                          dangerouslySetInnerHTML={{
+                            __html: cleanHtmlResponse(item.result.text),
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
+            </section>
+          );
+        })
       )}
 
       <button

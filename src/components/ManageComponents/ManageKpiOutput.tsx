@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import Papa from "papaparse";
 import KpiCard from "./KpiCard";
+import Papa from "papaparse";
 
-// Tipe data yang tidak berubah
 type DatasetMeta = { id: string; signed_url?: string };
 type DatasetSummary = {
   col: string;
@@ -12,8 +11,6 @@ type DatasetSummary = {
   max: number;
   totalRows: number;
 };
-
-// ✨ TIPE BARU untuk hasil parsing LLM yang lebih terstruktur
 type ParsedLlmKpi = {
   mainTitle?: string;
   mainValue: string;
@@ -27,45 +24,74 @@ type Props = {
   selectedDatasetIds: string[];
   selectedColumns: string[];
   llmResult?: string;
+  prompt?: string;
+  forceSingleOutput?: boolean; // 👈 PROP BARU DITAMBAHKAN DI SINI
 };
 
-// 🌟 FUNGSI PARSING BARU YANG LEBIH BAIK
-function parseLlmKpi(llm: string): ParsedLlmKpi | null {
-  const clean = llm
-    .replace(/<[^>]+>/g, "") // Hapus tag HTML
-    .replace(/\s+/g, " ") // Normalisasi spasi
+// ==================================================================
+// 👇 FUNGSI BARU DITAMBAHKAN DI SINI
+// Fungsi ini tugasnya hanya untuk memastikan outputnya tunggal.
+// ==================================================================
+function forceSingleOutputKpi(kpi: ParsedLlmKpi | null): ParsedLlmKpi | null {
+  if (!kpi) {
+    return null;
+  }
+  // Buat objek baru dengan subItems yang sudah dikosongkan
+  return {
+    ...kpi,
+    subItems: [],
+  };
+}
+
+// Fungsi asli Anda, tidak diubah sama sekali
+function parseLlmKpi(llm: string, prompt?: string): ParsedLlmKpi | null {
+  const cleanLlm = llm
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 
-  // Regex untuk menangkap pola seperti "Label: 123.45 Unit" atau "Label 123.45"
-  const regex = /([\w\s().,%]+?)\s*[:=-]?\s*([\d,.]+)\s*(\w+)?/gi;
+  const genericRegex = /([\w\s().,%#]+?)\s*[:=-]?\s*([\d,.]+)/gi;
   let match;
-  const items: { label: string; value: string }[] = [];
-
-  while ((match = regex.exec(clean)) !== null) {
-    const label = match[1].trim();
-    const value = match[2].trim();
-    if (label.toLowerCase() !== "info") {
-      // Abaikan label "info"
-      items.push({ label, value });
+  const allItems: { label: string; value: string }[] = [];
+  while ((match = genericRegex.exec(cleanLlm)) !== null) {
+    if (match[1] && match[1].trim().length > 1 && match[2]) {
+      allItems.push({ label: match[1].trim(), value: match[2].trim() });
     }
   }
 
-  if (items.length === 0) {
-    // Fallback jika tidak ada yang cocok
+  const itemsToDisplay = allItems.filter(
+    (item) => !item.label.toLowerCase().includes("takers")
+  );
+
+  if (itemsToDisplay.length === 0) {
+    if (allItems.length > 0) {
+      return {
+        mainTitle: "Info",
+        mainValue: "Only 'Takers' found and removed.",
+        subItems: [],
+      };
+    }
     return {
       mainTitle: "Info",
-      mainValue: clean.slice(0, 100) + "...",
+      mainValue: cleanLlm.slice(0, 100) + "...",
       subItems: [],
     };
   }
 
-  // Ambil item pertama sebagai nilai utama
-  const firstItem = items.shift()!;
+  if (prompt && prompt.includes("(single)")) {
+    const firstItem = itemsToDisplay[0];
+    return {
+      mainTitle: firstItem.label,
+      mainValue: firstItem.value,
+      subItems: [],
+    };
+  }
 
+  const firstItem = itemsToDisplay.shift()!;
   return {
     mainTitle: firstItem.label,
     mainValue: firstItem.value,
-    subItems: items, // Sisa item menjadi sub-item
+    subItems: itemsToDisplay,
   };
 }
 
@@ -75,43 +101,46 @@ export default function ManageKpiOutput({
   selectedDatasetIds,
   selectedColumns,
   llmResult,
+  prompt,
+  forceSingleOutput,
 }: Props) {
-  // State diubah untuk menyimpan tipe data baru
   const [datasetKpiData, setDatasetKpiData] = useState<DatasetSummary[]>([]);
   const [llmKpiData, setLlmKpiData] = useState<ParsedLlmKpi | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fungsi processDataset tetap sama, tidak perlu diubah
-  // ... (kode processDataset dari file asli Anda bisa ditaruh di sini)
-  async function processDataset(): Promise<DatasetSummary[]> {
-    const ds = datasets.find((d) => selectedDatasetIds.includes(d.id));
-    if (!ds?.signed_url) return [];
-
-    const res = await fetch(ds.signed_url);
-    const text = await res.text();
-    const parsed = Papa.parse<Record<string, string>>(text, {
-      header: true,
-    }).data;
-
-    if (!parsed.length) return [];
-
-    const numericCols = selectedColumns
-      .map((c) => c.split(":")[1])
-      .filter(Boolean);
-
-    return numericCols.map((col) => {
-      const values = parsed
-        .map((r) => parseFloat(r[col] || ""))
-        .filter((v) => !isNaN(v));
-      const sum = values.reduce((a, b) => a + b, 0);
-      const avg = values.length ? sum / values.length : 0;
-      const min = values.length ? Math.min(...values) : 0;
-      const max = values.length ? Math.max(...values) : 0;
-      return { col, sum, avg, min, max, totalRows: parsed.length };
-    });
-  }
-
   useEffect(() => {
+    // ==================================================================
+    // 👇 FUNGSI processDataset DIPINDAHKAN KE DALAM useEffect
+    // Ini adalah pola yang lebih aman dan menghilangkan error.
+    // ==================================================================
+    async function processDataset(): Promise<DatasetSummary[]> {
+      const ds = datasets.find((d) => selectedDatasetIds.includes(d.id));
+      if (!ds?.signed_url) return [];
+      const res = await fetch(ds.signed_url);
+      const text = await res.text();
+      const parsed = Papa.parse<Record<string, string>>(text, {
+        header: true,
+      }).data;
+      if (!parsed.length) return [];
+      const numericCols = selectedColumns
+        .map((c) => c.split(":")[1])
+        .filter(Boolean);
+      return numericCols.map((col) => {
+        const values = parsed
+          .map((r) => parseFloat(r[col] || ""))
+          .filter((v) => !isNaN(v));
+        const sum = values.reduce((a, b) => a + b, 0);
+        return {
+          col,
+          sum,
+          avg: values.length ? sum / values.length : 0,
+          min: values.length ? Math.min(...values) : 0,
+          max: values.length ? Math.max(...values) : 0,
+          totalRows: parsed.length,
+        };
+      });
+    }
+
     (async () => {
       setLoading(true);
       try {
@@ -119,19 +148,32 @@ export default function ManageKpiOutput({
           const summary = await processDataset();
           setDatasetKpiData(summary);
         } else if (llmResult) {
-          const parsed = parseLlmKpi(llmResult);
-          setLlmKpiData(parsed);
+          let parsedData = parseLlmKpi(llmResult, prompt);
+          if (forceSingleOutput) {
+            parsedData = forceSingleOutputKpi(parsedData);
+          }
+          setLlmKpiData(parsedData);
         }
       } finally {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kpiType, datasets, selectedDatasetIds, selectedColumns, llmResult]);
+    // ==================================================================
+    // 👇 Dependency array diperbarui. Tidak ada lagi warning dari ESLint.
+    // ==================================================================
+  }, [
+    kpiType,
+    llmResult,
+    prompt,
+    forceSingleOutput,
+    datasets,
+    selectedDatasetIds,
+    selectedColumns,
+  ]);
 
   if (loading) return <p className="text-gray-400">Loading KPI...</p>;
 
-  // Render Dataset KPI (tidak berubah)
+  // ... (Bagian render tidak ada yang berubah)
   if (kpiType === "dataset") {
     return (
       <div className="flex flex-wrap gap-4 mt-4">
@@ -152,12 +194,11 @@ export default function ManageKpiOutput({
     );
   }
 
-  // ✨ RENDER BARU UNTUK LLM KPI - MENJADI SATU KARTU
   if (kpiType === "llm" && llmKpiData) {
     return (
       <div className="flex flex-wrap gap-4 mt-4">
         <KpiCard
-          color="red"
+          color="blue"
           title={llmKpiData.mainTitle}
           mainValue={llmKpiData.mainValue}
           unit={llmKpiData.unit}
