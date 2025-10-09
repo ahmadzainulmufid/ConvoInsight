@@ -3,7 +3,7 @@ import { NavLink, useParams, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import DashboardGroupOutput from "../components/ManageComponents/ManageGroupOutput";
-import ItemDetailModal from "../components/ManageComponents/ItemDetailModal"; // Pastikan path ini benar
+import ItemDetailModal from "../components/ManageComponents/ItemDetailModal";
 import { queryDomain } from "../utils/queryDomain";
 import {
   getDomainDocId,
@@ -121,7 +121,7 @@ export default function ManageSettings() {
                 return {
                   ...item,
                   result: {
-                    text: assistantMessage.text,
+                    text: item.includeInsight ? assistantMessage.text : "",
                     chartHtml: assistantMessage.chartHtml,
                   },
                 };
@@ -250,6 +250,7 @@ export default function ManageSettings() {
         prompt,
         sessionId,
         dataset: selectedDatasetIds.length > 0 ? selectedDatasetIds : undefined,
+        includeInsight,
       });
       let chartHtml: string | undefined;
       if (res.chart_url) {
@@ -452,20 +453,26 @@ export default function ManageSettings() {
               {executionResult && (
                 <div className="p-4 border border-gray-700 rounded-lg bg-black/20 space-y-4">
                   <h3 className="font-semibold text-gray-300">Output:</h3>
+
+                  {/* ✅ tampilkan chart/table */}
                   {executionResult.chartHtml && (
                     <div className="w-full overflow-hidden rounded-xl bg-gray-800/30">
                       <iframe
                         srcDoc={executionResult.chartHtml}
                         title="chart-preview"
                         className="w-full"
-                        style={{ height: "400px", border: "none" }}
+                        style={{ height: "500px", border: "none" }}
                       />
                     </div>
                   )}
-                  <div
-                    className="text-gray-200 leading-relaxed space-y-2 [&_p]:my-2 [&_table]:w-full [&_td]:border [&_td]:p-2"
-                    dangerouslySetInnerHTML={{ __html: executionResult.text }}
-                  />
+
+                  {/* ✅ tampilkan insight hanya jika dicentang */}
+                  {includeInsight && executionResult.text && (
+                    <div
+                      className="text-gray-200 leading-relaxed space-y-2 [&_p]:my-2 [&_table]:w-full [&_td]:border [&_td]:p-2"
+                      dangerouslySetInnerHTML={{ __html: executionResult.text }}
+                    />
+                  )}
                 </div>
               )}
             </div>

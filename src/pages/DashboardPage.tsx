@@ -69,7 +69,7 @@ export default function DashboardPage() {
                 return {
                   ...item,
                   result: {
-                    text: assistant.text,
+                    text: item.includeInsight ? assistant.text : "",
                     chartHtml: assistant.chartHtml,
                   },
                 };
@@ -120,12 +120,12 @@ export default function DashboardPage() {
                         srcDoc={item.result.chartHtml}
                         title={`chart-${item.id}`}
                         className="w-full"
-                        style={{ height: "600px", border: "none" }}
+                        style={{ height: "500px", border: "none" }}
                       />
                     </div>
                   )}
 
-                  {item.result?.text && (
+                  {item.includeInsight && item.result?.text && (
                     <div
                       className="text-gray-200 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2"
                       dangerouslySetInnerHTML={{
