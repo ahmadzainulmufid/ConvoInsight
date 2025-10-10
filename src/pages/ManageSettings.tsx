@@ -253,7 +253,7 @@ export default function ManageSettings() {
         domain,
         prompt:
           itemType === "kpi"
-            ? `${prompt}. Only return key numeric KPIs like target, takers, and take-up rate as plain text or JSON. Do not return chart, table, or Plotly output.`
+            ? `${prompt}. Only return key numeric KPIs for example target, takers, and take-up rate as plain text. Do not explain anything. Just provide the value and the value name. Do not return chart, table, or Plotly output.`
             : prompt,
         sessionId,
         dataset: selectedDatasetIds.length > 0 ? selectedDatasetIds : undefined,
