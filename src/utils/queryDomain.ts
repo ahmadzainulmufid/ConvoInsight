@@ -13,7 +13,7 @@ export async function queryDomain({
   sessionId,
   signal,
   dataset,
-  includeInsight, // 🟩 tambahkan di sini
+  includeInsight,
 }: {
   apiBase: string;
   domain: string;
@@ -21,7 +21,7 @@ export async function queryDomain({
   sessionId?: string | null;
   signal?: AbortSignal;
   dataset?: string[];
-  includeInsight?: boolean; // 🟩 tambahkan di sini juga
+  includeInsight?: boolean;
 }): Promise<DomainQueryResp> {
   const r = await fetch(`${apiBase}/query`, {
     method: "POST",
@@ -31,7 +31,7 @@ export async function queryDomain({
       prompt,
       session_id: sessionId ?? undefined,
       dataset: dataset ?? undefined,
-      includeInsight: includeInsight ?? true, // 🟩 kirim ke backend
+      includeInsight: includeInsight ?? true,
     }),
     signal,
   });
