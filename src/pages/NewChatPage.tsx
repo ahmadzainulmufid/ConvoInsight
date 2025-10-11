@@ -44,9 +44,9 @@ function ChatInput({
   onChange,
   onSend,
   disabled,
-  isGenerating,
+  isGenerating = false,
   onStop,
-  placeholder,
+  placeholder = "Ask Anything",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -56,42 +56,83 @@ function ChatInput({
   onStop?: () => void;
   placeholder?: string;
 }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
   const hasText = value.trim().length > 0;
+  const MAX_H = 160;
+
+  // 🧠 Auto expand textarea tinggi dinamis
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, MAX_H);
+    el.style.height = next + "px";
+    el.style.overflowY = el.scrollHeight > MAX_H ? "auto" : "hidden";
+  }, [value]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.nativeEvent as KeyboardEvent).isComposing) return;
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!disabled && !isGenerating && hasText) onSend();
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hasText || isGenerating) return;
+    onSend();
+    requestAnimationFrame(() => ref.current?.focus());
+  };
 
   return (
-    <div className="flex items-center w-full rounded-xl bg-gray-700 px-4 py-3">
+    <form
+      onSubmit={handleSubmit}
+      className="w-full flex items-center rounded-xl bg-gray-700 px-4 py-3"
+    >
       <textarea
-        className="flex-1 bg-transparent resize-none outline-none text-gray-200 text-sm leading-relaxed max-h-40 overflow-y-auto placeholder-gray-400"
-        placeholder={placeholder ?? "Ask Anything"}
+        ref={ref}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if ((e.nativeEvent as KeyboardEvent).isComposing) return;
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            if (!disabled && !isGenerating && hasText) onSend();
-          }
-        }}
+        onKeyDown={handleKeyDown}
         rows={1}
         disabled={disabled}
+        placeholder={placeholder}
+        className="flex-1 resize-none bg-transparent outline-none 
+           text-gray-200 text-sm leading-relaxed 
+           placeholder-gray-400 px-3 py-2
+           min-h-[44px] max-h-[160px]"
       />
+
       {isGenerating ? (
         <button
+          type="button"
           onClick={onStop}
-          className="ml-2 flex items-center justify-center w-8 h-8 rounded-md bg-transparent opacity-60 text-white transition"
+          className="ml-2 flex items-center justify-center 
+                     w-9 h-9 rounded-md 
+                     bg-transparent opacity-60
+                     text-white text-lg transition"
+          title="Stop"
         >
           ⏹
         </button>
       ) : (
         <button
-          onClick={hasText ? onSend : undefined}
-          disabled={disabled}
-          className="ml-2 flex items-center justify-center w-8 h-8 rounded-md transition bg-transparent text-white opacity-60"
+          type="submit"
+          disabled={!hasText || disabled}
+          className={`ml-2 flex items-center justify-center 
+                      w-9 h-9 rounded-md text-lg transition
+            ${
+              hasText
+                ? "bg-transparent text-white opacity-80 hover:opacity-100 cursor-pointer"
+                : "bg-transparent text-white opacity-40 cursor-not-allowed"
+            }`}
+          title="Send"
         >
           {hasText ? "↑" : "➤"}
         </button>
       )}
-    </div>
+    </form>
   );
 }
 
@@ -282,7 +323,7 @@ export default function NewChatPage() {
       console.error(err);
       const fallbackMsg: Msg = {
         role: "assistant",
-        content: "⚠️ There was a problem processing the message.",
+        content: "⚠️ (fallback) There was a problem processing the message.",
         animate: true,
       };
       setMessages((cur) => [...cur, fallbackMsg]);
@@ -400,10 +441,20 @@ export default function NewChatPage() {
                       {editingIndex === i ? (
                         <div className="flex flex-col gap-2">
                           <textarea
+                            ref={(el) => {
+                              if (el) {
+                                el.style.height = "auto";
+                                el.style.height = el.scrollHeight + "px";
+                              }
+                            }}
                             value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                            className="w-full rounded-lg border border-gray-600 bg-[#1f2026] text-gray-200 p-2 text-sm"
-                            rows={3}
+                            onChange={(e) => {
+                              setEditText(e.target.value);
+                              const el = e.target;
+                              el.style.height = "auto";
+                              el.style.height = el.scrollHeight + "px";
+                            }}
+                            className="w-full rounded-lg border border-gray-600 bg-[#1f2026] text-gray-200 p-2 text-sm resize-none overflow-hidden transition-all duration-200 ease-in-out"
                           />
                           <div className="flex gap-2 justify-end text-sm">
                             <button
@@ -412,10 +463,104 @@ export default function NewChatPage() {
                                 if (!edited)
                                   return toast.error("Message can't be empty");
 
+                                // Tutup mode edit
                                 setEditingIndex(null);
                                 setEditText("");
 
-                                await handleSend(edited);
+                                // Hapus jawaban lama di bawah pesan yang diedit
+                                setMessages((prev) => {
+                                  const copy = [...prev];
+                                  copy[i] = { ...copy[i], content: edited };
+                                  if (copy[i + 1]?.role === "assistant") {
+                                    copy.splice(i + 1, 1);
+                                  }
+                                  return copy;
+                                });
+
+                                // Tampilkan indikator typing
+                                setSending(true);
+                                setIsGenerating(true);
+
+                                try {
+                                  const res = await queryDomain({
+                                    apiBase: API_BASE,
+                                    domain: domain!,
+                                    prompt: edited,
+                                    sessionId:
+                                      searchParams.get("id") ?? undefined,
+                                    dataset:
+                                      selectedDatasets.length > 0
+                                        ? selectedDatasets
+                                        : undefined,
+                                  });
+
+                                  let charts: ChartItem[] | undefined;
+                                  let chartHtml: string | undefined;
+                                  const chartUrl = res.chart_url ?? null;
+
+                                  if (chartUrl) {
+                                    try {
+                                      const html = await fetchChartHtml(
+                                        API_BASE,
+                                        chartUrl
+                                      );
+                                      if (html) {
+                                        chartHtml = html;
+                                        charts = [{ html }];
+                                      }
+                                    } catch (e) {
+                                      console.warn(
+                                        "Fetch chart HTML failed:",
+                                        e
+                                      );
+                                    }
+                                  }
+
+                                  const cleaned = cleanHtmlResponse(
+                                    res.response ?? "(empty)"
+                                  );
+
+                                  // Tambahkan bubble asisten baru (hasil regenerasi)
+                                  setMessages((prev) => {
+                                    const copy = [...prev];
+                                    copy.splice(i + 1, 0, {
+                                      role: "assistant",
+                                      chartUrl,
+                                      charts,
+                                      content: cleaned,
+                                      animate: true,
+                                    });
+                                    return copy;
+                                  });
+
+                                  await saveChatMessage(
+                                    domainDocId!,
+                                    searchParams.get("id")!,
+                                    "assistant",
+                                    cleaned,
+                                    chartHtml
+                                  );
+                                } catch (err) {
+                                  console.error("Error regenerating:", err);
+
+                                  // Tambahkan bubble fallback error di UI
+                                  setMessages((prev) => {
+                                    const copy = [...prev];
+                                    copy.splice(i + 1, 0, {
+                                      role: "assistant",
+                                      content:
+                                        "⚠️ (fallback) There was a problem processing the message.",
+                                      animate: true,
+                                    });
+                                    return copy;
+                                  });
+                                  toast.error(
+                                    "⚠️ (fallback) There was a problem processing the message."
+                                  );
+                                } finally {
+                                  setSending(false);
+                                  setIsGenerating(false);
+                                }
                               }}
                               className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
                             >
