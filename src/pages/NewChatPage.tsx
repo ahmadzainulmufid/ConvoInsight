@@ -15,13 +15,18 @@ import {
   listenMessages,
   getDomainDocId,
 } from "../service/chatStore";
-import { FiCopy, FiEdit2, FiCheck, FiX } from "react-icons/fi";
+import { FiCopy, FiEdit2, FiCheck, FiX, FiActivity } from "react-icons/fi";
 import toast from "react-hot-toast";
 import MultiSelectDropdown from "../components/ChatComponents/MultiSelectDropdown";
 import SuggestedQuestions from "../components/ChatComponents/SuggestedQuestions";
 import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
 
 /** Type Definitions **/
+type ThinkingStep = {
+  key: string;
+  message: string;
+};
+
 type Msg = {
   role: "user" | "assistant";
   content: string;
@@ -29,6 +34,7 @@ type Msg = {
   chartUrl?: string | null;
   charts?: ChartItem[];
   animate?: boolean;
+  thinkingSteps?: ThinkingStep[];
 };
 
 type DatasetApiItem = {
@@ -162,6 +168,12 @@ export default function NewChatPage() {
   const [availableDatasets, setAvailableDatasets] = useState<string[]>([]);
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
 
+  // --- STATE BARU UNTUK SIMULASI ---
+  const [currentThinkingSteps, setCurrentThinkingSteps] = useState<
+    ThinkingStep[]
+  >([]);
+  const thinkingTimeoutRef = useRef<NodeJS.Timeout[]>([]);
+
   const stripFences = (s: string) =>
     s
       .replace(/```(?:[^\n`]*)?\n?([\s\S]*?)\n?```/g, "$1")
@@ -185,26 +197,40 @@ export default function NewChatPage() {
     })();
   }, [domain]);
 
+  useEffect(() => {
+    return () => {
+      thinkingTimeoutRef.current.forEach(clearTimeout);
+    };
+  }, []);
+
   /** Listen to Saved Messages **/
   useEffect(() => {
     if (!domainDocId || !openedId) return;
-
-    const unsub = listenMessages(domainDocId, openedId, (msgs) => {
-      const mapped: Msg[] = msgs.map((m) => {
-        const charts = m.chartHtml ? [{ html: m.chartHtml }] : undefined;
-
-        const content =
-          m.role === "assistant"
-            ? cleanHtmlResponse(m.text) // hanya assistant yang dirender HTML
-            : stripFences(m.text); // user: plain text, tidak dibungkus <p>
-
-        return { role: m.role, content, charts, animate: false };
-      });
-
-      setMessages(mapped);
-      setTimeout(() => scrollToBottom("auto"), 0);
-    });
-
+    const unsub = listenMessages(
+      domainDocId,
+      openedId,
+      (
+        msgs: Array<{
+          role: "user" | "assistant";
+          text: string;
+          chartHtml?: string;
+          thinkingSteps?: ThinkingStep[];
+        }>
+      ) => {
+        const mapped: Msg[] = msgs.map((m) => ({
+          role: m.role,
+          content:
+            m.role === "assistant"
+              ? cleanHtmlResponse(m.text)
+              : stripFences(m.text),
+          charts: m.chartHtml ? [{ html: m.chartHtml }] : undefined,
+          animate: false,
+          thinkingSteps: m.thinkingSteps || undefined, // Muat jika ada di DB
+        }));
+        setMessages(mapped);
+        setTimeout(() => scrollToBottom("auto"), 0);
+      }
+    );
     return () => unsub();
   }, [domainDocId, openedId]);
 
@@ -242,6 +268,11 @@ export default function NewChatPage() {
     if (!text || sending) return;
     if (!domainDocId) return console.error("Domain not found");
 
+    // 🔄 Reset semua animasi berpikir lama
+    thinkingTimeoutRef.current.forEach(clearTimeout);
+    thinkingTimeoutRef.current = [];
+    setCurrentThinkingSteps([]);
+
     const nextMsgs: Msg[] = [...messages, { role: "user", content: text }];
     setMessages(nextMsgs);
     setMessage("");
@@ -251,10 +282,8 @@ export default function NewChatPage() {
     const abortCtrl = new AbortController();
     setController(abortCtrl);
 
-    const userMsgCount = nextMsgs.filter((m) => m.role === "user").length;
     let sessionId = searchParams.get("id");
-
-    if (!openedId && userMsgCount === 1) {
+    if (!openedId && nextMsgs.filter((m) => m.role === "user").length === 1) {
       const id = `${Date.now()}`;
       sessionId = id;
       const next = new URLSearchParams(searchParams);
@@ -271,8 +300,26 @@ export default function NewChatPage() {
     }
 
     try {
+      // 💾 Simpan pesan user dulu
       await saveChatMessage(domainDocId, sessionId!, "user", text);
 
+      // ⚡ Tampilkan "Analyze..." SEBELUM panggil backend
+      const baseSteps: ThinkingStep[] = [
+        { key: "router", message: "Routing and understanding user intent..." },
+        { key: "orchestrator", message: "Building orchestrator plan..." },
+        { key: "compiler", message: "Preparing response..." },
+      ];
+
+      const stepInterval = 600;
+      baseSteps.forEach((step, index) => {
+        const timeoutId = setTimeout(() => {
+          setCurrentThinkingSteps((prev) => [...prev, step]);
+          scrollToBottom("smooth");
+        }, index * stepInterval);
+        thinkingTimeoutRef.current.push(timeoutId);
+      });
+
+      // 🔍 Mulai fetch dari backend (async berjalan paralel dengan animasi di atas)
       const res = await queryDomain({
         apiBase: API_BASE,
         domain: domain!,
@@ -282,6 +329,35 @@ export default function NewChatPage() {
         dataset: selectedDatasets.length > 0 ? selectedDatasets : undefined,
       });
 
+      // 🧠 Tambahkan langkah dinamis dari hasil backend
+      const dynamicSteps: ThinkingStep[] = [...baseSteps];
+      if (res.need_manipulator)
+        dynamicSteps.splice(2, 0, {
+          key: "manipulator",
+          message: "Manipulating datasets and cleaning data...",
+        });
+      if (res.need_analyzer)
+        dynamicSteps.splice(3, 0, {
+          key: "analyzer",
+          message: "Analyzing dataset patterns and relationships...",
+        });
+      if (res.need_visualizer)
+        dynamicSteps.splice(4, 0, {
+          key: "visualizer",
+          message: "Generating visualization for insights...",
+        });
+
+      // Lanjutkan animasi langkah backend yang baru
+      const backendIntervalStart = baseSteps.length * stepInterval;
+      dynamicSteps.slice(baseSteps.length).forEach((step, index) => {
+        const timeoutId = setTimeout(() => {
+          setCurrentThinkingSteps((prev) => [...prev, step]);
+          scrollToBottom("smooth");
+        }, backendIntervalStart + index * stepInterval);
+        thinkingTimeoutRef.current.push(timeoutId);
+      });
+
+      // Ambil chart kalau ada
       let charts: ChartItem[] | undefined;
       let chartHtml: string | undefined;
       const chartUrl: string | null | undefined = res.chart_url ?? null;
@@ -298,44 +374,64 @@ export default function NewChatPage() {
         }
       }
 
+      // Bersihkan teks jawaban
       const rawResponse = res.response ?? "(empty)";
       const cleaned = cleanHtmlResponse(rawResponse);
 
-      const assistantMsg: Msg = {
-        role: "assistant",
-        chartUrl,
-        charts,
-        animate: true,
-        content: cleaned, // ← pakai yang sudah dibersihkan & tanpa div luar
-      };
+      // 🕒 Tunggu sampai semua langkah selesai tampil
+      const totalStepTime = (dynamicSteps.length + 1) * stepInterval + 800;
 
-      setMessages((cur) => [...cur, assistantMsg]);
-      setTimeout(() => scrollToBottom("smooth"), 0);
+      setTimeout(async () => {
+        // Hentikan timeout
+        thinkingTimeoutRef.current.forEach(clearTimeout);
+        thinkingTimeoutRef.current = [];
 
-      await saveChatMessage(
-        domainDocId,
-        sessionId!,
-        "assistant",
-        assistantMsg.content,
-        chartHtml
-      );
-    } catch (err: unknown) {
+        // Kosongkan panel "Analyze..."
+        setCurrentThinkingSteps([]);
+
+        // Tampilkan hasil akhir
+        const assistantMsg: Msg = {
+          role: "assistant",
+          chartUrl,
+          charts,
+          animate: true,
+          content: cleaned,
+          thinkingSteps: dynamicSteps,
+        };
+        setMessages((cur) => [...cur, assistantMsg]);
+        scrollToBottom("smooth");
+
+        await saveChatMessage(
+          domainDocId,
+          sessionId!,
+          "assistant",
+          assistantMsg.content,
+          chartHtml,
+          dynamicSteps
+        );
+
+        setSending(false);
+        setIsGenerating(false);
+      }, totalStepTime);
+    } catch (err) {
       console.error(err);
+      thinkingTimeoutRef.current.forEach(clearTimeout);
+      setCurrentThinkingSteps([]);
+
       const fallbackMsg: Msg = {
         role: "assistant",
         content: "⚠️ (fallback) There was a problem processing the message.",
         animate: true,
       };
       setMessages((cur) => [...cur, fallbackMsg]);
-      setTimeout(() => scrollToBottom("smooth"), 0);
-
+      scrollToBottom("smooth");
       await saveChatMessage(
-        domainDocId,
-        sessionId!,
+        domainDocId!,
+        searchParams.get("id")!,
         "assistant",
         fallbackMsg.content
       );
-    } finally {
+
       setSending(false);
       setIsGenerating(false);
     }
@@ -411,6 +507,31 @@ export default function NewChatPage() {
                 >
                   {m.role === "assistant" ? (
                     <div className="space-y-3">
+                      {m.thinkingSteps && (
+                        <details className="mb-10">
+                          <summary className="text-sm font-semibold text-blue-400 cursor-pointer flex items-center gap-2 hover:underline">
+                            <FiActivity className="text-blue-400" />
+                            Show the flow of thought
+                          </summary>
+                          <div className="mt-2 space-y-1 text-sm ml-5">
+                            {m.thinkingSteps.map((step) => (
+                              <div
+                                key={step.key}
+                                className="flex items-start gap-2"
+                              >
+                                <FiCheck
+                                  className="text-green-400 mt-0.5 flex-shrink-0"
+                                  size={14}
+                                />
+                                <span className="text-gray-300">
+                                  {step.message}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+
                       {m.charts && m.charts.length > 0 && (
                         <ChartGallery charts={m.charts} />
                       )}
@@ -610,11 +731,43 @@ export default function NewChatPage() {
 
               <div ref={endOfMessagesRef} />
 
-              {sending && (
-                <div className="text-sm text-gray-400 animate-pulse pl-4 w-full max-w-3xl px-2 sm:px-0">
-                  Assistant is typing...
+              {currentThinkingSteps.length > 0 && (
+                <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-1">
+                  <h3 className="text-sm font-semibold text-blue-400 mb-2 flex items-center gap-2">
+                    <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    Thinking process...
+                  </h3>
+
+                  <ul className="space-y-1 text-sm ml-5">
+                    {currentThinkingSteps.map((step, index) => {
+                      const isDone = index < currentThinkingSteps.length - 1;
+                      return (
+                        <li key={step.key} className="flex items-center gap-2">
+                          {isDone ? (
+                            <FiCheck
+                              className="text-green-400 flex-shrink-0"
+                              size={14}
+                            />
+                          ) : (
+                            <div
+                              className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0"
+                              role="status"
+                            />
+                          )}
+                          <span
+                            className={`${
+                              isDone ? "text-gray-400" : "text-gray-200"
+                            } transition-colors`}
+                          >
+                            {step.message}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               )}
+
               {messages.length === 0 && (
                 <div className="text-gray-400 text-sm pl-4 w-full max-w-3xl px-2 sm:px-0">
                   No Message Yet

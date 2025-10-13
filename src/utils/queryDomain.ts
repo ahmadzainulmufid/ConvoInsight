@@ -4,6 +4,14 @@ export type DomainQueryResp = {
   chart_url?: string | null;
   execution_time: number;
   insights?: string[];
+
+  // 🧩 Tambahan flag dari backend (opsional)
+  need_router?: boolean;
+  need_orchestrator?: boolean;
+  need_manipulator?: boolean;
+  need_analyzer?: boolean;
+  need_visualizer?: boolean;
+  need_compiler?: boolean;
 };
 
 export async function queryDomain({
@@ -36,13 +44,30 @@ export async function queryDomain({
     signal,
   });
 
-  const data = (await r.json()) as DomainQueryResp | { detail?: unknown };
+  // --- Aman dari error parsing ---
+  const raw = await r.json().catch(() => ({}));
+  const data = raw as Partial<DomainQueryResp> & { detail?: unknown };
+
   if (!r.ok) {
     const msg =
-      typeof (data as { detail?: unknown })?.detail === "string"
-        ? (data as { detail: string }).detail
-        : `HTTP ${r.status}`;
+      typeof data.detail === "string"
+        ? data.detail
+        : `HTTP ${r.status} — ${JSON.stringify(data)}`;
     throw new Error(msg);
   }
-  return data as DomainQueryResp;
+
+  // --- Normalisasi field biar selalu ada ---
+  return {
+    session_id: data.session_id ?? "",
+    response: data.response ?? "",
+    chart_url: data.chart_url ?? null,
+    execution_time: data.execution_time ?? 0,
+    insights: data.insights ?? [],
+    need_router: data.need_router ?? true,
+    need_orchestrator: data.need_orchestrator ?? true,
+    need_manipulator: data.need_manipulator ?? false,
+    need_analyzer: data.need_analyzer ?? false,
+    need_visualizer: data.need_visualizer ?? false,
+    need_compiler: data.need_compiler ?? true,
+  };
 }

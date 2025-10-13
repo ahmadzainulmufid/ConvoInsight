@@ -10,15 +10,22 @@ import {
   where,
   getDocs,
 } from "firebase/firestore";
-import { saveChartBlob, getChartBlob } from "../utils/fileStore"; // pastikan path sesuai
+import { saveChartBlob, getChartBlob } from "../utils/fileStore";
+
+// 🧩 Tambahkan tipe ThinkingStep
+export type ThinkingStep = {
+  key: string;
+  message: string;
+};
 
 export type ChatMessage = {
   id?: string;
   sessionId: string;
   role: "user" | "assistant";
   text: string;
-  chartId?: string; // 🔑 referensi ke IndexedDB
+  chartId?: string;
   createdAt?: unknown;
+  thinkingSteps?: ThinkingStep[]; // <--- Tambahan penting
 };
 
 export async function getDomainDocId(
@@ -27,26 +34,23 @@ export async function getDomainDocId(
   const user = auth.currentUser;
   if (!user) throw new Error("Not logged in");
 
-  // ambil koleksi domain user
   const q = query(
     collection(db, "users", user.uid, "domains"),
     where("name", "==", domainName)
   );
-
   const snap = await getDocs(q);
   if (snap.empty) return null;
-
-  // ambil doc pertama yang match
   return snap.docs[0].id;
 }
 
-// Simpan chat
+// ✅ Simpan chat ke Firestore (termasuk alur berpikir)
 export async function saveChatMessage(
   domainDocId: string,
   sessionId: string,
   role: "user" | "assistant",
   text: string,
-  chartHtml?: string
+  chartHtml?: string,
+  thinkingSteps?: ThinkingStep[] // <--- parameter baru
 ) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not logged in");
@@ -58,21 +62,22 @@ export async function saveChatMessage(
     await saveChartBlob(chartId, blob);
   }
 
-  const payload = {
+  const payload: ChatMessage = {
     sessionId,
     role,
     text,
     createdAt: serverTimestamp(),
     ...(chartId ? { chartId } : {}),
+    ...(thinkingSteps ? { thinkingSteps } : {}), // <--- simpan thinkingSteps
   };
 
-  // 🔑 pakai domainDocId langsung
   await addDoc(
     collection(db, "users", user.uid, "domains", domainDocId, "messages"),
     payload
   );
 }
 
+// ✅ Dengarkan perubahan chat + ambil alur berpikir
 export function listenMessages(
   domainDocId: string,
   sessionId: string,
@@ -102,6 +107,7 @@ export function listenMessages(
   });
 }
 
+// ✅ Untuk ambil sekali (opsional, tetap support thinkingSteps)
 export async function fetchMessagesOnce(
   domainDocId: string,
   sessionId: string
@@ -116,7 +122,6 @@ export async function fetchMessagesOnce(
   );
 
   const snap = await getDocs(q);
-
   const out: (ChatMessage & { chartHtml?: string })[] = [];
   for (const d of snap.docs) {
     const data = d.data() as ChatMessage;
