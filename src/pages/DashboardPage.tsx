@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FiSettings } from "react-icons/fi";
+import { FiRefreshCw, FiSettings } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { getDomainDocId, fetchMessagesOnce } from "../service/chatStore";
 import { useDashboardSetting } from "../hooks/useDashboardSettings";
@@ -25,6 +25,7 @@ export default function DashboardPage() {
     Record<string, HydratedDashboardItem[]>
   >({});
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // 🔹 Ambil domainDocId dari Firestore
   useEffect(() => {
@@ -92,10 +93,15 @@ export default function DashboardPage() {
     };
 
     loadAll();
-  }, [domainDocId, group]);
+  }, [domainDocId, group, reloadKey]);
 
   const handleDashboardSettings = () => {
     navigate(`/domain/${domain}/dashboard/dashboardSetting`);
+  };
+
+  const reloadDashboard = () => {
+    toast.success("Refreshing dashboard...");
+    setReloadKey((prev) => prev + 1);
   };
 
   return (
@@ -172,6 +178,14 @@ export default function DashboardPage() {
           );
         })
       )}
+
+      <button
+        onClick={reloadDashboard}
+        className="fixed top-6 right-16 p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white shadow-md transition mr-7"
+        title="Refresh Dashboard"
+      >
+        <FiRefreshCw size={20} className="animate-spin-once" />
+      </button>
 
       <button
         onClick={handleDashboardSettings}

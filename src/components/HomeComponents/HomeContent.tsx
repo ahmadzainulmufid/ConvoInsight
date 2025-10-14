@@ -1,9 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiSearch } from "react-icons/fi";
 import ProjectCard from "./ProjectCard";
 import { useAuthUser } from "../../utils/firebaseSetup";
 import { useDomains } from "../../hooks/useDomains";
+import { useChatHistory } from "../../hooks/useChatHistory";
+
+type DashboardItem = {
+  id: string;
+  prompt?: string;
+  createdAt?: number;
+  section?: string;
+};
 
 export default function HomeContent() {
   const [search, setSearch] = useState("");
@@ -13,6 +21,41 @@ export default function HomeContent() {
 
   // 🔥 ambil domain dari Firestore
   const { domains, uid } = useDomains({ seedDefaultOnEmpty: false });
+
+  // 🔹 ambil chat history lokal
+  const { all: allChats } = useChatHistory();
+  const lastChat = allChats.length > 0 ? allChats[0] : null;
+
+  // 🔹 ambil dashboard terakhir dari localStorage
+  const [lastDashboard, setLastDashboard] = useState<DashboardItem | null>(
+    null
+  );
+
+  useEffect(() => {
+    try {
+      const dashboards: DashboardItem[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("dashboard_items_")) {
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            for (const item of arr) {
+              dashboards.push(item);
+            }
+          }
+        }
+      }
+
+      if (dashboards.length > 0) {
+        dashboards.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setLastDashboard(dashboards[0]);
+      }
+    } catch (err) {
+      console.error("Failed to parse dashboard history:", err);
+    }
+  }, []);
 
   // filter realtime dari Firestore data
   const filtered = domains.filter((d) =>
@@ -25,14 +68,6 @@ export default function HomeContent() {
       desc: "Add your domain to start managing datasets and building apps",
       to: "/domain/new",
     },
-    // {
-    //   title: "Start upload datasets",
-    //   desc: "Upload your datasets to your domain to start building AI-powered applications",
-    //   to:
-    //     domains.length > 0
-    //       ? `/domain/${domains[0].name}/datasets`
-    //       : "/domain/new",
-    // },
     {
       title: "Configuration User",
       desc: "Configure your user settings, preferences, and account details to personalize your experience",
@@ -61,13 +96,11 @@ export default function HomeContent() {
 
         {/* 🚀 Section Get Started + Domains sejajar */}
         <section>
-          {/* 🔹 Heading sejajar */}
           <div className="grid grid-cols-1 md:grid-cols-2 items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">Get started</h2>
             <h2 className="text-xl font-semibold text-white ml-5">Domains</h2>
           </div>
 
-          {/* 🔹 Konten dua kolom */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* 🧭 Kiri: Get Started Cards */}
             <div className="space-y-4">
@@ -85,7 +118,6 @@ export default function HomeContent() {
 
             {/* 📦 Kanan: Search + ProjectCard */}
             <div className="bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg">
-              {/* 🔍 Search Bar */}
               <div className="flex items-center gap-2 mb-5 border-b border-gray-700 pb-2">
                 <FiSearch className="text-gray-400" />
                 <input
@@ -97,7 +129,6 @@ export default function HomeContent() {
                 />
               </div>
 
-              {/* 🔹 List ProjectCard */}
               {!uid ? (
                 <p className="text-sm text-amber-400 text-center py-6">
                   Please log in to view your domains
@@ -117,30 +148,77 @@ export default function HomeContent() {
           </div>
         </section>
 
-        {/* 🧪 Sample Apps */}
-        <section>
+        {/* 🧠 Gabungan History (Dashboard + Chat) */}
+        <section className="mb-16 pb-8">
           <h2 className="text-xl font-semibold mb-4 text-white">
-            Histroy ConvoInsight in Domains
+            History ConvoInsight in Domains
           </h2>
+
           <div className="space-y-4">
-            {[
-              {
-                title: "Dashboard",
-                desc: "1 jam yang lalu.",
-              },
-              {
-                title: "Try an AI-powered trip planner app",
-                desc: "Deploy a sample app using Firestore, Authentication, and multimodal input.",
-              },
-            ].map((item) => (
+            {/* 📊 Dashboard terakhir */}
+            {lastDashboard ? (
               <div
-                key={item.title}
+                onClick={() =>
+                  navigate(
+                    `/domain/${
+                      lastDashboard.section || domains[0]?.name || "default"
+                    }/dashboard`
+                  )
+                }
                 className="bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg hover:bg-[#2A2A2A] cursor-pointer transition"
               >
-                <h3 className="font-semibold text-white">{item.title}</h3>
-                <p className="text-sm text-gray-400 mt-1">{item.desc}</p>
+                <h3 className="font-semibold text-white">
+                  {lastDashboard.prompt
+                    ? lastDashboard.prompt.slice(0, 80) + "..."
+                    : "Recent dashboard update"}
+                </h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  Last updated:{" "}
+                  {lastDashboard.createdAt
+                    ? new Date(lastDashboard.createdAt).toLocaleString(
+                        "id-ID",
+                        {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        }
+                      )
+                    : "Recently"}
+                </p>
               </div>
-            ))}
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-3">
+                No dashboard activity yet
+              </p>
+            )}
+
+            {/* 💬 Chat terakhir */}
+            {lastChat ? (
+              <div
+                onClick={() =>
+                  navigate(
+                    `/domain/${
+                      lastChat.section || "default"
+                    }/dashboard/newchat?id=${lastChat.id}`
+                  )
+                }
+                className="bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg hover:bg-[#2A2A2A] cursor-pointer transition"
+              >
+                <h3 className="font-semibold text-white">
+                  {lastChat.title || "Untitled Chat"}
+                </h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  Last updated:{" "}
+                  {new Date(lastChat.createdAt).toLocaleString("id-ID", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-3">
+                No chat history yet
+              </p>
+            )}
           </div>
         </section>
       </div>

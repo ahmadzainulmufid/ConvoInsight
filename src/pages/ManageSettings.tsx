@@ -37,6 +37,7 @@ export type DashboardItem = {
   datasets?: string[];
   columns?: string[];
   includeInsight: boolean;
+  createdAt?: number;
 };
 
 type ExecutionResult = { text: string; chartHtml?: string };
@@ -298,6 +299,7 @@ export default function ManageSettings() {
       includeInsight,
       datasets: selectedDatasetIds,
       columns: selectedColumns,
+      createdAt: Date.now(),
     };
     setItems((prev) => [...prev, newItem]);
     toast.success(`Saved ${itemType} to dashboard.`);
@@ -310,6 +312,7 @@ export default function ManageSettings() {
       includeInsight,
       datasets: selectedDatasetIds,
       columns: selectedColumns,
+      createdAt: Date.now(),
     };
     setItems((prev) => [...prev, newItem]);
     toast.success(`Saved KPI from dataset`);
