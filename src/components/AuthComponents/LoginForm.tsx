@@ -66,6 +66,25 @@ const LoginForm: React.FC = () => {
       );
       await signInWithEmailAndPassword(auth, email, password);
       toast.success(`Signed in as ${auth.currentUser?.email ?? email}`);
+      const user = auth.currentUser;
+      if (user) {
+        const uid = user.uid;
+        // 🧹 Hapus cache chat dari user lain
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("chat_history_") && !key.includes(uid)) {
+            localStorage.removeItem(key);
+          }
+        }
+
+        // 🧹 Hapus dashboard lama milik user lain
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("dashboard_items_") && !key.includes(uid)) {
+            localStorage.removeItem(key);
+          }
+        }
+      }
       navigate("/home");
     } catch (err: unknown) {
       const errorCode =

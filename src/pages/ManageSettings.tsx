@@ -13,6 +13,7 @@ import {
 import { fetchChartHtml } from "../utils/fetchChart";
 import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
 import ManageKpiOutput from "../components/ManageComponents/ManageKpiOutput";
+import { auth } from "../utils/firebaseSetup";
 
 type DatasetMeta = {
   id: string;
@@ -84,7 +85,10 @@ export default function ManageSettings() {
     import.meta.env.VITE_API_URL ||
     "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
-  const storageKey = `dashboard_items_${groupId}`;
+  const uid = auth.currentUser?.uid;
+  const storageKey = uid
+    ? `dashboard_items_${uid}_${groupId}`
+    : `dashboard_items_${groupId}`;
   const [items, setItems] = useState<DashboardItem[]>(() => {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -100,8 +104,21 @@ export default function ManageSettings() {
   const [isLoadingItems, setIsLoadingItems] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(items));
-  }, [items, storageKey]);
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    const oldKey = `dashboard_items_${groupId}`;
+    const newKey = `dashboard_items_${uid}_${groupId}`;
+
+    if (localStorage.getItem(oldKey) && !localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, localStorage.getItem(oldKey)!);
+      localStorage.removeItem(oldKey);
+    }
+  }, [groupId]);
+
+  useEffect(() => {
+    if (uid) localStorage.setItem(storageKey, JSON.stringify(items));
+  }, [items, storageKey, uid]);
 
   useEffect(() => {
     if (!domainDocId) {

@@ -6,6 +6,7 @@ import { getDomainDocId, fetchMessagesOnce } from "../service/chatStore";
 import { useDashboardSetting } from "../hooks/useDashboardSettings";
 import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
 import ManageKpiOutput from "../components/ManageComponents/ManageKpiOutput";
+import { auth } from "../utils/firebaseSetup";
 
 type ExecutionResult = { text: string; chartHtml?: string };
 type DashboardItem = {
@@ -44,6 +45,21 @@ export default function DashboardPage() {
     })();
   }, [domain]);
 
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid || group.length === 0) return;
+
+    group.forEach((g) => {
+      const oldKey = `dashboard_items_${g.id}`;
+      const newKey = `dashboard_items_${uid}_${g.id}`;
+
+      if (localStorage.getItem(oldKey) && !localStorage.getItem(newKey)) {
+        localStorage.setItem(newKey, localStorage.getItem(oldKey)!);
+        localStorage.removeItem(oldKey);
+      }
+    });
+  }, [group]);
+
   // 🔹 Muat item setiap group dari localStorage + hydrate dari Firestore
   useEffect(() => {
     if (!domainDocId || group.length === 0) return;
@@ -52,8 +68,14 @@ export default function DashboardPage() {
       setLoading(true);
       const allItems: Record<string, HydratedDashboardItem[]> = {};
 
+      const uid = auth.currentUser?.uid;
+
       for (const g of group) {
-        const storageKey = `dashboard_items_${g.id}`;
+        // ✅ pastikan pakai UID-based key
+        const storageKey = uid
+          ? `dashboard_items_${uid}_${g.id}`
+          : `dashboard_items_${g.id}`;
+
         const raw = localStorage.getItem(storageKey);
         if (!raw) {
           allItems[g.id] = [];

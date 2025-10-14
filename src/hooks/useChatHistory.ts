@@ -9,8 +9,6 @@ import {
 } from "firebase/firestore";
 import { getDomainDocId } from "../service/chatStore";
 
-const KEY = "chat_history";
-
 export type ChatItem = {
   id: string;
   title: string;
@@ -18,9 +16,16 @@ export type ChatItem = {
   createdAt: number;
 };
 
+// 🧠 Helper buat dapetin key berdasarkan UID
+function getKey() {
+  const uid = auth.currentUser?.uid;
+  return uid ? `chat_history_${uid}` : "chat_history";
+}
+
 function read(): ChatItem[] {
   try {
-    const raw = localStorage.getItem(KEY);
+    const key = getKey();
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr : [];
@@ -30,7 +35,8 @@ function read(): ChatItem[] {
 }
 
 function write(items: ChatItem[]) {
-  localStorage.setItem(KEY, JSON.stringify(items));
+  const key = getKey();
+  localStorage.setItem(key, JSON.stringify(items));
   window.dispatchEvent(new CustomEvent("chats:updated"));
 }
 
@@ -40,7 +46,7 @@ export function useChatHistory(section?: string) {
   useEffect(() => {
     const sync = () => setItems(read());
     const onStorage = (e: StorageEvent) => {
-      if (e.key === KEY) sync();
+      if (e.key === getKey()) sync();
     };
     window.addEventListener("storage", onStorage);
     window.addEventListener("chats:updated", sync as EventListener);
@@ -48,6 +54,17 @@ export function useChatHistory(section?: string) {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("chats:updated", sync as EventListener);
     };
+  }, []);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    const oldData = localStorage.getItem("chat_history");
+    if (oldData && !localStorage.getItem(`chat_history_${uid}`)) {
+      localStorage.setItem(`chat_history_${uid}`, oldData);
+      localStorage.removeItem("chat_history");
+    }
   }, []);
 
   const add = useCallback((item: ChatItem) => {
@@ -87,7 +104,7 @@ export function useChatHistory(section?: string) {
           await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 
           console.log(
-            `Semua messages dengan sessionId=${sessionId} dihapus dari Firestore`
+            `✅ Semua messages dengan sessionId=${sessionId} dihapus dari Firestore`
           );
         } catch (err) {
           console.error("Gagal hapus messages dari Firestore:", err);
