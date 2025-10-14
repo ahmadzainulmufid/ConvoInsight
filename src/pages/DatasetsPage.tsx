@@ -13,6 +13,7 @@ import {
   getDatasetBlob,
   deleteDatasetBlob,
 } from "../utils/fileStore";
+import { addNotification } from "../service/notificationStore";
 
 type Props = { userName: string };
 
@@ -164,6 +165,11 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
               }
 
               toast.success("Dataset uploaded successfully!");
+              await addNotification(
+                "dataset",
+                "Dataset Upload",
+                "Your dataset upload completed successfully!"
+              );
 
               // Cache ke lokal juga (opsional)
               const savePromises = files.map((file) =>

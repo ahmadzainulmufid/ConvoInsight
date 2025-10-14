@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useDomains } from "../hooks/useDomains";
 import { NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
+import { addNotification } from "../service/notificationStore";
 
 export default function CreateDomainPage() {
   const { domains, addDomain, removeDomain, uid } = useDomains({
@@ -16,9 +17,22 @@ export default function CreateDomainPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!uid) {
+      toast.error("Please login first before adding domain");
+      return;
+    }
+
     const res = await addDomain(name);
     if (res.ok) {
       toast.success("Domain added");
+
+      await addNotification(
+        "domain",
+        "New Domain Created",
+        `Domain "${name}" has been added.`
+      );
+
       setName("");
     } else {
       toast.error(res.reason || "Failed to add domain");
@@ -29,6 +43,11 @@ export default function CreateDomainPage() {
     if (!domainToDelete) return;
     const res = await removeDomain(domainToDelete.id);
     if (res.ok) toast.success(`Domain "${domainToDelete.name}" deleted`);
+    await addNotification(
+      "domain",
+      "Domain Deleted",
+      `Domain "${domainToDelete.name}" deleted.`
+    );
     setDomainToDelete(null);
   };
 

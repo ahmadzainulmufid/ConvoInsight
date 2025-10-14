@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { FiBell, FiHelpCircle, FiLogOut, FiCompass } from "react-icons/fi";
+import { FiHelpCircle, FiLogOut } from "react-icons/fi";
 import { useAuthUser } from "../../utils/firebaseSetup";
 import { signOut } from "firebase/auth";
 import { auth } from "../../utils/firebaseSetup";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import NotificationPopover from "../SupportComponents/NotificationPopover";
 
 /** 🎨 Daftar warna yang dipilih agar kontras di dark mode */
 const avatarColors = [
@@ -67,16 +68,21 @@ export default function RightSidebar() {
           {/* Menu Popover */}
           {isMenuOpen && (
             <div className="absolute right-full mr-4 top-0 w-64 bg-[#2d2e30] rounded-lg shadow-lg p-4 border border-gray-700">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-4 min-w-0">
                 <div
-                  className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-xl"
+                  className="flex-shrink-0 h-10 aspect-square rounded-full 
+               flex items-center justify-center text-white 
+               font-semibold text-lg"
                   style={{ backgroundColor: avatarColor }}
                 >
                   {avatarLetter}
                 </div>
-                <div>
-                  <p className="font-semibold text-white">{displayName}</p>
-                  <p className="text-sm text-gray-400">{email}</p>
+
+                <div className="min-w-0">
+                  <p className="font-semibold text-white truncate">
+                    {displayName}
+                  </p>
+                  <p className="text-sm text-gray-400 truncate">{email}</p>
                 </div>
               </div>
 
@@ -92,13 +98,7 @@ export default function RightSidebar() {
         </div>
 
         {/* Ikon lainnya */}
-        <FiBell
-          size={24}
-          className="text-gray-400 hover:text-white cursor-pointer"
-        />
-        <div className="p-3 bg-blue-900/50 rounded-full">
-          <FiCompass size={24} className="text-blue-300 cursor-pointer" />
-        </div>
+        <NotificationPopover />
         <FiHelpCircle
           size={24}
           className="text-gray-400 hover:text-white cursor-pointer"

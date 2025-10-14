@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 import MultiSelectDropdown from "../components/ChatComponents/MultiSelectDropdown";
 import SuggestedQuestions from "../components/ChatComponents/SuggestedQuestions";
 import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
+import { addNotification } from "../service/notificationStore";
 
 /** Type Definitions **/
 type ThinkingStep = {
@@ -297,6 +298,11 @@ export default function NewChatPage() {
         section: domain!,
         createdAt: Date.now(),
       });
+      await addNotification(
+        "chat",
+        "New Chat Started",
+        `You started a new chat in ${domain}`
+      );
     }
 
     try {
@@ -408,6 +414,11 @@ export default function NewChatPage() {
           assistantMsg.content,
           chartHtml,
           dynamicSteps
+        );
+        await addNotification(
+          "insight",
+          "Insight Generated",
+          "Your AI insight and chart have been generated successfully!"
         );
 
         setSending(false);
