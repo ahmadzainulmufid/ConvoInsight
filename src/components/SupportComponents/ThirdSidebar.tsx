@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   HiOutlineMenu,
-  HiOutlineUser,
   HiOutlineHome,
   HiOutlineCog,
   HiOutlineCollection,
@@ -207,19 +206,61 @@ export default function Sidebar({
         </div>
       </nav>
 
-      <div className="shrink-0 border-t border-[#2A2B32] bg-[#2A2B32]">
-        <button
-          ref={profileBtnRef}
-          onClick={() => setMenuOpen((v) => !v)}
-          className={[
-            "flex items-center w-full h-12 text-sm text-white gap-3 hover:bg-[#2F3038]",
-            collapsed ? "justify-center px-0" : "px-3",
-          ].join(" ")}
-          title={userName}
-        >
-          <HiOutlineUser size={20} />
-          <span className={labelClass}>{userName}</span>
-        </button>
+      <div className="relative border-t border-[#2A2B32] bg-[#2A2B32] px-3 py-3">
+        <div className="flex items-center justify-start gap-3">
+          {/* Avatar Button */}
+          <button
+            ref={profileBtnRef}
+            onClick={() => setMenuOpen((v) => !v)}
+            className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-xl border-2 border-blue-400 focus:outline-none transition hover:opacity-90"
+            style={{ backgroundColor: "#3B82F6" }}
+            title={userName}
+          >
+            {userName.charAt(0).toUpperCase()}
+          </button>
+
+          {/* Nama user (opsional, hanya tampil kalau sidebar tidak collapsed) */}
+          {!collapsed && (
+            <span className="text-sm font-medium text-white truncate max-w-[8rem]">
+              {userName}
+            </span>
+          )}
+        </div>
+
+        {/* Popup Sign-Out Menu */}
+        {menuOpen && (
+          <div
+            ref={menuRef}
+            className="absolute right-full mr-3 bottom-3 w-56 bg-[#2d2e30] rounded-lg shadow-lg border border-gray-700 p-3 text-gray-300 z-50"
+          >
+            {/* Profile Info */}
+            <div className="flex items-center gap-3 mb-3 min-w-0">
+              <div
+                className="flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold text-base border border-blue-400"
+                style={{ backgroundColor: "#3B82F6" }}
+              >
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-white truncate text-sm">
+                  {userName}
+                </p>
+                <p className="text-xs text-gray-400 truncate">
+                  {auth.currentUser?.email || "No email"}
+                </p>
+              </div>
+            </div>
+
+            {/* Tombol Sign Out */}
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-md transition"
+            >
+              <FiLogOut />
+              Sign Out
+            </button>
+          </div>
+        )}
       </div>
 
       {menuOpen && (
