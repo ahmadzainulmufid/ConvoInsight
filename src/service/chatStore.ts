@@ -9,6 +9,8 @@ import {
   onSnapshot,
   where,
   getDocs,
+  doc,
+  updateDoc,
 } from "firebase/firestore";
 import { saveChartBlob, getChartBlob } from "../utils/fileStore";
 
@@ -133,4 +135,57 @@ export async function fetchMessagesOnce(
     out.push({ id: d.id, ...data, chartHtml });
   }
   return out;
+}
+
+export async function updateChatMessage(
+  domainDocId: string,
+  messageId: string,
+  patch: Partial<ChatMessage>
+) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+  const ref = doc(
+    db,
+    "users",
+    user.uid,
+    "domains",
+    domainDocId,
+    "messages",
+    messageId
+  );
+  await updateDoc(ref, patch);
+}
+
+export async function updateAssistantMessage(
+  domainDocId: string,
+  messageId: string,
+  text: string,
+  chartHtml?: string,
+  thinkingSteps?: ThinkingStep[]
+) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+
+  let chartId: string | undefined;
+  if (chartHtml) {
+    chartId = `${messageId}_${Date.now()}`;
+    const blob = new Blob([chartHtml], { type: "text/html" });
+    await saveChartBlob(chartId, blob);
+  }
+
+  const ref = doc(
+    db,
+    "users",
+    user.uid,
+    "domains",
+    domainDocId,
+    "messages",
+    messageId
+  );
+  await updateDoc(ref, {
+    text,
+    ...(chartId ? { chartId } : {}),
+    ...(thinkingSteps ? { thinkingSteps } : {}),
+    createdAt: serverTimestamp(), // optional: segarkan order
+  });
 }

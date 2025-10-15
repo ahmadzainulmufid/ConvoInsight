@@ -1,5 +1,5 @@
 //src/Pages/NewChatPage.tsx
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import HistorySidebar from "../components/ChatComponents/HistorySidebar";
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
@@ -14,6 +14,8 @@ import {
   saveChatMessage,
   listenMessages,
   getDomainDocId,
+  updateAssistantMessage,
+  updateChatMessage,
 } from "../service/chatStore";
 import { FiCopy, FiEdit2, FiCheck, FiX, FiActivity } from "react-icons/fi";
 import toast from "react-hot-toast";
@@ -29,6 +31,7 @@ type ThinkingStep = {
 };
 
 type Msg = {
+  id?: string;
   role: "user" | "assistant";
   content: string;
   cleanText?: string;
@@ -116,10 +119,9 @@ function ChatInput({
           type="button"
           onClick={onStop}
           className="ml-2 flex items-center justify-center 
-                     w-9 h-9 rounded-md 
-                     bg-transparent opacity-60
-                     text-white text-lg transition"
-          title="Stop"
+               w-9 h-9 rounded-md text-lg text-red-400 
+               hover:text-red-300 transition"
+          title="Stop generating"
         >
           ⏹
         </button>
@@ -128,12 +130,12 @@ function ChatInput({
           type="submit"
           disabled={!hasText || disabled}
           className={`ml-2 flex items-center justify-center 
-                      w-9 h-9 rounded-md text-lg transition
-            ${
-              hasText
-                ? "bg-transparent text-white opacity-80 hover:opacity-100 cursor-pointer"
-                : "bg-transparent text-white opacity-40 cursor-not-allowed"
-            }`}
+                w-9 h-9 rounded-md text-lg transition
+      ${
+        hasText
+          ? "bg-transparent text-white opacity-80 hover:opacity-100 cursor-pointer"
+          : "bg-transparent text-white opacity-40 cursor-not-allowed"
+      }`}
           title="Send"
         >
           {hasText ? "↑" : "➤"}
@@ -157,7 +159,9 @@ export default function NewChatPage() {
 
   const [domainDocId, setDomainDocId] = useState<string | null>(null);
 
-  const openedId = searchParams.get("id");
+  const [openedId, setOpenedId] = useState<string | null>(
+    searchParams.get("id")
+  );
   const isNewConversation = !openedId;
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -204,21 +208,56 @@ export default function NewChatPage() {
     };
   }, []);
 
+  useLayoutEffect(() => {
+    setOpenedId(searchParams.get("id"));
+
+    const wasGenerating =
+      sessionStorage.getItem("activeChatGenerating") === "true" ||
+      searchParams.get("gen") === "true";
+
+    if (wasGenerating) {
+      // langsung aktifkan sebelum render pertama
+      setIsGenerating(true);
+      sessionStorage.removeItem("activeChatGenerating");
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (isGenerating === false && searchParams.get("gen") === "true") {
+      const next = new URLSearchParams(searchParams);
+      next.delete("gen");
+      navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, {
+        replace: true,
+      });
+    }
+  }, [domain, isGenerating, navigate, searchParams]);
+
   /** Listen to Saved Messages **/
   useEffect(() => {
     if (!domainDocId || !openedId) return;
+
+    // Reset messages ketika user berpindah ke chat baru
+    setMessages([]);
+    setMessage("");
+    setSending(false);
+    setIsGenerating(false);
+    setCurrentThinkingSteps([]);
+    thinkingTimeoutRef.current.forEach(clearTimeout);
+
+    type FirestoreMsg = {
+      id?: string;
+      role: "user" | "assistant";
+      text: string;
+      chartHtml?: string;
+      thinkingSteps?: ThinkingStep[];
+    };
+
     const unsub = listenMessages(
       domainDocId,
       openedId,
-      (
-        msgs: Array<{
-          role: "user" | "assistant";
-          text: string;
-          chartHtml?: string;
-          thinkingSteps?: ThinkingStep[];
-        }>
-      ) => {
+      (msgs: FirestoreMsg[]) => {
         const mapped: Msg[] = msgs.map((m) => ({
+          id: m.id, // ⬅️ simpan docId
           role: m.role,
           content:
             m.role === "assistant"
@@ -226,7 +265,7 @@ export default function NewChatPage() {
               : stripFences(m.text),
           charts: m.chartHtml ? [{ html: m.chartHtml }] : undefined,
           animate: false,
-          thinkingSteps: m.thinkingSteps || undefined, // Muat jika ada di DB
+          thinkingSteps: m.thinkingSteps || undefined,
         }));
         setMessages(mapped);
         setTimeout(() => scrollToBottom("auto"), 0);
@@ -240,12 +279,16 @@ export default function NewChatPage() {
     if (!domain) return;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/domains/${domain}/datasets`);
+        const res = await fetch(`${API_BASE}/datasets?domain=${domain}`);
         if (res.ok) {
           const data = await res.json();
           setAvailableDatasets(
-            (data.datasets as DatasetApiItem[]).map((d) => d.filename)
+            (data.items ?? data.datasets ?? []).map(
+              (d: DatasetApiItem) => d.filename
+            )
           );
+        } else {
+          console.error("Failed to fetch datasets:", res.status);
         }
       } catch (err) {
         console.error("Failed to load datasets", err);
@@ -263,12 +306,36 @@ export default function NewChatPage() {
     ? `Chat on domain “${domain}” (uses selected datasets in this domain)`
     : "Select a domain in the URL to start";
 
+  if (!domainDocId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-400">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+          <span>Preparing domain connection...</span>
+        </div>
+      </div>
+    );
+  }
+
   /** Handle Send **/
   const handleSend = async (prompt?: string) => {
+    if (controller) {
+      controller.abort();
+      setController(null);
+    }
+
     const text = (prompt || message).trim();
     if (!text || sending) return;
-    if (!domainDocId) return console.error("Domain not found");
 
+    const abortCtrl = new AbortController();
+    setController(abortCtrl);
+    setIsGenerating(true);
+    setSending(true);
+
+    if (!domainDocId) {
+      toast.error("Please wait, preparing domain connection...");
+      return;
+    }
     // 🔄 Reset semua animasi berpikir lama
     thinkingTimeoutRef.current.forEach(clearTimeout);
     thinkingTimeoutRef.current = [];
@@ -277,11 +344,6 @@ export default function NewChatPage() {
     const nextMsgs: Msg[] = [...messages, { role: "user", content: text }];
     setMessages(nextMsgs);
     setMessage("");
-    setSending(true);
-    setIsGenerating(true);
-
-    const abortCtrl = new AbortController();
-    setController(abortCtrl);
 
     let sessionId = searchParams.get("id");
     if (!openedId && nextMsgs.filter((m) => m.role === "user").length === 1) {
@@ -289,6 +351,7 @@ export default function NewChatPage() {
       sessionId = id;
       const next = new URLSearchParams(searchParams);
       next.set("id", id);
+      sessionStorage.setItem("activeChatGenerating", "true");
       navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, {
         replace: true,
       });
@@ -302,6 +365,11 @@ export default function NewChatPage() {
         "chat",
         "New Chat Started",
         `You started a new chat in ${domain}`
+      );
+      window.history.replaceState(
+        null,
+        "",
+        `/domain/${domain}/dashboard/newchat?${next.toString()}&gen=true`
       );
     }
 
@@ -480,9 +548,13 @@ export default function NewChatPage() {
                   onChange={setMessage}
                   onSend={() => handleSend()}
                   isGenerating={isGenerating}
+                  disabled={sending}
                   onStop={() => {
                     controller?.abort();
                     setIsGenerating(false);
+                    setSending(false);
+                    thinkingTimeoutRef.current.forEach(clearTimeout);
+                    setCurrentThinkingSteps([]);
                   }}
                   placeholder="Ask Anything"
                 />
@@ -490,7 +562,14 @@ export default function NewChatPage() {
             </div>
 
             <SuggestedQuestions
-              onQuestionClick={handleSend}
+              onQuestionClick={(q) => {
+                if (!domainDocId) {
+                  toast.loading("Preparing connection...");
+                  setTimeout(() => handleSend(q), 800);
+                } else {
+                  handleSend(q);
+                }
+              }}
               domain={domain}
               dataset={
                 selectedDatasets.length > 0
@@ -517,7 +596,7 @@ export default function NewChatPage() {
                   className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl"
                 >
                   {m.role === "assistant" ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 mb-20">
                       {m.thinkingSteps && (
                         <details className="mb-10">
                           <summary className="text-sm font-semibold text-blue-400 cursor-pointer flex items-center gap-2 hover:underline">
@@ -594,42 +673,145 @@ export default function NewChatPage() {
                                 const edited = editText.trim();
                                 if (!edited)
                                   return toast.error("Message can't be empty");
+                                if (!domainDocId)
+                                  return toast.error("Domain not ready");
+                                const sessionId = searchParams.get("id");
+                                if (!sessionId)
+                                  return toast.error("Session ID not found");
 
-                                // Tutup mode edit
                                 setEditingIndex(null);
                                 setEditText("");
 
-                                // Hapus jawaban lama di bawah pesan yang diedit
-                                setMessages((prev) => {
-                                  const copy = [...prev];
-                                  copy[i] = { ...copy[i], content: edited };
-                                  if (copy[i + 1]?.role === "assistant") {
-                                    copy.splice(i + 1, 1);
-                                  }
-                                  return copy;
-                                });
+                                // bersihin state lama
+                                thinkingTimeoutRef.current.forEach(
+                                  clearTimeout
+                                );
+                                thinkingTimeoutRef.current = [];
+                                setCurrentThinkingSteps([]);
+                                if (controller) {
+                                  controller.abort();
+                                  setController(null);
+                                }
+                                const newController = new AbortController();
+                                setController(newController);
 
-                                // Tampilkan indikator typing
                                 setSending(true);
                                 setIsGenerating(true);
+
+                                // ⬅️ id dokumen pertanyaan lama & id jawaban setelahnya (kalau ada)
+                                const userMsgId = messages[i]?.id;
+                                if (!userMsgId) {
+                                  toast.error("User message ID not found.");
+                                  setEditingIndex(null);
+                                  setEditText("");
+                                  setSending(false);
+                                  setIsGenerating(false);
+                                  return;
+                                }
+                                const nextAssistantId =
+                                  messages[i + 1]?.role === "assistant"
+                                    ? messages[i + 1]?.id
+                                    : null;
+
+                                // 1) Update pertanyaan di Firestore & UI (tidak bikin bubble baru)
+                                await updateChatMessage(
+                                  domainDocId,
+                                  userMsgId,
+                                  { text: edited }
+                                );
+                                setMessages((prev) => {
+                                  const updated = [...prev];
+                                  updated[i] = {
+                                    ...updated[i],
+                                    content: edited,
+                                  };
+                                  // kalau ada jawaban setelahnya, hapus dulu biar diganti nanti
+                                  if (updated[i + 1]?.role === "assistant")
+                                    updated.splice(i + 1, 1);
+                                  return updated;
+                                });
+
+                                // tampilkan langkah2 thinking
+                                const baseSteps: ThinkingStep[] = [
+                                  {
+                                    key: "router",
+                                    message:
+                                      "Routing and understanding user intent...",
+                                  },
+                                  {
+                                    key: "orchestrator",
+                                    message: "Building orchestrator plan...",
+                                  },
+                                  {
+                                    key: "compiler",
+                                    message: "Preparing response...",
+                                  },
+                                ];
+                                const stepInterval = 600;
+                                baseSteps.forEach((step, idx) => {
+                                  const t = setTimeout(() => {
+                                    if (newController.signal.aborted) return;
+                                    setCurrentThinkingSteps((p) => [
+                                      ...p,
+                                      step,
+                                    ]);
+                                    scrollToBottom("smooth");
+                                  }, idx * stepInterval);
+                                  thinkingTimeoutRef.current.push(t);
+                                });
 
                                 try {
                                   const res = await queryDomain({
                                     apiBase: API_BASE,
                                     domain: domain!,
                                     prompt: edited,
-                                    sessionId:
-                                      searchParams.get("id") ?? undefined,
+                                    sessionId,
+                                    signal: newController.signal,
                                     dataset:
                                       selectedDatasets.length > 0
                                         ? selectedDatasets
                                         : undefined,
                                   });
 
+                                  const dynamicSteps = [...baseSteps];
+                                  if (res.need_manipulator)
+                                    dynamicSteps.splice(2, 0, {
+                                      key: "manipulator",
+                                      message:
+                                        "Manipulating datasets and cleaning data...",
+                                    });
+                                  if (res.need_analyzer)
+                                    dynamicSteps.splice(3, 0, {
+                                      key: "analyzer",
+                                      message:
+                                        "Analyzing dataset patterns and relationships...",
+                                    });
+                                  if (res.need_visualizer)
+                                    dynamicSteps.splice(4, 0, {
+                                      key: "visualizer",
+                                      message:
+                                        "Generating visualization for insights...",
+                                    });
+
+                                  const backendStart =
+                                    baseSteps.length * stepInterval;
+                                  dynamicSteps
+                                    .slice(baseSteps.length)
+                                    .forEach((step, idx) => {
+                                      const t = setTimeout(() => {
+                                        setCurrentThinkingSteps((p) => [
+                                          ...p,
+                                          step,
+                                        ]);
+                                        scrollToBottom("smooth");
+                                      }, backendStart + idx * stepInterval);
+                                      thinkingTimeoutRef.current.push(t);
+                                    });
+
+                                  // chart (optional)
                                   let charts: ChartItem[] | undefined;
                                   let chartHtml: string | undefined;
                                   const chartUrl = res.chart_url ?? null;
-
                                   if (chartUrl) {
                                     try {
                                       const html = await fetchChartHtml(
@@ -640,56 +822,72 @@ export default function NewChatPage() {
                                         chartHtml = html;
                                         charts = [{ html }];
                                       }
-                                    } catch (e) {
-                                      console.warn(
-                                        "Fetch chart HTML failed:",
-                                        e
-                                      );
+                                    } catch {
+                                      /* empty */
                                     }
                                   }
 
                                   const cleaned = cleanHtmlResponse(
                                     res.response ?? "(empty)"
                                   );
+                                  const totalStepTime =
+                                    (dynamicSteps.length + 1) * stepInterval +
+                                    800;
 
-                                  // Tambahkan bubble asisten baru (hasil regenerasi)
-                                  setMessages((prev) => {
-                                    const copy = [...prev];
-                                    copy.splice(i + 1, 0, {
+                                  setTimeout(async () => {
+                                    // bersih2 thinking
+                                    thinkingTimeoutRef.current.forEach(
+                                      clearTimeout
+                                    );
+                                    thinkingTimeoutRef.current = [];
+                                    setCurrentThinkingSteps([]);
+
+                                    // 2) Pasang jawaban BARU tepat di bawah pertanyaan (replace if exists)
+                                    const newAssistant: Msg = {
                                       role: "assistant",
+                                      content: cleaned,
                                       chartUrl,
                                       charts,
-                                      content: cleaned,
                                       animate: true,
+                                      thinkingSteps: dynamicSteps,
+                                    };
+                                    setMessages((prev) => {
+                                      const updated = [...prev];
+                                      // selipkan jawaban baru di bawah pertanyaan yang diedit
+                                      updated.splice(i + 1, 0, newAssistant);
+                                      return updated;
                                     });
-                                    return copy;
-                                  });
 
-                                  await saveChatMessage(
-                                    domainDocId!,
-                                    searchParams.get("id")!,
-                                    "assistant",
-                                    cleaned,
-                                    chartHtml
-                                  );
-                                } catch (err) {
-                                  console.error("Error regenerating:", err);
+                                    // 3) Update/Upsert di Firestore:
+                                    if (nextAssistantId) {
+                                      // replace dokumen jawaban lama
+                                      await updateAssistantMessage(
+                                        domainDocId,
+                                        nextAssistantId,
+                                        cleaned,
+                                        chartHtml,
+                                        dynamicSteps
+                                      );
+                                    } else {
+                                      // belum ada jawaban → buat satu kali
+                                      await saveChatMessage(
+                                        domainDocId,
+                                        sessionId,
+                                        "assistant",
+                                        cleaned,
+                                        chartHtml,
+                                        dynamicSteps
+                                      );
+                                    }
 
-                                  // Tambahkan bubble fallback error di UI
-                                  setMessages((prev) => {
-                                    const copy = [...prev];
-                                    copy.splice(i + 1, 0, {
-                                      role: "assistant",
-                                      content:
-                                        "⚠️ (fallback) There was a problem processing the message.",
-                                      animate: true,
-                                    });
-                                    return copy;
-                                  });
-                                  toast.error(
-                                    "⚠️ (fallback) There was a problem processing the message."
+                                    setSending(false);
+                                    setIsGenerating(false);
+                                  }, totalStepTime);
+                                } catch {
+                                  thinkingTimeoutRef.current.forEach(
+                                    clearTimeout
                                   );
-                                } finally {
+                                  setCurrentThinkingSteps([]);
                                   setSending(false);
                                   setIsGenerating(false);
                                 }
@@ -810,6 +1008,10 @@ export default function NewChatPage() {
                   onStop={() => {
                     controller?.abort();
                     setIsGenerating(false);
+                    setSending(false);
+                    sessionStorage.removeItem("activeChatGenerating");
+                    thinkingTimeoutRef.current.forEach(clearTimeout);
+                    setCurrentThinkingSteps([]);
                   }}
                 />
               </div>

@@ -1,4 +1,3 @@
-// src/components/ChatComponents/ChatComposer.txt
 import React, { useEffect, useRef } from "react";
 
 const MAX_H = 160;
@@ -10,6 +9,7 @@ export function ChatComposer({
   placeholder = "Ask Anything",
   isGenerating = false,
   onStop,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -17,6 +17,7 @@ export function ChatComposer({
   placeholder?: string;
   isGenerating?: boolean;
   onStop?: () => void;
+  disabled?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const hasText = value.trim().length > 0;
@@ -48,7 +49,7 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full flex items-center rounded-xl bg-gray-600 px-3 py-2"
+      className="w-full flex items-center rounded-xl bg-gray-700 px-3 py-2"
     >
       <textarea
         ref={ref}
@@ -56,11 +57,12 @@ export function ChatComposer({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         rows={1}
+        disabled={disabled}
         placeholder={placeholder}
         className="flex-1 resize-none bg-transparent outline-none 
                    text-gray-200 text-sm leading-relaxed 
                    placeholder-gray-400 px-2 py-1
-                   min-h-[40px] max-h-[160px] mt-2"
+                   min-h-[40px] max-h-[160px]"
       />
 
       {isGenerating ? (
@@ -68,24 +70,23 @@ export function ChatComposer({
           type="button"
           onClick={onStop}
           className="ml-2 flex items-center justify-center 
-                     w-9 h-9 rounded-md 
-                     bg-transparent opacity-60
-                     text-white text-lg transition"
-          title="Stop"
+               w-9 h-9 rounded-md text-lg text-red-400 
+               hover:text-red-300 transition"
+          title="Stop generating"
         >
           ⏹
         </button>
       ) : (
         <button
           type="submit"
-          disabled={!hasText}
+          disabled={!hasText || disabled || isGenerating}
           className={`ml-2 flex items-center justify-center 
-                      w-9 h-9 rounded-md text-lg transition
-            ${
-              hasText
-                ? "bg-transparent text-white opacity-60 cursor-not-allowed"
-                : "bg-transparent text-white opacity-60 cursor-not-allowed"
-            }`}
+                w-9 h-9 rounded-md text-lg transition
+      ${
+        hasText
+          ? "bg-transparent text-white opacity-80 hover:opacity-100 cursor-pointer"
+          : "bg-transparent text-white opacity-40 cursor-not-allowed"
+      }`}
           title="Send"
         >
           {hasText ? "↑" : "➤"}
