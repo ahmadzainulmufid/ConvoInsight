@@ -1,4 +1,3 @@
-//src/components/DatasetsComponents/DatasetList.tsx
 import React, { useState } from "react";
 
 export type DatasetItem = {
@@ -13,27 +12,54 @@ const humanSize = (b: number) =>
     ? `${(b / 1024 / 1024).toFixed(2)} MB`
     : `${(b / 1024).toFixed(0)} KB`;
 
-const DatasetList: React.FC<{
+type Props = {
   items: DatasetItem[];
   onEdit?: (item: DatasetItem) => void;
   onView?: (item: DatasetItem) => void;
   onDelete?: (item: DatasetItem) => void;
-}> = ({ items, onEdit, onView, onDelete }) => {
+  onDeleteAll?: () => void;
+};
+
+const DatasetList: React.FC<Props> = ({
+  items,
+  onEdit,
+  onView,
+  onDelete,
+  onDeleteAll,
+}) => {
   const [selected, setSelected] = useState<DatasetItem | null>(null);
+  const [confirmAll, setConfirmAll] = useState(false); // 🔹 state modal Delete All
 
   if (items.length === 0) return null;
 
   const confirmDelete = () => {
-    if (selected && onDelete) {
-      onDelete(selected);
-    }
+    if (selected && onDelete) onDelete(selected);
     setSelected(null);
+  };
+
+  const confirmDeleteAll = () => {
+    if (onDeleteAll) onDeleteAll();
+    setConfirmAll(false);
   };
 
   return (
     <>
       <div className="mt-6">
-        <h3 className="text-lg font-semibold text-white mb-3">Your datasets</h3>
+        {/* Header sejajar */}
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-semibold text-white">Your datasets</h3>
+
+          {onDeleteAll && (
+            <button
+              onClick={() => setConfirmAll(true)}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-sm font-medium text-white rounded-md"
+            >
+              Delete All
+            </button>
+          )}
+        </div>
+
+        {/* Daftar dataset */}
         <ul className="grid gap-3">
           {items.map((d) => (
             <li
@@ -55,6 +81,7 @@ const DatasetList: React.FC<{
                   </p>
                 )}
               </div>
+
               <div className="flex gap-3">
                 {onEdit && (
                   <button
@@ -86,6 +113,7 @@ const DatasetList: React.FC<{
         </ul>
       </div>
 
+      {/* 🔸 Modal konfirmasi delete satu dataset */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">
@@ -109,6 +137,36 @@ const DatasetList: React.FC<{
                 className="px-4 py-1.5 text-sm rounded-md bg-red-600 hover:bg-red-500 text-white"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔸 Modal konfirmasi delete ALL datasets */}
+      {confirmAll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">
+            <h2 className="text-lg font-semibold">Delete All Datasets?</h2>
+            <p className="text-sm text-gray-300">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-white">
+                all datasets in this domain
+              </span>
+              ?
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setConfirmAll(false)}
+                className="px-4 py-1.5 text-sm rounded-md bg-white/10 hover:bg-white/20"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAll}
+                className="px-4 py-1.5 text-sm rounded-md bg-red-600 hover:bg-red-500 text-white"
+              >
+                Delete All
               </button>
             </div>
           </div>

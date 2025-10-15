@@ -35,17 +35,16 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
   const [items, setItems] = useState<DatasetItem[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // --- Fetch Datasets from API ---
   const fetchDatasets = useCallback(async () => {
     if (!section) return;
 
     try {
       setLoading(true);
-
       const res = await fetch(`${API_BASE}/datasets?domain=${section}`);
       if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
 
       const data = await res.json();
-
       const rawItems = (data.items ?? []) as DatasetApiItem[];
 
       const datasets: DatasetItem[] = rawItems.map((d) => ({
@@ -68,7 +67,6 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
       setItems(datasets);
 
       console.log("Starting background sync for local dataset blobs...");
-
       for (const ds of datasets) {
         const hasBlob = await getDatasetBlob(ds.id);
         if (!hasBlob) {
@@ -103,6 +101,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
     fetchDatasets();
   }, [fetchDatasets]);
 
+  // --- Delete Single Dataset ---
   const handleDelete = async (ds: DatasetItem) => {
     if (!section) return;
 
@@ -116,15 +115,12 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
 
       const json = await res.json();
       if (json.deleted) {
-        toast.success(`Dataset "${ds.name}" deleted success`);
-
+        toast.success(`Dataset "${ds.name}" deleted successfully`);
         try {
           await deleteDatasetBlob(ds.id);
         } catch (blobError) {
           console.error("Failed to delete blob:", blobError);
-          toast.error(`Could not remove "${ds.name}" from local storage.`);
         }
-
         setItems((prev) => prev.filter((x) => x.id !== ds.id));
       } else {
         toast.error(`Failed to delete "${ds.name}"`);
@@ -135,6 +131,44 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
     }
   };
 
+  // --- 🧹 Delete All Datasets (tambahkan ini!) ---
+  const handleDeleteAll = async () => {
+    if (!section) return;
+    if (items.length === 0) {
+      toast.error("No datasets to delete");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/datasets/${section}/all`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+
+      // Hapus juga dari local cache
+      for (const ds of items) {
+        try {
+          await deleteDatasetBlob(ds.id);
+        } catch (e) {
+          console.warn("Failed to delete local blob:", e);
+        }
+      }
+
+      setItems([]);
+      toast.success("All datasets deleted successfully!");
+      await addNotification(
+        "dataset",
+        "Delete All Datasets",
+        "All datasets in this domain have been deleted."
+      );
+    } catch (err) {
+      console.error("Delete all failed:", err);
+      toast.error("Failed to delete all datasets");
+    }
+  };
+
+  // --- Render UI ---
   return (
     <AppShell userName={userName}>
       <div className="space-y-8 px-4 md:px-6 lg:px-8">
@@ -171,7 +205,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
                 "Your dataset upload completed successfully!"
               );
 
-              // Cache ke lokal juga (opsional)
+              // Cache ke lokal juga
               const savePromises = files.map((file) =>
                 saveDatasetBlob(file.name, file)
               );
@@ -179,7 +213,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
 
               await fetchDatasets();
 
-              // Arahkan ke detail dataset pertama
+              // Redirect ke detail dataset pertama
               if (files.length === 1) {
                 navigate(`/domain/${section}/datasets/${files[0].name}`);
               }
@@ -204,6 +238,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
             }
             onView={(ds) => navigate(`/domain/${section}/datasets/${ds.id}`)}
             onDelete={handleDelete}
+            onDeleteAll={handleDeleteAll}
           />
         )}
       </div>
