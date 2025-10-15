@@ -1,153 +1,234 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useAuthUser } from "../utils/firebaseSetup";
 import AppShell from "../components/DatasetsComponents/AppShell";
-import useSectionFromPath from "../utils/useSectionFromPath";
-import { saveDatasetBlob } from "../utils/fileStore";
 
-type Props = { userName: string };
+const API_BASE =
+  "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
-export default function ConnectPage({ userName }: Props) {
-  const navigate = useNavigate();
-  const section = useSectionFromPath();
+type ConnectionItem = {
+  id: string;
+  name: string;
+  host: string;
+  port: string;
+  dbname: string;
+  user: string;
+  updated_at?: string;
+};
 
-  // 🧩 Form fields — kosong semua
-  const [host, setHost] = useState("");
-  const [port, setPort] = useState("");
-  const [database, setDatabase] = useState("");
-  const [user, setUser] = useState("");
+export default function ConnectPage() {
+  const { user } = useAuthUser();
+  const userId = user?.uid;
   const [loading, setLoading] = useState(false);
+  const [connections, setConnections] = useState<ConnectionItem[]>([]);
 
-  async function onSave() {
-    if (!host || !port || !database || !user) {
-      toast.error("Please fill in all connection fields");
+  // 🔹 Form state
+  const [form, setForm] = useState({
+    host: "",
+    port: "",
+    dbname: "",
+    user: "",
+    password: "",
+  });
+
+  // --- Fetch existing connections ---
+  useEffect(() => {
+    if (!userId) return;
+    const fetchConnections = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/pg/get?userId=${userId}`);
+        if (!res.ok) throw new Error("Failed to fetch connections");
+        const data = await res.json();
+        setConnections(data.items ?? []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchConnections();
+  }, [userId]);
+
+  // --- Handle input change ---
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // --- Test Connection ---
+  const handleTest = async () => {
+    if (
+      !form.host ||
+      !form.port ||
+      !form.dbname ||
+      !form.user ||
+      !form.password
+    ) {
+      toast.error("Please fill in all fields before testing.");
       return;
     }
 
     setLoading(true);
     try {
-      // 🔹 Buat CSV dummy
-      const csv = `id,name,value\n1,Alice,100\n2,Bob,200\n3,Charlie,300`;
-      const blob = new Blob([csv], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-
-      // 🔹 Simpan ke localStorage dan sessionStorage
-      const id = Date.now().toString();
-      const storageKey = section ? `datasets_${section}` : "datasets";
-      const uploadedAt = new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
+      const res = await fetch(`${API_BASE}/pg/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       });
-      const name = `${database || "default"}.sample_table.csv`;
-
-      const raw = localStorage.getItem(storageKey);
-      const prev = raw ? JSON.parse(raw) : [];
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify([...prev, { id, name, size: blob.size, uploadedAt }])
-      );
-
-      await saveDatasetBlob(id, blob);
-      sessionStorage.setItem(`ds_file_url_${id}`, url);
-      sessionStorage.setItem(`ds_file_kind_${id}`, "csv");
-      sessionStorage.setItem(`ds_file_mime_${id}`, "text/csv");
-
-      toast.success("Connection saved and dataset imported");
-      navigate(`/domain/${section}/datasets/${id}`);
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to save connection");
+      const data = await res.json();
+      if (data.ok) {
+        toast.success("Connection successful!");
+      } else {
+        toast.error(`Connection failed: ${data.error}`);
+      }
+    } catch {
+      toast.error("Failed to test connection.");
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  // --- Save Connection ---
+  const handleSave = async () => {
+    if (!userId) {
+      toast.error("User not authenticated.");
+      return;
+    }
+    if (
+      !form.host ||
+      !form.port ||
+      !form.dbname ||
+      !form.user ||
+      !form.password
+    ) {
+      toast.error("Please complete all fields.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/pg/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, userId }),
+      });
+      const data = await res.json();
+      if (data.saved) {
+        toast.success("Connection saved successfully!");
+      } else {
+        toast.error(`Save failed: ${data.error}`);
+      }
+    } catch {
+      toast.error("Failed to save connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <AppShell userName={userName}>
-      <div className="max-w-3xl mx-auto space-y-6">
-        <h2 className="text-2xl font-semibold text-white">
-          Connect to PostgreSQL Database
-        </h2>
+    <AppShell userName={user?.email || "User"}>
+      <div className="flex flex-col items-center justify-center min-h-[80vh] text-white px-4">
+        <div className="bg-[#1f2024] border border-[#3a3b42] rounded-xl p-8 w-full max-w-lg space-y-5 shadow-xl">
+          <h2 className="text-xl font-semibold text-center mb-4">
+            Connect to PostgreSQL Database
+          </h2>
 
-        {/* 🧭 Connection Form */}
-        <div className="bg-[#232427] border border-[#2a2b32] rounded-xl p-4 space-y-4">
-          <FormRow label="Host">
-            <input
-              value={host}
-              onChange={(e) => setHost(e.target.value)}
-              placeholder="Enter host (e.g. aws-1-ap-southeast-1.pooler.supabase.com)"
-              className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-            />
-          </FormRow>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormRow label="Port">
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm text-gray-400">Host</label>
               <input
-                value={port}
-                onChange={(e) => setPort(e.target.value)}
-                placeholder="Enter port (e.g. 5432)"
-                className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
+                type="text"
+                name="host"
+                value={form.host}
+                onChange={handleChange}
+                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                placeholder="e.g. aws-1-ap-southeast-1.pooler.supabase.com"
               />
-            </FormRow>
-
-            <FormRow label="Database">
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400">Port</label>
               <input
-                value={database}
-                onChange={(e) => setDatabase(e.target.value)}
-                placeholder="Enter database name (e.g. postgres)"
-                className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
+                type="text"
+                name="port"
+                value={form.port}
+                onChange={handleChange}
+                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                placeholder="e.g. 5432"
               />
-            </FormRow>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400">Database</label>
+              <input
+                type="text"
+                name="dbname"
+                value={form.dbname}
+                onChange={handleChange}
+                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                placeholder="e.g. postgres"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400">User</label>
+              <input
+                type="text"
+                name="user"
+                value={form.user}
+                onChange={handleChange}
+                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                placeholder="e.g. postgres.user"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400">Password</label>
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                placeholder="Enter your password"
+              />
+            </div>
           </div>
 
-          <FormRow label="User">
-            <input
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              placeholder="Enter user (e.g. postgres.user)"
-              className="mt-1 w-full rounded-md bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white outline-none focus:ring-2 focus:ring-indigo-500/40"
-            />
-          </FormRow>
-
-          <div className="flex justify-end">
-            <Btn onClick={onSave} disabled={loading}>
-              Save Connection
-            </Btn>
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={handleTest}
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-medium"
+            >
+              {loading ? "Testing..." : "Test Connection"}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={loading}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-sm font-medium"
+            >
+              {loading ? "Saving..." : "Save Connection"}
+            </button>
           </div>
         </div>
+
+        {connections.length > 0 && (
+          <div className="mt-10 w-full max-w-lg">
+            <h3 className="text-lg font-semibold mb-3">Saved Connections</h3>
+            <ul className="space-y-2">
+              {connections.map((c) => (
+                <li
+                  key={c.id}
+                  className="bg-[#2a2b32] p-3 rounded-md border border-[#3a3b42]"
+                >
+                  <p className="font-medium text-white">{c.name}</p>
+                  <p className="text-sm text-gray-400">
+                    {c.user}@{c.host}:{c.port} / {c.dbname}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Updated: {c.updated_at?.slice(0, 19) || "-"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </AppShell>
-  );
-}
-
-/* 💡 Reusable Components */
-interface FormRowProps {
-  label: string;
-  children: React.ReactNode;
-}
-function FormRow({ label, children }: FormRowProps) {
-  return (
-    <label className="block text-sm text-gray-300">
-      {label}
-      {children}
-    </label>
-  );
-}
-
-interface BtnProps {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-}
-function Btn({ children, onClick, disabled }: BtnProps) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white"
-    >
-      {children}
-    </button>
   );
 }
