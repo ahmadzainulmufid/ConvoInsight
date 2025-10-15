@@ -984,7 +984,7 @@ export default function NewChatPage() {
               )}
             </div>
 
-            <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
+            <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4 border-t border-gray-800">
               <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
                 <div className="mb-3">
                   <label className="block text-xs text-gray-400 mb-1">
