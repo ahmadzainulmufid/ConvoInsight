@@ -113,10 +113,7 @@ const App: React.FC = () => {
                 path="datasets/:id/edit"
                 element={<DatasetEditPage userName={""} />}
               />
-              <Route
-                path="datasets/connect"
-                element={<ConnectPage userName={""} />}
-              />
+              <Route path="datasets/connect" element={<ConnectPage />} />
               <Route path="configuration" element={<ConfigurationPage />} />
             </Route>
 
