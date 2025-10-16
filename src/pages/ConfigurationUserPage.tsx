@@ -1,6 +1,5 @@
 //src/Pages/ConfigurationUserPage.tsx
 import { useState, useEffect, useCallback, useRef } from "react";
-import { PROVIDERS } from "../constants/providers";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuthUser } from "../utils/firebaseSetup";
 import {
@@ -16,7 +15,7 @@ import {
 import { db } from "../utils/firebaseSetup";
 import { useNavigate } from "react-router-dom";
 
-type ProviderKey = keyof typeof PROVIDERS;
+type ProviderKey = string;
 
 type ValidationResponse = {
   valid: boolean;
@@ -82,6 +81,9 @@ export default function ConfigurationUserPage() {
   const [instructionLoading, setInstructionLoading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const [providerList, setProviderList] = useState<string[]>([]);
+  const [modelGroups, setModelGroups] = useState<Record<string, string[]>>({});
+
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -102,6 +104,24 @@ export default function ConfigurationUserPage() {
     globalInstruction,
   ]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/litellm/models`);
+        if (!res.ok) throw new Error("Failed to fetch models");
+
+        const data = await res.json();
+        // modelData.groups = { provider: [models] }
+        const groups = data.groups ?? {};
+        setModelGroups(groups);
+        setProviderList(Object.keys(groups)); // ambil provider dari key-nya
+      } catch (e) {
+        console.error(e);
+        toast.error("Failed to load model list");
+      }
+    })();
+  }, []);
+
   // --- Fetch History ---
   const fetchHistory = useCallback(async () => {
     if (!userId) return;
@@ -116,6 +136,7 @@ export default function ConfigurationUserPage() {
 
       const data = await res.json();
       setHistory(Array.isArray(data.items) ? data.items : []);
+      console.log("Summary:", data.summary);
     } catch (e) {
       console.error(e);
       toast.error("Failed to load history");
@@ -414,12 +435,14 @@ export default function ConfigurationUserPage() {
               <select
                 value={provider}
                 onChange={(e) => {
-                  setProvider(e.target.value as ProviderKey);
+                  if (history.length > 0) return; // 🔒 mencegah perubahan manual
+                  const value = e.target.value;
+                  setProvider(value as ProviderKey);
                   setValidated(false);
-                  setModels([]);
+                  setModels(modelGroups[value] ?? []);
                   setSelectedModel("");
                 }}
-                disabled={history.length > 0}
+                disabled={history.length > 0} // 🔒 nonaktifkan dropdown
                 className={`w-full p-2 rounded border ${
                   history.length > 0
                     ? "bg-gray-700 border-gray-600 cursor-not-allowed opacity-70"
@@ -427,9 +450,9 @@ export default function ConfigurationUserPage() {
                 }`}
               >
                 <option value="">-- Choose --</option>
-                {Object.entries(PROVIDERS).map(([key, p]) => (
-                  <option key={key} value={key}>
-                    {p.name}
+                {providerList.map((prov) => (
+                  <option key={prov} value={prov}>
+                    {prov}
                   </option>
                 ))}
               </select>
