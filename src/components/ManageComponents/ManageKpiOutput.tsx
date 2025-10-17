@@ -37,7 +37,6 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&amp;/g, "&");
 }
 
-// Fungsi asli Anda, tidak diubah sama sekali
 function parseLlmKpi(llm: string): ParsedLlmKpi[] {
   const cleanLlm = decodeHtmlEntities(
     llm
@@ -46,58 +45,47 @@ function parseLlmKpi(llm: string): ParsedLlmKpi[] {
       .trim()
   );
 
-  const lines = cleanLlm
-    .split(/\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const regex = /([^:]*?):\s*([\d.,N/A]+%?)/g;
+  const matches = [...cleanLlm.matchAll(regex)];
 
-  const regex = /([^:]+?):\s*([\d.,N/A]+%?)/g;
-  const group: ParsedLlmKpi[] = [];
+  if (matches.length === 0) {
+    return [
+      { mainTitle: "Info", mainValue: cleanLlm.slice(0, 80), subItems: [] },
+    ];
+  }
 
   const formatValue = (val: string): string => {
     if (!val || val.includes(",") || val.includes(".") || val.includes("%"))
       return val;
     if (/^\d+$/.test(val) && val.length > 3) {
-      const asNumber = parseFloat(val);
-      const formatted = (asNumber / 1000).toFixed(2).replace(".", ",");
-      return formatted;
+      const num = parseFloat(val);
+      return (num / 1000).toFixed(2).replace(".", ",");
     }
     return val;
   };
 
-  for (const line of lines) {
-    if (!line.includes(":")) continue;
-    const matches = [...line.matchAll(regex)];
-    if (matches.length > 0) {
-      const [first, ...rest] = matches;
+  // ambil nilai pertama sebagai mainValue
+  const mainTitle = matches[0][1]?.trim() || "";
+  const mainValue = formatValue(matches[0][2]?.trim() || "");
 
-      const label = first[1]?.trim();
-      const value = formatValue(first[2]?.trim() || "");
+  // ambil nilai kedua (kalau ada) sebagai subItem TANPA label
+  const subItems =
+    matches.length > 1
+      ? [
+          {
+            label: "",
+            value: formatValue(matches[1][2]?.trim() || ""),
+          },
+        ]
+      : [];
 
-      const subItems = rest.map((m) => ({
-        label: m[1]?.trim(),
-        value: formatValue(m[2]?.trim() || ""),
-      }));
-
-      group.push({
-        mainTitle: label,
-        mainValue: value,
-        subItems,
-      });
-    }
-  }
-
-  if (group.length === 0) {
-    return [
-      {
-        mainTitle: "Info",
-        mainValue: cleanLlm.slice(0, 80),
-        subItems: [],
-      },
-    ];
-  }
-
-  return group;
+  return [
+    {
+      mainTitle,
+      mainValue,
+      subItems,
+    },
+  ];
 }
 
 export default function ManageKpiOutput({
