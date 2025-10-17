@@ -25,74 +25,79 @@ type Props = {
   selectedColumns: string[];
   llmResult?: string;
   prompt?: string;
-  forceSingleOutput?: boolean; // 👈 PROP BARU DITAMBAHKAN DI SINI
 };
 
-// ==================================================================
-// 👇 FUNGSI BARU DITAMBAHKAN DI SINI
-// Fungsi ini tugasnya hanya untuk memastikan outputnya tunggal.
-// ==================================================================
-function forceSingleOutputKpi(kpi: ParsedLlmKpi | null): ParsedLlmKpi | null {
-  if (!kpi) {
-    return null;
-  }
-  // Buat objek baru dengan subItems yang sudah dikosongkan
-  return {
-    ...kpi,
-    subItems: [],
-  };
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(dec))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
 }
 
 // Fungsi asli Anda, tidak diubah sama sekali
-function parseLlmKpi(llm: string, prompt?: string): ParsedLlmKpi | null {
-  const cleanLlm = llm
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const genericRegex = /([\w\s().,%#]+?)\s*[:=-]?\s*([\d,.]+)/gi;
-  let match;
-  const allItems: { label: string; value: string }[] = [];
-  while ((match = genericRegex.exec(cleanLlm)) !== null) {
-    if (match[1] && match[1].trim().length > 1 && match[2]) {
-      allItems.push({ label: match[1].trim(), value: match[2].trim() });
-    }
-  }
-
-  const itemsToDisplay = allItems.filter(
-    (item) => !item.label.toLowerCase().includes("takers")
+function parseLlmKpi(llm: string): ParsedLlmKpi[] {
+  const cleanLlm = decodeHtmlEntities(
+    llm
+      .replace(/<[^>]+>/g, "")
+      .replace(/\s+\n/g, "\n")
+      .trim()
   );
 
-  if (itemsToDisplay.length === 0) {
-    if (allItems.length > 0) {
-      return {
-        mainTitle: "Info",
-        mainValue: "Only 'Takers' found and removed.",
-        subItems: [],
-      };
+  const lines = cleanLlm
+    .split(/\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const regex = /([^:]+?):\s*([\d.,N/A]+%?)/g;
+  const group: ParsedLlmKpi[] = [];
+
+  const formatValue = (val: string): string => {
+    if (!val || val.includes(",") || val.includes(".") || val.includes("%"))
+      return val;
+    if (/^\d+$/.test(val) && val.length > 3) {
+      const asNumber = parseFloat(val);
+      const formatted = (asNumber / 1000).toFixed(2).replace(".", ",");
+      return formatted;
     }
-    return {
-      mainTitle: "Info",
-      mainValue: cleanLlm.slice(0, 100) + "...",
-      subItems: [],
-    };
-  }
-
-  if (prompt && prompt.includes("(single)")) {
-    const firstItem = itemsToDisplay[0];
-    return {
-      mainTitle: firstItem.label,
-      mainValue: firstItem.value,
-      subItems: [],
-    };
-  }
-
-  const firstItem = itemsToDisplay.shift()!;
-  return {
-    mainTitle: firstItem.label,
-    mainValue: firstItem.value,
-    subItems: itemsToDisplay,
+    return val;
   };
+
+  for (const line of lines) {
+    if (!line.includes(":")) continue;
+    const matches = [...line.matchAll(regex)];
+    if (matches.length > 0) {
+      const [first, ...rest] = matches;
+
+      const label = first[1]?.trim();
+      const value = formatValue(first[2]?.trim() || "");
+
+      const subItems = rest.map((m) => ({
+        label: m[1]?.trim(),
+        value: formatValue(m[2]?.trim() || ""),
+      }));
+
+      group.push({
+        mainTitle: label,
+        mainValue: value,
+        subItems,
+      });
+    }
+  }
+
+  if (group.length === 0) {
+    return [
+      {
+        mainTitle: "Info",
+        mainValue: cleanLlm.slice(0, 80),
+        subItems: [],
+      },
+    ];
+  }
+
+  return group;
 }
 
 export default function ManageKpiOutput({
@@ -102,17 +107,12 @@ export default function ManageKpiOutput({
   selectedColumns,
   llmResult,
   prompt,
-  forceSingleOutput,
 }: Props) {
   const [datasetKpiData, setDatasetKpiData] = useState<DatasetSummary[]>([]);
-  const [llmKpiData, setLlmKpiData] = useState<ParsedLlmKpi | null>(null);
+  const [llmKpiData, setLlmKpiData] = useState<ParsedLlmKpi[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // ==================================================================
-    // 👇 FUNGSI processDataset DIPINDAHKAN KE DALAM useEffect
-    // Ini adalah pola yang lebih aman dan menghilangkan error.
-    // ==================================================================
     async function processDataset(): Promise<DatasetSummary[]> {
       const ds = datasets.find((d) => selectedDatasetIds.includes(d.id));
       if (!ds?.signed_url) return [];
@@ -148,24 +148,17 @@ export default function ManageKpiOutput({
           const summary = await processDataset();
           setDatasetKpiData(summary);
         } else if (llmResult) {
-          let parsedData = parseLlmKpi(llmResult, prompt);
-          if (forceSingleOutput) {
-            parsedData = forceSingleOutputKpi(parsedData);
-          }
-          setLlmKpiData(parsedData);
+          const parsedArray = parseLlmKpi(llmResult);
+          setLlmKpiData(parsedArray);
         }
       } finally {
         setLoading(false);
       }
     })();
-    // ==================================================================
-    // 👇 Dependency array diperbarui. Tidak ada lagi warning dari ESLint.
-    // ==================================================================
   }, [
     kpiType,
     llmResult,
     prompt,
-    forceSingleOutput,
     datasets,
     selectedDatasetIds,
     selectedColumns,
@@ -194,16 +187,18 @@ export default function ManageKpiOutput({
     );
   }
 
-  if (kpiType === "llm" && llmKpiData) {
+  if (kpiType === "llm" && llmKpiData.length > 0) {
     return (
       <div className="flex flex-wrap gap-4 mt-4">
-        <KpiCard
-          color="blue"
-          title={llmKpiData.mainTitle}
-          mainValue={llmKpiData.mainValue}
-          unit={llmKpiData.unit}
-          subItems={llmKpiData.subItems}
-        />
+        {llmKpiData.map((kpi, idx) => (
+          <KpiCard
+            key={idx}
+            title={kpi.mainTitle}
+            mainValue={kpi.mainValue}
+            unit={kpi.unit}
+            subItems={kpi.subItems}
+          />
+        ))}
       </div>
     );
   }

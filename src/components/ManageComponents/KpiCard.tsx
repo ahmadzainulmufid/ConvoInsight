@@ -3,11 +3,7 @@ type KpiCardProps = {
   mainValue: string | number;
   unit?: string;
   color?: "blue" | "red";
-  // Properti deltaItems tidak lagi kita gunakan untuk style biru ini
-  subItems?: {
-    label: string;
-    value: string;
-  }[];
+  subItems?: { label: string; value: string }[];
 };
 
 export default function KpiCard({
@@ -15,43 +11,38 @@ export default function KpiCard({
   mainValue,
   unit,
   color = "blue",
-  subItems,
+  subItems = [],
 }: KpiCardProps) {
   const baseColor =
     color === "blue" ? "bg-[#4AA6C5] text-black" : "bg-[#D94C4C] text-white";
 
+  const allItems = [
+    { label: title || "", value: mainValue?.toString() || "" },
+    ...subItems,
+  ];
+
   return (
     <div
-      // Ukuran min-w disesuaikan agar bisa menampung beberapa item
-      className={`rounded-xl p-4 shadow-md ${baseColor} flex flex-col justify-center min-w-[250px]`}
+      className={`rounded-xl p-3 shadow-md ${baseColor} flex justify-around items-center min-w-[240px] text-center`}
     >
-      {/* 🌟 TATA LETAK BARU MENGGUNAKAN FLEXBOX 🌟 */}
-      <div className="flex justify-around items-center text-center">
-        {/* Item Utama */}
-        <div className="flex flex-col items-center p-2">
-          <span className="text-4xl font-bold">{mainValue}</span>
-          {unit && (
-            <span className="text-lg font-semibold opacity-80 -mt-1">
-              {unit}
-            </span>
+      {allItems.map((item, idx) => (
+        <div key={idx} className="flex flex-col items-center px-2 relative">
+          <span className="text-3xl font-bold leading-tight">
+            {item.value}
+            {idx === 0 && unit && (
+              <span className="text-base ml-1">{unit}</span>
+            )}
+          </span>
+          <p className="text-xs opacity-80 mt-1 whitespace-nowrap">
+            {item.label}
+          </p>
+
+          {/* Garis titik-titik antar item */}
+          {idx !== allItems.length - 1 && (
+            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 h-8 border-r-2 border-dotted border-black/40"></div>
           )}
-          {title && <p className="text-xs opacity-80 mt-1">{title}</p>}
         </div>
-
-        {/* Garis pemisah vertikal jika ada sub-item */}
-        {subItems && subItems.length > 0 && (
-          <div className="border-l border-black/20 h-12"></div>
-        )}
-
-        {/* Sub Items (ditampilkan berdampingan) */}
-        {subItems &&
-          subItems.map((item) => (
-            <div key={item.label} className="flex flex-col items-center p-2">
-              <span className="text-3xl font-semibold">{item.value}</span>
-              <p className="text-xs opacity-80 mt-1">{item.label}</p>
-            </div>
-          ))}
-      </div>
+      ))}
     </div>
   );
 }
