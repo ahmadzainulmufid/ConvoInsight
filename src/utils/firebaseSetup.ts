@@ -1,4 +1,4 @@
-// firebasesetup.ts
+// src/utils/firebaseSetup.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
@@ -10,22 +10,25 @@ import { getFirestore } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBAdIonreg9_gauBx0jBl58tYC8PitOXsw",
-  authDomain: "datainsight-54ef4.firebaseapp.com",
-  projectId: "datainsight-54ef4",
-  storageBucket: "datainsight-54ef4.firebasestorage.app",
-  messagingSenderId: "960168074270",
-  appId: "1:960168074270:web:b12ebc97beb5162ba3e20f",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// ✅ pastikan hanya 1 instance
+// ✅ Debug log (sementara)
+console.log("🔥 Firebase Project:", import.meta.env.VITE_FIREBASE_PROJECT_ID);
+
+// ✅ Pastikan hanya 1 instance
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// ✅ Custom hook: track user login
+// ✅ Hook untuk user login
 export function useAuthUser() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);

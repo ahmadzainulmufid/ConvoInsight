@@ -11,6 +11,8 @@ import {
   getDocs,
   doc,
   updateDoc,
+  deleteDoc,
+  setDoc,
 } from "firebase/firestore";
 import { saveChartBlob, getChartBlob } from "../utils/fileStore";
 
@@ -188,4 +190,74 @@ export async function updateAssistantMessage(
     ...(thinkingSteps ? { thinkingSteps } : {}),
     createdAt: serverTimestamp(), // optional: segarkan order
   });
+}
+
+export type ChatSession = {
+  id: string;
+  title: string;
+  section?: string;
+  createdAt: number;
+};
+
+// 💾 Simpan session
+export async function saveChatSession(
+  domainDocId: string,
+  session: ChatSession
+) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+  const ref = doc(
+    db,
+    "users",
+    user.uid,
+    "domains",
+    domainDocId,
+    "sessions",
+    session.id
+  );
+  await setDoc(ref, session);
+}
+
+// 🔄 Dengarkan perubahan session (real-time)
+export function listenChatSessions(
+  domainDocId: string,
+  cb: (sessions: ChatSession[]) => void
+) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+  const q = query(
+    collection(db, "users", user.uid, "domains", domainDocId, "sessions"),
+    orderBy("createdAt", "desc")
+  );
+  return onSnapshot(q, (snap) => {
+    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ChatSession)));
+  });
+}
+
+// 🗑️ Hapus session (dan semua messages-nya)
+export async function deleteChatSession(
+  domainDocId: string,
+  sessionId: string
+) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+
+  // Hapus dokumen session
+  await deleteDoc(
+    doc(db, "users", user.uid, "domains", domainDocId, "sessions", sessionId)
+  );
+
+  // Hapus semua messages terkait
+  const msgCol = collection(
+    db,
+    "users",
+    user.uid,
+    "domains",
+    domainDocId,
+    "messages"
+  );
+  const snap = await getDocs(
+    query(msgCol, where("sessionId", "==", sessionId))
+  );
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }

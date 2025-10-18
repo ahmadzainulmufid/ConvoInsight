@@ -87,7 +87,7 @@ export default function HistorySidebar({
   };
 
   const handleDelete = (id: string) => {
-    remove(id);
+    remove(id, section); // ✅ kirim section juga
     setMenuOpenId(null);
 
     if (openedId === id) {
@@ -169,11 +169,26 @@ export default function HistorySidebar({
                   >
                     <button
                       role="menuitem"
+                      onClick={async () => {
+                        const baseUrl = window.location.origin;
+                        const fullUrl = `${baseUrl}/domain/${section}/dashboard/newchat?id=${it.id}`;
+                        await navigator.clipboard.writeText(fullUrl);
+                        alert("✅ Link copied to clipboard!");
+                        setMenuOpenId(null);
+                      }}
+                      className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541]"
+                    >
+                      Copy Link
+                    </button>
+
+                    <button
+                      role="menuitem"
                       onClick={() => handleExportPdf(it.id)}
                       className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541]"
                     >
                       Export to PDF
                     </button>
+
                     <button
                       role="menuitem"
                       onClick={() => handleDelete(it.id)}
