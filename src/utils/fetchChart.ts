@@ -7,7 +7,7 @@ export async function fetchChartHtml(
   const abs = chartUrl.startsWith("http")
     ? chartUrl
     : `${apiBase.replace(/\/+$/, "")}${chartUrl}`;
-  const r = await fetch(abs, { method: "GET" });
+  const r = await fetch(abs, { method: "GET", cache: "no-store" });
   if (!r.ok) throw new Error(`Fetch chart failed: HTTP ${r.status}`);
   return await r.text();
 }

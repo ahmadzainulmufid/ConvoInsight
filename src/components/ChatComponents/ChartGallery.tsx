@@ -10,6 +10,7 @@ export type PlotlySpec = {
 
 export type ChartItem =
   | { html: string }
+  | { url: string }
   | { data_uri: string; plotly?: PlotlySpec }
   | { plotly: PlotlySpec; data_uri?: string };
 
@@ -36,6 +37,24 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
                   height: "clamp(320px, 60vh, 640px)",
                   border: "none",
                 }}
+              />
+            </div>
+          );
+        }
+
+        // NEW: URL iframe
+        if ("url" in c && typeof c.url === "string") {
+          return (
+            <div
+              key={key}
+              className="w-full overflow-hidden rounded-xl bg-gray-800/30"
+            >
+              <iframe
+                src={c.url}
+                title={key}
+                className="w-full"
+                style={{ height: "clamp(320px, 60vh, 640px)", border: "none" }}
+                loading="lazy"
               />
             </div>
           );

@@ -5,7 +5,7 @@ import HistorySidebar from "../components/ChatComponents/HistorySidebar";
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
 import { ChatInput } from "../components/ChatComponents/ChatInput";
 import AnimatedMessageBubble from "../components/ChatComponents/AnimatedMessageBubble";
-import { queryDomain } from "../utils/queryDomain";
+import { queryDomain, type DomainQueryResp } from "../utils/queryDomain";
 import ChartGallery, {
   type ChartItem,
 } from "../components/ChatComponents/ChartGallery";
@@ -50,102 +50,10 @@ type DatasetApiItem = {
   updated?: string;
 };
 
-/** Chat Input Component **/
-// function ChatInput({
-//   value,
-//   onChange,
-//   onSend,
-//   disabled,
-//   isGenerating = false,
-//   onStop,
-//   placeholder = "Ask Anything",
-// }: {
-//   value: string;
-//   onChange: (v: string) => void;
-//   onSend: () => void;
-//   disabled?: boolean;
-//   isGenerating?: boolean;
-//   onStop?: () => void;
-//   placeholder?: string;
-// }) {
-//   const ref = useRef<HTMLTextAreaElement>(null);
-//   const hasText = value.trim().length > 0;
-//   const MAX_H = 160;
-
-//   // 🧠 Auto expand textarea tinggi dinamis
-//   useEffect(() => {
-//     const el = ref.current;
-//     if (!el) return;
-//     el.style.height = "auto";
-//     const next = Math.min(el.scrollHeight, MAX_H);
-//     el.style.height = next + "px";
-//     el.style.overflowY = el.scrollHeight > MAX_H ? "auto" : "hidden";
-//   }, [value]);
-
-//   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-//     if ((e.nativeEvent as KeyboardEvent).isComposing) return;
-//     if (e.key === "Enter" && !e.shiftKey) {
-//       e.preventDefault();
-//       if (!disabled && !isGenerating && hasText) onSend();
-//     }
-//   };
-
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault();
-//     if (!hasText || isGenerating) return;
-//     onSend();
-//     requestAnimationFrame(() => ref.current?.focus());
-//   };
-
-//   return (
-//     <form
-//       onSubmit={handleSubmit}
-//       className="w-full flex items-center rounded-xl bg-gray-700 px-4 py-3"
-//     >
-//       <textarea
-//         ref={ref}
-//         value={value}
-//         onChange={(e) => onChange(e.target.value)}
-//         onKeyDown={handleKeyDown}
-//         rows={1}
-//         disabled={disabled}
-//         placeholder={placeholder}
-//         className="flex-1 resize-none bg-transparent outline-none
-//            text-gray-200 text-sm leading-relaxed
-//            placeholder-gray-400 px-3 py-2
-//            min-h-[44px] max-h-[160px]"
-//       />
-
-//       {isGenerating ? (
-//         <button
-//           type="button"
-//           onClick={onStop}
-//           className="ml-2 flex items-center justify-center
-//                w-9 h-9 rounded-md text-lg text-red-400
-//                hover:text-red-300 transition"
-//           title="Stop generating"
-//         >
-//           ⏹
-//         </button>
-//       ) : (
-//         <button
-//           type="submit"
-//           disabled={!hasText || disabled}
-//           className={`ml-2 flex items-center justify-center
-//                 w-9 h-9 rounded-md text-lg transition
-//       ${
-//         hasText
-//           ? "bg-transparent text-white opacity-80 hover:opacity-100 cursor-pointer"
-//           : "bg-transparent text-white opacity-40 cursor-not-allowed"
-//       }`}
-//           title="Send"
-//         >
-//           {hasText ? "↑" : "➤"}
-//         </button>
-//       )}
-//     </form>
-//   );
-// }
+type ChartUrlFields = Pick<
+  DomainQueryResp,
+  "chart_url" | "diagram_signed_url" | "diagram_public_url"
+>;
 
 /** Main Chat Page **/
 export default function NewChatPage() {
@@ -194,6 +102,19 @@ export default function NewChatPage() {
     sessionStorage.removeItem("activeChatGenerating");
     thinkingTimeoutRef.current.forEach(clearTimeout);
     setCurrentThinkingSteps([]);
+  };
+
+  const pickChartFetchUrl = (
+    apiBase: string,
+    res?: ChartUrlFields
+  ): string | null => {
+    if (res?.diagram_signed_url) return res.diagram_signed_url;
+    if (res?.diagram_public_url) return res.diagram_public_url;
+
+    const p = res?.chart_url;
+    if (p)
+      return p.startsWith("http") ? p : `${apiBase.replace(/\/+$/, "")}${p}`;
+    return null;
   };
 
   const stripFences = (s: string) =>
@@ -270,6 +191,7 @@ export default function NewChatPage() {
       role: "user" | "assistant";
       text: string;
       chartHtml?: string;
+      chartUrl?: string | null;
       thinkingSteps?: ThinkingStep[];
     };
 
@@ -277,17 +199,25 @@ export default function NewChatPage() {
       domainDocId,
       openedId,
       (msgs: FirestoreMsg[]) => {
-        const mapped: Msg[] = msgs.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content:
-            m.role === "assistant"
-              ? cleanHtmlResponse(m.text)
-              : stripFences(m.text),
-          charts: m.chartHtml ? [{ html: m.chartHtml }] : undefined,
-          animate: false,
-          thinkingSteps: m.thinkingSteps || undefined,
-        }));
+        const mapped: Msg[] = msgs.map((m) => {
+          const charts: ChartItem[] | undefined = m.chartHtml
+            ? [{ html: m.chartHtml }]
+            : m.chartUrl
+            ? [{ url: m.chartUrl }]
+            : undefined;
+
+          return {
+            id: m.id,
+            role: m.role,
+            content:
+              m.role === "assistant"
+                ? cleanHtmlResponse(m.text)
+                : stripFences(m.text),
+            charts,
+            animate: false,
+            thinkingSteps: m.thinkingSteps || undefined,
+          };
+        });
         setMessages(mapped);
         setTimeout(() => scrollToBottom("auto"), 0);
       }
@@ -457,17 +387,21 @@ export default function NewChatPage() {
       // Ambil chart kalau ada
       let charts: ChartItem[] | undefined;
       let chartHtml: string | undefined;
-      const chartUrl: string | null | undefined = res.chart_url ?? null;
 
-      if (chartUrl) {
+      const chartFetchUrl = pickChartFetchUrl(API_BASE, res);
+      const chartUrl = chartFetchUrl ?? null;
+
+      if (chartFetchUrl) {
         try {
-          const html = await fetchChartHtml(API_BASE, chartUrl);
+          const html = await fetchChartHtml(API_BASE, chartFetchUrl);
           if (html) {
             chartHtml = html;
             charts = [{ html }];
+          } else {
+            charts = [{ url: chartFetchUrl }];
           }
-        } catch (e) {
-          console.warn("Fetch chart HTML failed:", e);
+        } catch {
+          charts = [{ url: chartFetchUrl }];
         }
       }
 
@@ -504,7 +438,10 @@ export default function NewChatPage() {
           "assistant",
           assistantMsg.content,
           chartHtml,
-          dynamicSteps
+          dynamicSteps,
+          chartUrl,
+          res.diagram_kind ?? null,
+          res.diagram_gs_uri ?? null
         );
         await addNotification(
           "insight",
@@ -869,21 +806,26 @@ export default function NewChatPage() {
                                       // chart (optional)
                                       let charts: ChartItem[] | undefined;
                                       let chartHtml: string | undefined;
-                                      const chartUrl = res.chart_url ?? null;
-                                      if (chartUrl) {
+
+                                      const chartFetchUrl = pickChartFetchUrl(
+                                        API_BASE,
+                                        res
+                                      );
+                                      const chartUrl = chartFetchUrl ?? null;
+                                      if (chartFetchUrl) {
                                         try {
                                           const html = await fetchChartHtml(
                                             API_BASE,
-                                            chartUrl
+                                            chartFetchUrl
                                           );
                                           if (html) {
                                             chartHtml = html;
                                             charts = [{ html }];
+                                          } else {
+                                            charts = [{ url: chartFetchUrl }];
                                           }
                                         } catch {
-                                          {
-                                            /* ignore */
-                                          }
+                                          charts = [{ url: chartFetchUrl }];
                                         }
                                       }
 
@@ -931,7 +873,10 @@ export default function NewChatPage() {
                                             nextAssistantId,
                                             cleaned,
                                             chartHtml,
-                                            dynamicSteps
+                                            dynamicSteps,
+                                            chartUrl,
+                                            res.diagram_kind ?? null,
+                                            res.diagram_gs_uri ?? null
                                           );
                                         } else {
                                           // belum ada jawaban → buat satu kali
@@ -941,7 +886,10 @@ export default function NewChatPage() {
                                             "assistant",
                                             cleaned,
                                             chartHtml,
-                                            dynamicSteps
+                                            dynamicSteps,
+                                            chartUrl,
+                                            res.diagram_kind ?? null,
+                                            res.diagram_gs_uri ?? null
                                           );
                                         }
 

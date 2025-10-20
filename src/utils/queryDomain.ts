@@ -1,7 +1,16 @@
 export type DomainQueryResp = {
   session_id: string;
   response: string;
+
+  // lama (dev, path relatif GCS)
   chart_url?: string | null;
+
+  // baru (Supabase / atau signed link lain)
+  diagram_kind?: "charts" | "tables" | string;
+  diagram_signed_url?: string | null;
+  diagram_public_url?: string | null;
+  diagram_gs_uri?: string | null; // info tambahan (optional)
+
   execution_time: number;
   insights?: string[];
 
@@ -61,6 +70,10 @@ export async function queryDomain({
     session_id: data.session_id ?? "",
     response: data.response ?? "",
     chart_url: data.chart_url ?? null,
+    diagram_kind: data.diagram_kind ?? undefined,
+    diagram_signed_url: data.diagram_signed_url ?? null,
+    diagram_public_url: data.diagram_public_url ?? null,
+    diagram_gs_uri: data.diagram_gs_uri ?? null,
     execution_time: data.execution_time ?? 0,
     insights: data.insights ?? [],
     need_router: data.need_router ?? true,

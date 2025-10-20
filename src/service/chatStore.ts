@@ -28,8 +28,11 @@ export type ChatMessage = {
   role: "user" | "assistant";
   text: string;
   chartId?: string;
+  chartUrl?: string | null;
+  diagramKind?: string | null;
+  diagramPath?: string | null;
   createdAt?: unknown;
-  thinkingSteps?: ThinkingStep[]; // <--- Tambahan penting
+  thinkingSteps?: ThinkingStep[];
 };
 
 export async function getDomainDocId(
@@ -54,7 +57,10 @@ export async function saveChatMessage(
   role: "user" | "assistant",
   text: string,
   chartHtml?: string,
-  thinkingSteps?: ThinkingStep[] // <--- parameter baru
+  thinkingSteps?: ThinkingStep[],
+  chartUrl?: string | null,
+  diagramKind?: string | null,
+  diagramPath?: string | null
 ) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not logged in");
@@ -72,7 +78,10 @@ export async function saveChatMessage(
     text,
     createdAt: serverTimestamp(),
     ...(chartId ? { chartId } : {}),
-    ...(thinkingSteps ? { thinkingSteps } : {}), // <--- simpan thinkingSteps
+    ...(thinkingSteps ? { thinkingSteps } : {}),
+    ...(chartUrl !== undefined ? { chartUrl } : {}),
+    ...(diagramKind ? { diagramKind } : {}),
+    ...(diagramPath ? { diagramPath } : {}),
   };
 
   await addDoc(
@@ -163,7 +172,10 @@ export async function updateAssistantMessage(
   messageId: string,
   text: string,
   chartHtml?: string,
-  thinkingSteps?: ThinkingStep[]
+  thinkingSteps?: ThinkingStep[],
+  chartUrl?: string | null,
+  diagramKind?: string | null,
+  diagramPath?: string | null
 ) {
   const user = auth.currentUser;
   if (!user) throw new Error("Not logged in");
@@ -188,7 +200,10 @@ export async function updateAssistantMessage(
     text,
     ...(chartId ? { chartId } : {}),
     ...(thinkingSteps ? { thinkingSteps } : {}),
-    createdAt: serverTimestamp(), // optional: segarkan order
+    ...(chartUrl !== undefined ? { chartUrl } : {}),
+    ...(diagramKind ? { diagramKind } : {}),
+    ...(diagramPath ? { diagramPath } : {}),
+    createdAt: serverTimestamp(), //
   });
 }
 
