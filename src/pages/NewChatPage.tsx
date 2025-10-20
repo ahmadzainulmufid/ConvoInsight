@@ -576,8 +576,7 @@ export default function NewChatPage() {
                   value={message}
                   onChange={setMessage}
                   onSend={() => handleSend()}
-                  isGenerating={isGenerating}
-                  disabled={sending}
+                  busy={sending || isGenerating}
                   onStop={() => {
                     controller?.abort();
                     setIsGenerating(false);
