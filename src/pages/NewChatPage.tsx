@@ -3,6 +3,7 @@ import { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import HistorySidebar from "../components/ChatComponents/HistorySidebar";
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
+import { ChatInput } from "../components/ChatComponents/ChatInput";
 import AnimatedMessageBubble from "../components/ChatComponents/AnimatedMessageBubble";
 import { queryDomain } from "../utils/queryDomain";
 import ChartGallery, {
@@ -49,101 +50,101 @@ type DatasetApiItem = {
 };
 
 /** Chat Input Component **/
-function ChatInput({
-  value,
-  onChange,
-  onSend,
-  disabled,
-  isGenerating = false,
-  onStop,
-  placeholder = "Ask Anything",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onSend: () => void;
-  disabled?: boolean;
-  isGenerating?: boolean;
-  onStop?: () => void;
-  placeholder?: string;
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const hasText = value.trim().length > 0;
-  const MAX_H = 160;
+// function ChatInput({
+//   value,
+//   onChange,
+//   onSend,
+//   disabled,
+//   isGenerating = false,
+//   onStop,
+//   placeholder = "Ask Anything",
+// }: {
+//   value: string;
+//   onChange: (v: string) => void;
+//   onSend: () => void;
+//   disabled?: boolean;
+//   isGenerating?: boolean;
+//   onStop?: () => void;
+//   placeholder?: string;
+// }) {
+//   const ref = useRef<HTMLTextAreaElement>(null);
+//   const hasText = value.trim().length > 0;
+//   const MAX_H = 160;
 
-  // 🧠 Auto expand textarea tinggi dinamis
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    const next = Math.min(el.scrollHeight, MAX_H);
-    el.style.height = next + "px";
-    el.style.overflowY = el.scrollHeight > MAX_H ? "auto" : "hidden";
-  }, [value]);
+//   // 🧠 Auto expand textarea tinggi dinamis
+//   useEffect(() => {
+//     const el = ref.current;
+//     if (!el) return;
+//     el.style.height = "auto";
+//     const next = Math.min(el.scrollHeight, MAX_H);
+//     el.style.height = next + "px";
+//     el.style.overflowY = el.scrollHeight > MAX_H ? "auto" : "hidden";
+//   }, [value]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.nativeEvent as KeyboardEvent).isComposing) return;
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (!disabled && !isGenerating && hasText) onSend();
-    }
-  };
+//   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+//     if ((e.nativeEvent as KeyboardEvent).isComposing) return;
+//     if (e.key === "Enter" && !e.shiftKey) {
+//       e.preventDefault();
+//       if (!disabled && !isGenerating && hasText) onSend();
+//     }
+//   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!hasText || isGenerating) return;
-    onSend();
-    requestAnimationFrame(() => ref.current?.focus());
-  };
+//   const handleSubmit = (e: React.FormEvent) => {
+//     e.preventDefault();
+//     if (!hasText || isGenerating) return;
+//     onSend();
+//     requestAnimationFrame(() => ref.current?.focus());
+//   };
 
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="w-full flex items-center rounded-xl bg-gray-700 px-4 py-3"
-    >
-      <textarea
-        ref={ref}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        rows={1}
-        disabled={disabled}
-        placeholder={placeholder}
-        className="flex-1 resize-none bg-transparent outline-none 
-           text-gray-200 text-sm leading-relaxed 
-           placeholder-gray-400 px-3 py-2
-           min-h-[44px] max-h-[160px]"
-      />
+//   return (
+//     <form
+//       onSubmit={handleSubmit}
+//       className="w-full flex items-center rounded-xl bg-gray-700 px-4 py-3"
+//     >
+//       <textarea
+//         ref={ref}
+//         value={value}
+//         onChange={(e) => onChange(e.target.value)}
+//         onKeyDown={handleKeyDown}
+//         rows={1}
+//         disabled={disabled}
+//         placeholder={placeholder}
+//         className="flex-1 resize-none bg-transparent outline-none
+//            text-gray-200 text-sm leading-relaxed
+//            placeholder-gray-400 px-3 py-2
+//            min-h-[44px] max-h-[160px]"
+//       />
 
-      {isGenerating ? (
-        <button
-          type="button"
-          onClick={onStop}
-          className="ml-2 flex items-center justify-center 
-               w-9 h-9 rounded-md text-lg text-red-400 
-               hover:text-red-300 transition"
-          title="Stop generating"
-        >
-          ⏹
-        </button>
-      ) : (
-        <button
-          type="submit"
-          disabled={!hasText || disabled}
-          className={`ml-2 flex items-center justify-center 
-                w-9 h-9 rounded-md text-lg transition
-      ${
-        hasText
-          ? "bg-transparent text-white opacity-80 hover:opacity-100 cursor-pointer"
-          : "bg-transparent text-white opacity-40 cursor-not-allowed"
-      }`}
-          title="Send"
-        >
-          {hasText ? "↑" : "➤"}
-        </button>
-      )}
-    </form>
-  );
-}
+//       {isGenerating ? (
+//         <button
+//           type="button"
+//           onClick={onStop}
+//           className="ml-2 flex items-center justify-center
+//                w-9 h-9 rounded-md text-lg text-red-400
+//                hover:text-red-300 transition"
+//           title="Stop generating"
+//         >
+//           ⏹
+//         </button>
+//       ) : (
+//         <button
+//           type="submit"
+//           disabled={!hasText || disabled}
+//           className={`ml-2 flex items-center justify-center
+//                 w-9 h-9 rounded-md text-lg transition
+//       ${
+//         hasText
+//           ? "bg-transparent text-white opacity-80 hover:opacity-100 cursor-pointer"
+//           : "bg-transparent text-white opacity-40 cursor-not-allowed"
+//       }`}
+//           title="Send"
+//         >
+//           {hasText ? "↑" : "➤"}
+//         </button>
+//       )}
+//     </form>
+//   );
+// }
 
 /** Main Chat Page **/
 export default function NewChatPage() {
@@ -178,6 +179,21 @@ export default function NewChatPage() {
     ThinkingStep[]
   >([]);
   const thinkingTimeoutRef = useRef<NodeJS.Timeout[]>([]);
+
+  const [inFlight, setInFlight] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
+
+  const stopAll = () => {
+    controller?.abort();
+    setIsGenerating(false);
+    setSending(false);
+    setInFlight(false);
+    setEditBusy(false);
+    setController(null);
+    sessionStorage.removeItem("activeChatGenerating");
+    thinkingTimeoutRef.current.forEach(clearTimeout);
+    setCurrentThinkingSteps([]);
+  };
 
   const stripFences = (s: string) =>
     s
@@ -236,11 +252,15 @@ export default function NewChatPage() {
   useEffect(() => {
     if (!domainDocId || !openedId) return;
 
+    const continuing =
+      sessionStorage.getItem("activeChatGenerating") === "true" ||
+      searchParams.get("gen") === "true";
+
     // Reset messages ketika user berpindah ke chat baru
     setMessages([]);
     setMessage("");
-    setSending(false);
-    setIsGenerating(false);
+    setSending(!!continuing);
+    setIsGenerating(!!continuing);
     setCurrentThinkingSteps([]);
     thinkingTimeoutRef.current.forEach(clearTimeout);
 
@@ -257,7 +277,7 @@ export default function NewChatPage() {
       openedId,
       (msgs: FirestoreMsg[]) => {
         const mapped: Msg[] = msgs.map((m) => ({
-          id: m.id, // ⬅️ simpan docId
+          id: m.id,
           role: m.role,
           content:
             m.role === "assistant"
@@ -272,7 +292,7 @@ export default function NewChatPage() {
       }
     );
     return () => unsub();
-  }, [domainDocId, openedId]);
+  }, [domainDocId, openedId, searchParams]);
 
   /** Fetch Datasets **/
   useEffect(() => {
@@ -325,12 +345,15 @@ export default function NewChatPage() {
     }
 
     const text = (prompt || message).trim();
-    if (!text || sending) return;
+    if (!text || inFlight) return;
 
     const abortCtrl = new AbortController();
     setController(abortCtrl);
+
+    setInFlight(true);
     setIsGenerating(true);
     setSending(true);
+    sessionStorage.setItem("activeChatGenerating", "true");
 
     if (!domainDocId) {
       toast.error("Please wait, preparing domain connection...");
@@ -374,7 +397,6 @@ export default function NewChatPage() {
     }
 
     try {
-      // 💾 Simpan pesan user dulu
       await saveChatMessage(domainDocId, sessionId!, "user", text);
 
       // ⚡ Tampilkan "Analyze..." SEBELUM panggil backend
@@ -386,11 +408,11 @@ export default function NewChatPage() {
 
       const stepInterval = 600;
       baseSteps.forEach((step, index) => {
-        const timeoutId = setTimeout(() => {
+        const t = setTimeout(() => {
           setCurrentThinkingSteps((prev) => [...prev, step]);
           scrollToBottom("smooth");
         }, index * stepInterval);
-        thinkingTimeoutRef.current.push(timeoutId);
+        thinkingTimeoutRef.current.push(t);
       });
 
       // 🔍 Mulai fetch dari backend (async berjalan paralel dengan animasi di atas)
@@ -491,6 +513,9 @@ export default function NewChatPage() {
 
         setSending(false);
         setIsGenerating(false);
+        setInFlight(false);
+        setController(null);
+        sessionStorage.removeItem("activeChatGenerating");
       }, totalStepTime);
     } catch (err) {
       console.error(err);
@@ -513,6 +538,9 @@ export default function NewChatPage() {
 
       setSending(false);
       setIsGenerating(false);
+      setInFlight(false);
+      setController(null);
+      sessionStorage.removeItem("activeChatGenerating");
     }
   };
 
@@ -665,244 +693,276 @@ export default function NewChatPage() {
                               el.style.height = "auto";
                               el.style.height = el.scrollHeight + "px";
                             }}
+                            disabled={editBusy}
                             className="w-full rounded-lg border border-gray-600 bg-[#1f2026] text-gray-200 p-2 text-sm resize-none overflow-hidden transition-all duration-200 ease-in-out"
                           />
                           <div className="flex gap-2 justify-end text-sm">
-                            <button
-                              onClick={async () => {
-                                const edited = editText.trim();
-                                if (!edited)
-                                  return toast.error("Message can't be empty");
-                                if (!domainDocId)
-                                  return toast.error("Domain not ready");
-                                const sessionId = searchParams.get("id");
-                                if (!sessionId)
-                                  return toast.error("Session ID not found");
-
-                                setEditingIndex(null);
-                                setEditText("");
-
-                                // bersihin state lama
-                                thinkingTimeoutRef.current.forEach(
-                                  clearTimeout
-                                );
-                                thinkingTimeoutRef.current = [];
-                                setCurrentThinkingSteps([]);
-                                if (controller) {
-                                  controller.abort();
-                                  setController(null);
-                                }
-                                const newController = new AbortController();
-                                setController(newController);
-
-                                setSending(true);
-                                setIsGenerating(true);
-
-                                // ⬅️ id dokumen pertanyaan lama & id jawaban setelahnya (kalau ada)
-                                const userMsgId = messages[i]?.id;
-                                if (!userMsgId) {
-                                  toast.error("User message ID not found.");
-                                  setEditingIndex(null);
-                                  setEditText("");
-                                  setSending(false);
-                                  setIsGenerating(false);
-                                  return;
-                                }
-                                const nextAssistantId =
-                                  messages[i + 1]?.role === "assistant"
-                                    ? messages[i + 1]?.id
-                                    : null;
-
-                                // 1) Update pertanyaan di Firestore & UI (tidak bikin bubble baru)
-                                await updateChatMessage(
-                                  domainDocId,
-                                  userMsgId,
-                                  { text: edited }
-                                );
-                                setMessages((prev) => {
-                                  const updated = [...prev];
-                                  updated[i] = {
-                                    ...updated[i],
-                                    content: edited,
-                                  };
-                                  // kalau ada jawaban setelahnya, hapus dulu biar diganti nanti
-                                  if (updated[i + 1]?.role === "assistant")
-                                    updated.splice(i + 1, 1);
-                                  return updated;
-                                });
-
-                                // tampilkan langkah2 thinking
-                                const baseSteps: ThinkingStep[] = [
-                                  {
-                                    key: "router",
-                                    message:
-                                      "Routing and understanding user intent...",
-                                  },
-                                  {
-                                    key: "orchestrator",
-                                    message: "Building orchestrator plan...",
-                                  },
-                                  {
-                                    key: "compiler",
-                                    message: "Preparing response...",
-                                  },
-                                ];
-                                const stepInterval = 600;
-                                baseSteps.forEach((step, idx) => {
-                                  const t = setTimeout(() => {
-                                    if (newController.signal.aborted) return;
-                                    setCurrentThinkingSteps((p) => [
-                                      ...p,
-                                      step,
-                                    ]);
-                                    scrollToBottom("smooth");
-                                  }, idx * stepInterval);
-                                  thinkingTimeoutRef.current.push(t);
-                                });
-
-                                try {
-                                  const res = await queryDomain({
-                                    apiBase: API_BASE,
-                                    domain: domain!,
-                                    prompt: edited,
-                                    sessionId,
-                                    signal: newController.signal,
-                                    dataset:
-                                      selectedDatasets.length > 0
-                                        ? selectedDatasets
-                                        : undefined,
-                                  });
-
-                                  const dynamicSteps = [...baseSteps];
-                                  if (res.need_manipulator)
-                                    dynamicSteps.splice(2, 0, {
-                                      key: "manipulator",
-                                      message:
-                                        "Manipulating datasets and cleaning data...",
-                                    });
-                                  if (res.need_analyzer)
-                                    dynamicSteps.splice(3, 0, {
-                                      key: "analyzer",
-                                      message:
-                                        "Analyzing dataset patterns and relationships...",
-                                    });
-                                  if (res.need_visualizer)
-                                    dynamicSteps.splice(4, 0, {
-                                      key: "visualizer",
-                                      message:
-                                        "Generating visualization for insights...",
-                                    });
-
-                                  const backendStart =
-                                    baseSteps.length * stepInterval;
-                                  dynamicSteps
-                                    .slice(baseSteps.length)
-                                    .forEach((step, idx) => {
-                                      const t = setTimeout(() => {
-                                        setCurrentThinkingSteps((p) => [
-                                          ...p,
-                                          step,
-                                        ]);
-                                        scrollToBottom("smooth");
-                                      }, backendStart + idx * stepInterval);
-                                      thinkingTimeoutRef.current.push(t);
-                                    });
-
-                                  // chart (optional)
-                                  let charts: ChartItem[] | undefined;
-                                  let chartHtml: string | undefined;
-                                  const chartUrl = res.chart_url ?? null;
-                                  if (chartUrl) {
-                                    try {
-                                      const html = await fetchChartHtml(
-                                        API_BASE,
-                                        chartUrl
+                            {editBusy ? (
+                              <button
+                                onClick={stopAll}
+                                className="px-2 py-1 rounded bg-gray-600 hover:bg-gray-500 text-white flex items-center gap-1"
+                                title="Stop generating"
+                              >
+                                ⏹ Stop
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={async () => {
+                                    const edited = editText.trim();
+                                    if (!edited)
+                                      return toast.error(
+                                        "Message can't be empty"
                                       );
-                                      if (html) {
-                                        chartHtml = html;
-                                        charts = [{ html }];
-                                      }
-                                    } catch {
-                                      /* empty */
-                                    }
-                                  }
+                                    if (!domainDocId)
+                                      return toast.error("Domain not ready");
+                                    const sessionId = searchParams.get("id");
+                                    if (!sessionId)
+                                      return toast.error(
+                                        "Session ID not found"
+                                      );
 
-                                  const cleaned = cleanHtmlResponse(
-                                    res.response ?? "(empty)"
-                                  );
-                                  const totalStepTime =
-                                    (dynamicSteps.length + 1) * stepInterval +
-                                    800;
+                                    setEditingIndex(null);
+                                    setEditText("");
 
-                                  setTimeout(async () => {
-                                    // bersih2 thinking
+                                    // bersihin state lama
                                     thinkingTimeoutRef.current.forEach(
                                       clearTimeout
                                     );
                                     thinkingTimeoutRef.current = [];
                                     setCurrentThinkingSteps([]);
+                                    if (controller) {
+                                      controller.abort();
+                                      setController(null);
+                                    }
+                                    const newController = new AbortController();
+                                    setController(newController);
 
-                                    // 2) Pasang jawaban BARU tepat di bawah pertanyaan (replace if exists)
-                                    const newAssistant: Msg = {
-                                      role: "assistant",
-                                      content: cleaned,
-                                      chartUrl,
-                                      charts,
-                                      animate: true,
-                                      thinkingSteps: dynamicSteps,
-                                    };
+                                    setSending(true);
+                                    setIsGenerating(true);
+                                    setInFlight(true);
+                                    setEditBusy(true);
+
+                                    // ⬅️ id dokumen pertanyaan lama & id jawaban setelahnya (kalau ada)
+                                    const userMsgId = messages[i]?.id;
+                                    if (!userMsgId) {
+                                      toast.error("User message ID not found.");
+                                      setEditingIndex(null);
+                                      setEditText("");
+                                      setSending(false);
+                                      setIsGenerating(false);
+                                      return;
+                                    }
+                                    const nextAssistantId =
+                                      messages[i + 1]?.role === "assistant"
+                                        ? messages[i + 1]?.id
+                                        : null;
+
+                                    // 1) Update pertanyaan di Firestore & UI (tidak bikin bubble baru)
+                                    await updateChatMessage(
+                                      domainDocId,
+                                      userMsgId,
+                                      { text: edited }
+                                    );
                                     setMessages((prev) => {
                                       const updated = [...prev];
-                                      // selipkan jawaban baru di bawah pertanyaan yang diedit
-                                      updated.splice(i + 1, 0, newAssistant);
+                                      updated[i] = {
+                                        ...updated[i],
+                                        content: edited,
+                                      };
+                                      if (updated[i + 1]?.role === "assistant")
+                                        updated.splice(i + 1, 1);
                                       return updated;
                                     });
 
-                                    // 3) Update/Upsert di Firestore:
-                                    if (nextAssistantId) {
-                                      // replace dokumen jawaban lama
-                                      await updateAssistantMessage(
-                                        domainDocId,
-                                        nextAssistantId,
-                                        cleaned,
-                                        chartHtml,
-                                        dynamicSteps
-                                      );
-                                    } else {
-                                      // belum ada jawaban → buat satu kali
-                                      await saveChatMessage(
-                                        domainDocId,
+                                    // tampilkan langkah2 thinking
+                                    const baseSteps: ThinkingStep[] = [
+                                      {
+                                        key: "router",
+                                        message:
+                                          "Routing and understanding user intent...",
+                                      },
+                                      {
+                                        key: "orchestrator",
+                                        message:
+                                          "Building orchestrator plan...",
+                                      },
+                                      {
+                                        key: "compiler",
+                                        message: "Preparing response...",
+                                      },
+                                    ];
+                                    const stepInterval = 600;
+                                    baseSteps.forEach((step, idx) => {
+                                      const t = setTimeout(() => {
+                                        if (newController.signal.aborted)
+                                          return;
+                                        setCurrentThinkingSteps((p) => [
+                                          ...p,
+                                          step,
+                                        ]);
+                                        scrollToBottom("smooth");
+                                      }, idx * stepInterval);
+                                      thinkingTimeoutRef.current.push(t);
+                                    });
+
+                                    try {
+                                      const res = await queryDomain({
+                                        apiBase: API_BASE,
+                                        domain: domain!,
+                                        prompt: edited,
                                         sessionId,
-                                        "assistant",
-                                        cleaned,
-                                        chartHtml,
-                                        dynamicSteps
+                                        signal: newController.signal,
+                                        dataset:
+                                          selectedDatasets.length > 0
+                                            ? selectedDatasets
+                                            : undefined,
+                                      });
+
+                                      const dynamicSteps = [...baseSteps];
+                                      if (res.need_manipulator)
+                                        dynamicSteps.splice(2, 0, {
+                                          key: "manipulator",
+                                          message:
+                                            "Manipulating datasets and cleaning data...",
+                                        });
+                                      if (res.need_analyzer)
+                                        dynamicSteps.splice(3, 0, {
+                                          key: "analyzer",
+                                          message:
+                                            "Analyzing dataset patterns and relationships...",
+                                        });
+                                      if (res.need_visualizer)
+                                        dynamicSteps.splice(4, 0, {
+                                          key: "visualizer",
+                                          message:
+                                            "Generating visualization for insights...",
+                                        });
+
+                                      const backendStart =
+                                        baseSteps.length * stepInterval;
+                                      dynamicSteps
+                                        .slice(baseSteps.length)
+                                        .forEach((step, idx) => {
+                                          const t = setTimeout(() => {
+                                            setCurrentThinkingSteps((p) => [
+                                              ...p,
+                                              step,
+                                            ]);
+                                            scrollToBottom("smooth");
+                                          }, backendStart + idx * stepInterval);
+                                          thinkingTimeoutRef.current.push(t);
+                                        });
+
+                                      // chart (optional)
+                                      let charts: ChartItem[] | undefined;
+                                      let chartHtml: string | undefined;
+                                      const chartUrl = res.chart_url ?? null;
+                                      if (chartUrl) {
+                                        try {
+                                          const html = await fetchChartHtml(
+                                            API_BASE,
+                                            chartUrl
+                                          );
+                                          if (html) {
+                                            chartHtml = html;
+                                            charts = [{ html }];
+                                          }
+                                        } catch {
+                                          {
+                                            /* ignore */
+                                          }
+                                        }
+                                      }
+
+                                      const cleaned = cleanHtmlResponse(
+                                        res.response ?? "(empty)"
                                       );
+                                      const totalStepTime =
+                                        (dynamicSteps.length + 1) *
+                                          stepInterval +
+                                        800;
+
+                                      setTimeout(async () => {
+                                        // bersih2 thinking
+                                        thinkingTimeoutRef.current.forEach(
+                                          clearTimeout
+                                        );
+                                        thinkingTimeoutRef.current = [];
+                                        setCurrentThinkingSteps([]);
+
+                                        // 2) Pasang jawaban BARU tepat di bawah pertanyaan (replace if exists)
+                                        const newAssistant: Msg = {
+                                          role: "assistant",
+                                          content: cleaned,
+                                          chartUrl,
+                                          charts,
+                                          animate: true,
+                                          thinkingSteps: dynamicSteps,
+                                        };
+                                        setMessages((prev) => {
+                                          const updated = [...prev];
+                                          // selipkan jawaban baru di bawah pertanyaan yang diedit
+                                          updated.splice(
+                                            i + 1,
+                                            0,
+                                            newAssistant
+                                          );
+                                          return updated;
+                                        });
+
+                                        // 3) Update/Upsert di Firestore:
+                                        if (nextAssistantId) {
+                                          // replace dokumen jawaban lama
+                                          await updateAssistantMessage(
+                                            domainDocId,
+                                            nextAssistantId,
+                                            cleaned,
+                                            chartHtml,
+                                            dynamicSteps
+                                          );
+                                        } else {
+                                          // belum ada jawaban → buat satu kali
+                                          await saveChatMessage(
+                                            domainDocId,
+                                            sessionId,
+                                            "assistant",
+                                            cleaned,
+                                            chartHtml,
+                                            dynamicSteps
+                                          );
+                                        }
+
+                                        setSending(false);
+                                        setIsGenerating(false);
+                                        setInFlight(false);
+                                        setEditBusy(false);
+                                      }, totalStepTime);
+                                    } catch {
+                                      thinkingTimeoutRef.current.forEach(
+                                        clearTimeout
+                                      );
+                                      setCurrentThinkingSteps([]);
+                                      setSending(false);
+                                      setIsGenerating(false);
+                                      setInFlight(false);
+                                      setEditBusy(false);
                                     }
+                                  }}
+                                  className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                                >
+                                  <FiCheck size={14} /> Save
+                                </button>
 
-                                    setSending(false);
-                                    setIsGenerating(false);
-                                  }, totalStepTime);
-                                } catch {
-                                  thinkingTimeoutRef.current.forEach(
-                                    clearTimeout
-                                  );
-                                  setCurrentThinkingSteps([]);
-                                  setSending(false);
-                                  setIsGenerating(false);
-                                }
-                              }}
-                              className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
-                            >
-                              <FiCheck size={14} /> Save
-                            </button>
-
-                            <button
-                              onClick={() => setEditingIndex(null)}
-                              className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white flex items-center gap-1"
-                            >
-                              <FiX size={14} /> Cancel
-                            </button>
+                                <button
+                                  onClick={() => setEditingIndex(null)}
+                                  disabled={editBusy}
+                                  className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white flex items-center gap-1 disabled:opacity-50"
+                                >
+                                  <FiX size={14} /> Cancel
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       ) : (
@@ -1003,12 +1063,13 @@ export default function NewChatPage() {
                   onChange={setMessage}
                   onSend={() => handleSend()}
                   placeholder="Ask Anything"
-                  disabled={sending}
-                  isGenerating={isGenerating}
+                  busy={inFlight}
                   onStop={() => {
                     controller?.abort();
                     setIsGenerating(false);
                     setSending(false);
+                    setInFlight(false);
+                    setController(null);
                     sessionStorage.removeItem("activeChatGenerating");
                     thinkingTimeoutRef.current.forEach(clearTimeout);
                     setCurrentThinkingSteps([]);
