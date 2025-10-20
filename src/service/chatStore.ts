@@ -261,3 +261,23 @@ export async function deleteChatSession(
   );
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }
+
+// ✅ UPDATE judul session (untuk sinkron History Sidebar)
+export async function updateChatSessionTitle(
+  domainDocId: string,
+  sessionId: string,
+  title: string
+) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+  const ref = doc(
+    db,
+    "users",
+    user.uid,
+    "domains",
+    domainDocId,
+    "sessions",
+    sessionId
+  );
+  await updateDoc(ref, { title });
+}

@@ -17,6 +17,7 @@ import {
   getDomainDocId,
   updateAssistantMessage,
   updateChatMessage,
+  updateChatSessionTitle,
 } from "../service/chatStore";
 import { FiCopy, FiEdit2, FiCheck, FiX, FiActivity } from "react-icons/fi";
 import toast from "react-hot-toast";
@@ -774,6 +775,18 @@ export default function NewChatPage() {
                                         updated.splice(i + 1, 1);
                                       return updated;
                                     });
+
+                                    if (i === 0) {
+                                      const newTitle =
+                                        edited.length > 50
+                                          ? edited.slice(0, 50) + "…"
+                                          : edited;
+                                      await updateChatSessionTitle(
+                                        domainDocId,
+                                        sessionId!,
+                                        newTitle
+                                      );
+                                    }
 
                                     // tampilkan langkah2 thinking
                                     const baseSteps: ThinkingStep[] = [
