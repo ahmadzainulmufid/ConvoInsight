@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import NotificationPopover from "../SupportComponents/NotificationPopover";
 import HelpPopover from "../SupportComponents/HelpPopover";
+import { useAutoResetNotifications } from "../../hooks/useAutoResetNotifications";
 
 const avatarColors = [
   "#8B5CF6",
@@ -27,6 +28,8 @@ export default function RightSidebar() {
   const [activePanel, setActivePanel] = useState<"notif" | "help" | null>(null);
   const navigate = useNavigate();
   const { user } = useAuthUser();
+
+  useAutoResetNotifications();
 
   const displayName = user?.displayName || user?.email?.split("@")[0] || "User";
   const email = user?.email || "No email";
