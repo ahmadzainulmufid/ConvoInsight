@@ -26,6 +26,8 @@ import {
 
 import { auth } from "../utils/firebaseSetup";
 
+import { addNotification } from "../service/notificationStore";
+
 type DatasetMeta = {
   id: string;
   name: string;
@@ -387,6 +389,14 @@ export default function ManageSettings() {
       order: items?.length ?? 0,
     };
     await upsertDashboardItem(domainDocId, groupId, newItem);
+
+    // 🆕 Tambah notifikasi
+    await addNotification(
+      "insight",
+      "New Dashboard Item Added",
+      `A new ${itemType} was added to your dashboard group "${groupId}".`
+    );
+
     toast.success(`Saved ${itemType} to dashboard.`);
     goToStep("list");
   };
@@ -403,7 +413,17 @@ export default function ManageSettings() {
       order: items?.length ?? 0,
     };
     await upsertDashboardItem(domainDocId, groupId, newItem);
-    toast.success(`Saved KPI from dataset`);
+
+    // 🆕 Tambah notifikasi
+    await addNotification(
+      "dataset",
+      "New KPI from Dataset",
+      `A new KPI has been added from dataset(s): ${selectedDatasetIds.join(
+        ", "
+      )}.`
+    );
+
+    toast.success("Saved KPI from dataset");
     goToStep("list");
   };
 

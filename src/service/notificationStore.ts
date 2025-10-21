@@ -7,6 +7,8 @@ import {
   query,
   orderBy,
   onSnapshot,
+  getDocs,
+  deleteDoc,
 } from "firebase/firestore";
 
 export type NotificationItem = {
@@ -75,4 +77,14 @@ export function listenNotifications(cb: (list: NotificationItem[]) => void) {
     unsubAuth?.();
     unsubFirestore?.();
   };
+}
+
+export async function clearAllNotifications() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  const notifRef = collection(db, "users", uid, "notifications");
+  const snap = await getDocs(notifRef);
+  for (const docSnap of snap.docs) {
+    await deleteDoc(docSnap.ref);
+  }
 }
