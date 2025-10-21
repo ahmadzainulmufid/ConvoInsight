@@ -2,17 +2,28 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { NavLink, useParams, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+
 import DashboardGroupOutput from "../components/ManageComponents/ManageGroupOutput";
 import ItemDetailModal from "../components/ManageComponents/ItemDetailModal";
+import ManageKpiOutput from "../components/ManageComponents/ManageKpiOutput";
+
 import { queryDomain } from "../utils/queryDomain";
+import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
+import { fetchChartHtml } from "../utils/fetchChart";
+
 import {
   getDomainDocId,
   saveChatMessage,
   fetchMessagesOnce,
 } from "../service/chatStore";
-import { fetchChartHtml } from "../utils/fetchChart";
-import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
-import ManageKpiOutput from "../components/ManageComponents/ManageKpiOutput";
+
+import {
+  listenDashboardItems,
+  upsertDashboardItem,
+  deleteDashboardItem as fsDeleteItem,
+  reorderDashboardItems,
+} from "../service/dashboardStore";
+
 import { auth } from "../utils/firebaseSetup";
 
 type DatasetMeta = {
@@ -22,12 +33,14 @@ type DatasetMeta = {
   uploadedAt: string;
   signed_url?: string;
 };
+
 type DatasetApiItem = {
   filename: string;
   size?: number;
   updated?: string;
   signed_url?: string;
 };
+
 type ItemType = "chart" | "table" | "kpi";
 type KPIType = "dataset" | "llm";
 
@@ -39,6 +52,7 @@ export type DashboardItem = {
   columns?: string[];
   includeInsight: boolean;
   createdAt?: number;
+  order?: number;
 };
 
 type ExecutionResult = { text: string; chartHtml?: string };
@@ -47,12 +61,15 @@ export type HydratedDashboardItem = DashboardItem & {
   result?: ExecutionResult;
 };
 
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
+
 export default function ManageSettings() {
   const { section: domain } = useParams();
   const [searchParams] = useSearchParams();
   const groupId = searchParams.get("group") ?? "default";
 
-  // ... state lain ...
   const [step, setStep] = useState<
     | "list"
     | "select-type"
@@ -66,109 +83,40 @@ export default function ManageSettings() {
   const [kpiType, setKpiType] = useState<KPIType | null>(null);
   const [prompt, setPrompt] = useState("");
   const [includeInsight, setIncludeInsight] = useState(false);
+
   const [datasets, setDatasets] = useState<DatasetMeta[]>([]);
   const [selectedDatasetIds, setSelectedDatasetIds] = useState<string[]>([]);
   const [columns, setColumns] = useState<Record<string, string[]>>({});
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+
   const [domainDocId, setDomainDocId] = useState<string | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] =
     useState<ExecutionResult | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
-  // DEKLARASI STATE UNTUK MODAL - INI YANG PENTING
   const [viewingItem, setViewingItem] = useState<HydratedDashboardItem | null>(
     null
   );
-
-  const API_BASE =
-    import.meta.env.VITE_API_URL ||
-    "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
   const uid = auth.currentUser?.uid;
   const storageKey = uid
     ? `dashboard_items_${uid}_${groupId}`
     : `dashboard_items_${groupId}`;
-  const [items, setItems] = useState<DashboardItem[]>(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      return raw ? (JSON.parse(raw) as DashboardItem[]) : [];
-    } catch {
-      return [];
-    }
-  });
 
+  const [items, setItems] = useState<DashboardItem[]>([]);
   const [hydratedItems, setHydratedItems] = useState<HydratedDashboardItem[]>(
     []
   );
   const [isLoadingItems, setIsLoadingItems] = useState(true);
-
-  useEffect(() => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
-
-    const oldKey = `dashboard_items_${groupId}`;
-    const newKey = `dashboard_items_${uid}_${groupId}`;
-
-    if (localStorage.getItem(oldKey) && !localStorage.getItem(newKey)) {
-      localStorage.setItem(newKey, localStorage.getItem(oldKey)!);
-      localStorage.removeItem(oldKey);
-    }
-  }, [groupId]);
-
-  useEffect(() => {
-    if (uid) localStorage.setItem(storageKey, JSON.stringify(items));
-  }, [items, storageKey, uid]);
-
-  useEffect(() => {
-    if (!domainDocId) {
-      setHydratedItems(items);
-      setIsLoadingItems(false);
-      return;
-    }
-    const hydrateItems = async () => {
-      setIsLoadingItems(true);
-      const enrichedItems: HydratedDashboardItem[] = await Promise.all(
-        items.map(async (item) => {
-          if (item.prompt) {
-            try {
-              const messages = await fetchMessagesOnce(domainDocId, item.id);
-              const assistantMessage = messages.find(
-                (m) => m.role === "assistant"
-              );
-              if (assistantMessage) {
-                return {
-                  ...item,
-                  result: {
-                    text:
-                      item.type === "kpi" || item.includeInsight
-                        ? assistantMessage.text
-                        : "",
-                    chartHtml: assistantMessage.chartHtml,
-                  },
-                };
-              }
-            } catch (error) {
-              console.error(
-                `Gagal mengambil hasil untuk item ${item.id}`,
-                error
-              );
-            }
-          }
-          return item;
-        })
-      );
-      setHydratedItems(enrichedItems);
-      setIsLoadingItems(false);
-    };
-    hydrateItems();
-  }, [items, domainDocId]);
 
   const variants = {
     initial: { opacity: 0, x: 30 },
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: -30 },
   };
+
+  // resolve domainDocId
   useEffect(() => {
     if (!domain) return;
     (async () => {
@@ -183,6 +131,8 @@ export default function ManageSettings() {
       }
     })();
   }, [domain]);
+
+  // datasets list (for KPI-dataset)
   useEffect(() => {
     if (!domain) return;
     (async () => {
@@ -205,7 +155,9 @@ export default function ManageSettings() {
         toast.error("Failed to load datasets");
       }
     })();
-  }, [domain, API_BASE]);
+  }, [domain]);
+
+  // load columns from signed URLs
   const loadColumns = useCallback(async () => {
     if (!selectedDatasetIds.length) {
       setColumns({});
@@ -229,9 +181,11 @@ export default function ManageSettings() {
     }
     setColumns(allCols);
   }, [selectedDatasetIds, datasets]);
+
   useEffect(() => {
     loadColumns();
   }, [loadColumns]);
+
   const allColumnOptions = useMemo(() => {
     const out: { value: string; label: string }[] = [];
     for (const [ds, cols] of Object.entries(columns)) {
@@ -241,6 +195,7 @@ export default function ManageSettings() {
     }
     return out;
   }, [columns]);
+
   const resetForm = () => {
     setItemType(null);
     setKpiType(null);
@@ -255,6 +210,92 @@ export default function ManageSettings() {
     if (["select-type", "list"].includes(next)) resetForm();
     setStep(next);
   };
+
+  // 🔁 realtime items from Firestore (cross-browser)
+  useEffect(() => {
+    if (!domainDocId) return;
+    const unsub = listenDashboardItems(domainDocId, groupId, (remote) => {
+      // urutkan kalau ada field order, fallback ke createdAt
+      const sorted = [...remote].sort((a, b) => {
+        const ao = (a.order ?? 0) - (b.order ?? 0);
+        if (ao !== 0) return ao;
+        return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+      });
+      setItems(sorted);
+    });
+    return () => unsub();
+  }, [domainDocId, groupId]);
+
+  // 🧹 migrate once from localStorage -> Firestore (if any leftovers)
+  useEffect(() => {
+    if (!domainDocId) return;
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return;
+    try {
+      const cached: DashboardItem[] = JSON.parse(raw);
+      if (cached.length) {
+        cached.forEach((it, idx) =>
+          upsertDashboardItem(domainDocId, groupId, { ...it, order: idx })
+        );
+      }
+      localStorage.removeItem(storageKey);
+    } catch {
+      /* empty */
+    }
+  }, [domainDocId, groupId, storageKey]);
+
+  // hydrate items (fetch assistant message + chart fallback from chartUrl)
+  useEffect(() => {
+    if (!domainDocId) {
+      setHydratedItems(items);
+      setIsLoadingItems(false);
+      return;
+    }
+    (async () => {
+      setIsLoadingItems(true);
+      const enriched: HydratedDashboardItem[] = await Promise.all(
+        items.map(async (item) => {
+          if (!item.prompt) return item;
+          try {
+            const messages = await fetchMessagesOnce(domainDocId, item.id);
+            const assistantMessage = messages.find(
+              (m) => m.role === "assistant"
+            );
+            if (assistantMessage) {
+              let chartHtml = assistantMessage.chartHtml;
+              if (!chartHtml && assistantMessage.chartUrl) {
+                try {
+                  chartHtml = await fetchChartHtml(
+                    API_BASE,
+                    assistantMessage.chartUrl
+                  );
+                } catch {
+                  /* empty */
+                }
+              }
+              return {
+                ...item,
+                result: {
+                  text:
+                    item.type === "kpi" || item.includeInsight
+                      ? assistantMessage.text
+                      : "",
+                  chartHtml,
+                },
+              };
+            }
+          } catch (error) {
+            console.error(`Gagal mengambil hasil untuk item ${item.id}`, error);
+          }
+          return item;
+        })
+      );
+      setHydratedItems(enriched);
+      setIsLoadingItems(false);
+    })();
+  }, [items, domainDocId]);
+
+  // execute prompt
   const handleExecutePrompt = async () => {
     if (!prompt.trim() || !domain || !domainDocId) {
       toast.error("Prompt and domain must be valid.");
@@ -266,6 +307,7 @@ export default function ManageSettings() {
     setCurrentSessionId(sessionId);
     try {
       await saveChatMessage(domainDocId, sessionId, "user", prompt);
+
       const res = await queryDomain({
         apiBase: API_BASE,
         domain,
@@ -277,21 +319,43 @@ export default function ManageSettings() {
         dataset: selectedDatasetIds.length > 0 ? selectedDatasetIds : undefined,
         includeInsight,
       });
+
+      // ambil metadata chart remote agar lintas browser
+      const chartUrlFromBE =
+        res.chart_url ||
+        res.diagram_signed_url ||
+        res.diagram_public_url ||
+        null;
+      const diagramKind = res.diagram_kind ?? null;
+      const diagramPath = res.diagram_gs_uri ?? null;
+
+      // preview chart untuk modal saat ini
       let chartHtml: string | undefined;
-      if (res.chart_url) {
-        chartHtml =
-          (await fetchChartHtml(API_BASE, res.chart_url)) || undefined;
+      if (chartUrlFromBE) {
+        try {
+          chartHtml =
+            (await fetchChartHtml(API_BASE, chartUrlFromBE)) || undefined;
+        } catch {
+          /* empty */
+        }
       }
+
       const assistantResponse = cleanHtmlResponse(
         res.response ?? "(empty response)"
       );
+
       await saveChatMessage(
         domainDocId,
         sessionId,
         "assistant",
         assistantResponse,
-        chartHtml
+        chartHtml, // simpan blob lokal agar cepat di browser ini
+        undefined, // thinkingSteps
+        chartUrlFromBE, // ⬅️ simpan URL remote utk browser lain
+        diagramKind,
+        diagramPath
       );
+
       setExecutionResult({ text: assistantResponse, chartHtml });
     } catch (err: unknown) {
       const errorMessage =
@@ -304,11 +368,14 @@ export default function ManageSettings() {
       setIsExecuting(false);
     }
   };
-  const handleSaveItem = () => {
+
+  // save items
+  const handleSaveItem = async () => {
     if (!itemType || !currentSessionId) {
       toast.error("Cannot save. No execution data found.");
       return;
     }
+    if (!domainDocId) return;
     const newItem: DashboardItem = {
       id: currentSessionId,
       type: itemType,
@@ -317,12 +384,15 @@ export default function ManageSettings() {
       datasets: selectedDatasetIds,
       columns: selectedColumns,
       createdAt: Date.now(),
+      order: items?.length ?? 0,
     };
-    setItems((prev) => [...prev, newItem]);
+    await upsertDashboardItem(domainDocId, groupId, newItem);
     toast.success(`Saved ${itemType} to dashboard.`);
     goToStep("list");
   };
-  const handleSaveKpiDataset = () => {
+
+  const handleSaveKpiDataset = async () => {
+    if (!domainDocId) return;
     const newItem: DashboardItem = {
       id: `${Date.now()}`,
       type: "kpi",
@@ -330,14 +400,27 @@ export default function ManageSettings() {
       datasets: selectedDatasetIds,
       columns: selectedColumns,
       createdAt: Date.now(),
+      order: items?.length ?? 0,
     };
-    setItems((prev) => [...prev, newItem]);
+    await upsertDashboardItem(domainDocId, groupId, newItem);
     toast.success(`Saved KPI from dataset`);
     goToStep("list");
   };
-  const handleReorder = (reordered: DashboardItem[]) => setItems(reordered);
-  const handleDelete = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+
+  const handleReorder = async (reordered: DashboardItem[]) => {
+    if (!domainDocId) return;
+    await reorderDashboardItems(
+      domainDocId,
+      groupId,
+      reordered.map((i) => i.id)
+    );
+    // local visual order
+    setItems(reordered.map((it, idx) => ({ ...it, order: idx })));
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!domainDocId) return;
+    await fsDeleteItem(domainDocId, groupId, id);
     toast.success("Item deleted");
   };
 
@@ -352,6 +435,7 @@ export default function ManageSettings() {
           Back to Dashboard Settings
         </NavLink>
       </div>
+
       <AnimatePresence mode="wait">
         {step === "list" && (
           <motion.div key="list" {...variants} className="space-y-4">
@@ -364,6 +448,7 @@ export default function ManageSettings() {
             >
               ➕ Add Item
             </button>
+
             {isLoadingItems ? (
               <p className="text-gray-400 text-sm italic">Loading items...</p>
             ) : items.length === 0 ? (
@@ -378,6 +463,7 @@ export default function ManageSettings() {
             )}
           </motion.div>
         )}
+
         {step === "select-type" && (
           <motion.div key="select-type" {...variants} className="space-y-6">
             <h2 className="text-lg font-semibold">Select Item Type</h2>
@@ -422,6 +508,7 @@ export default function ManageSettings() {
             </div>
           </motion.div>
         )}
+
         {["chart", "table", "kpi-llm"].includes(step) && (
           <motion.div key="prompt-step" {...variants} className="space-y-5">
             <h2 className="text-lg font-semibold capitalize">
@@ -466,6 +553,7 @@ export default function ManageSettings() {
                   ? "Re-execute"
                   : "Execute"}
               </button>
+
               {executionResult && (
                 <button
                   onClick={handleSaveItem}
@@ -475,17 +563,18 @@ export default function ManageSettings() {
                 </button>
               )}
             </div>
+
             <div className="mt-6">
               {isExecuting && (
                 <div className="text-center text-gray-400">
-                  <p>Executing prompt, please wait...</p>
+                  <p>Executing prompt...</p>
                 </div>
               )}
+
               {executionResult && (
                 <div className="p-4 border border-gray-700 rounded-lg bg-black/20 space-y-4">
                   <h3 className="font-semibold text-gray-300">Output:</h3>
 
-                  {/* ✅ tampilkan chart/table */}
                   {executionResult.chartHtml && (
                     <div className="w-full overflow-hidden rounded-xl bg-gray-800/30">
                       <iframe
@@ -497,7 +586,6 @@ export default function ManageSettings() {
                     </div>
                   )}
 
-                  {/* ✅ tampilkan insight hanya jika dicentang */}
                   {includeInsight && executionResult.text && (
                     <div
                       className="text-gray-200 leading-relaxed space-y-2 [&_p]:my-2 [&_table]:w-full [&_td]:border [&_td]:p-2"
@@ -524,6 +612,7 @@ export default function ManageSettings() {
             </div>
           </motion.div>
         )}
+
         {step === "kpi-type" && (
           <motion.div key="kpi-type" {...variants} className="space-y-5">
             <h2 className="text-lg font-semibold">Select KPI Source</h2>
@@ -566,9 +655,11 @@ export default function ManageSettings() {
             </div>
           </motion.div>
         )}
+
         {step === "kpi-dataset" && (
           <motion.div key="kpi-dataset" {...variants} className="space-y-5">
             <h2 className="text-lg font-semibold">Select Dataset & Columns</h2>
+
             <div className="flex flex-wrap gap-2">
               {datasets.map((d) => (
                 <label
@@ -594,6 +685,7 @@ export default function ManageSettings() {
                 </label>
               ))}
             </div>
+
             {Object.keys(columns).length > 0 && (
               <div>
                 <p className="text-sm mb-2 text-gray-300">Select Columns:</p>
@@ -620,6 +712,7 @@ export default function ManageSettings() {
                 </div>
               </div>
             )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => goToStep("kpi-type")}
@@ -640,6 +733,7 @@ export default function ManageSettings() {
             </div>
           </motion.div>
         )}
+
         <AnimatePresence>
           {viewingItem && (
             <motion.div

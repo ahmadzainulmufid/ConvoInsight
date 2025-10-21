@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import KpiCard from "./KpiCard";
 import Papa from "papaparse";
 
@@ -11,6 +11,7 @@ type DatasetSummary = {
   max: number;
   totalRows: number;
 };
+
 type ParsedLlmKpi = {
   mainTitle?: string;
   mainValue: string;
@@ -37,53 +38,112 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&amp;/g, "&");
 }
 
+/** Format ke koma desimal, 2 desimal untuk non-integer; pertahankan % bila ada */
+function toCommaNumber(val: string): string {
+  const trimmed = val.trim();
+  const hasPct = trimmed.endsWith("%");
+  const raw = hasPct ? trimmed.slice(0, -1) : trimmed;
+
+  // normalisasi: jadikan titik sebagai desimal untuk parsing
+  // (kalau input sudah "6,35" kita ubah sementara ke "6.35")
+  const normalized = raw.replace(/\s/g, "").replace(",", ".");
+  const n = Number(normalized);
+  if (Number.isNaN(n)) return trimmed; // biarkan apa adanya
+
+  // jika bilangan bulat, jangan paksa 2 desimal
+  let out = Math.round(n) === n ? String(Math.trunc(n)) : n.toFixed(2);
+
+  // kembalikan koma sebagai pemisah desimal
+  out = out.replace(".", ",");
+
+  return hasPct ? `${out}%` : out;
+}
+
+/** Bersihkan noise LLM (code-block, komentar, print, execute_code, dsb) */
+function sanitizeLlmText(llm: string): string {
+  const withoutBlocks = llm
+    // hapus code block ``` ... ```
+    .replace(/```[\s\S]*?```/g, " ")
+    // hapus tag HTML
+    .replace(/<[^>]+>/g, " ");
+
+  const kept = withoutBlocks
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter((line) => {
+      if (!line) return false;
+      if (line.startsWith("#")) return false;
+      if (/^print\s*\(/i.test(line)) return false;
+      if (/execute_code/i.test(line)) return false;
+      if (/^data\s*=/i.test(line)) return false;
+      if (/^\[\]$/.test(line)) return false;
+      return true;
+    })
+    .join(" ");
+
+  return kept.replace(/\s{2,}/g, " ").trim();
+}
+
+/** Ambil dua pasangan pertama "Label: Value" (value boleh ada % dan desimal ,/. ) */
 function parseLlmKpi(llm: string): ParsedLlmKpi[] {
-  const cleanLlm = decodeHtmlEntities(
-    llm
-      .replace(/<[^>]+>/g, "")
-      .replace(/\s+\n/g, "\n")
-      .trim()
-  );
+  const cleaned = decodeHtmlEntities(sanitizeLlmText(llm));
 
-  const regex = /([^:]*?):\s*([\d.,N/A]+%?)/g;
-  const matches = [...cleanLlm.matchAll(regex)];
+  // Cari pasangan "Label: Value"
+  const pairRe =
+    /([A-Za-z0-9À-ÿ()[\]/._\- ]+?)\s*:\s*([0-9]+(?:[.,][0-9]+)?%?)/g;
 
-  if (matches.length === 0) {
+  const pairs: { label: string; value: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = pairRe.exec(cleaned)) && pairs.length < 4) {
+    const label = (m[1] ?? "").trim();
+    const value = (m[2] ?? "").trim();
+    if (label && value) {
+      pairs.push({ label, value });
+    }
+  }
+
+  // Jika ketemu minimal dua pasangan → ambil dua pertama
+  if (pairs.length >= 2) {
+    const a = pairs[0];
+    const b = pairs[1];
     return [
-      { mainTitle: "Info", mainValue: cleanLlm.slice(0, 80), subItems: [] },
+      {
+        mainTitle: a.label, // label kiri bawah
+        mainValue: toCommaNumber(a.value), // angka besar kiri
+        subItems: [
+          {
+            label: b.label, // label kanan bawah
+            value: toCommaNumber(b.value), // angka kanan atas
+          },
+        ],
+      },
     ];
   }
 
-  const formatValue = (val: string): string => {
-    if (!val || val.includes(",") || val.includes(".") || val.includes("%"))
-      return val;
-    if (/^\d+$/.test(val) && val.length > 3) {
-      const num = parseFloat(val);
-      return (num / 1000).toFixed(2).replace(".", ",");
-    }
-    return val;
-  };
+  // Fallback: cari dua angka pertama (dengan/ tanpa %)
+  const numRe = /([0-9]+(?:[.,][0-9]+)?%?)/g;
+  const nums: string[] = [];
+  while ((m = numRe.exec(cleaned)) && nums.length < 2) {
+    nums.push(m[1]);
+  }
+  if (nums.length) {
+    return [
+      {
+        mainTitle: "KPI",
+        mainValue: toCommaNumber(nums[0]),
+        subItems: nums[1]
+          ? [{ label: "KPI 2", value: toCommaNumber(nums[1]) }]
+          : [],
+      },
+    ];
+  }
 
-  // ambil nilai pertama sebagai mainValue
-  const mainTitle = matches[0][1]?.trim() || "";
-  const mainValue = formatValue(matches[0][2]?.trim() || "");
-
-  // ambil nilai kedua (kalau ada) sebagai subItem TANPA label
-  const subItems =
-    matches.length > 1
-      ? [
-          {
-            label: "",
-            value: formatValue(matches[1][2]?.trim() || ""),
-          },
-        ]
-      : [];
-
+  // Kalau tetap tidak ada angka, tampilkan potongan awal teks
   return [
     {
-      mainTitle,
-      mainValue,
-      subItems,
+      mainTitle: "Info",
+      mainValue: cleaned.slice(0, 80),
+      subItems: [],
     },
   ];
 }
@@ -94,7 +154,6 @@ export default function ManageKpiOutput({
   selectedDatasetIds,
   selectedColumns,
   llmResult,
-  prompt,
 }: Props) {
   const [datasetKpiData, setDatasetKpiData] = useState<DatasetSummary[]>([]);
   const [llmKpiData, setLlmKpiData] = useState<ParsedLlmKpi[]>([]);
@@ -136,25 +195,19 @@ export default function ManageKpiOutput({
           const summary = await processDataset();
           setDatasetKpiData(summary);
         } else if (llmResult) {
-          const parsedArray = parseLlmKpi(llmResult);
-          setLlmKpiData(parsedArray);
+          setLlmKpiData(parseLlmKpi(llmResult));
+        } else {
+          setLlmKpiData([]);
         }
       } finally {
         setLoading(false);
       }
     })();
-  }, [
-    kpiType,
-    llmResult,
-    prompt,
-    datasets,
-    selectedDatasetIds,
-    selectedColumns,
-  ]);
+  }, [kpiType, llmResult, datasets, selectedDatasetIds, selectedColumns]);
 
   if (loading) return <p className="text-gray-400">Loading KPI...</p>;
 
-  // ... (Bagian render tidak ada yang berubah)
+  // Dataset KPI
   if (kpiType === "dataset") {
     return (
       <div className="flex flex-wrap gap-4 mt-4">
@@ -163,11 +216,11 @@ export default function ManageKpiOutput({
             key={k.col}
             color="blue"
             title={k.col}
-            mainValue={k.avg.toFixed(2)}
+            mainValue={toCommaNumber(k.avg.toFixed(2))}
             subItems={[
-              { label: "Min", value: k.min.toFixed(1) },
-              { label: "Max", value: k.max.toFixed(1) },
-              { label: "Rows", value: k.totalRows.toString() },
+              { label: "Min", value: toCommaNumber(k.min.toFixed(2)) },
+              { label: "Max", value: toCommaNumber(k.max.toFixed(2)) },
+              { label: "Rows", value: String(k.totalRows) },
             ]}
           />
         ))}
@@ -175,16 +228,17 @@ export default function ManageKpiOutput({
     );
   }
 
+  // LLM KPI
   if (kpiType === "llm" && llmKpiData.length > 0) {
     return (
       <div className="flex flex-wrap gap-4 mt-4">
         {llmKpiData.map((kpi, idx) => (
           <KpiCard
             key={idx}
-            title={kpi.mainTitle}
-            mainValue={kpi.mainValue}
+            title={kpi.mainTitle} // label kiri bawah
+            mainValue={kpi.mainValue} // angka besar kiri
             unit={kpi.unit}
-            subItems={kpi.subItems}
+            subItems={kpi.subItems} // item pertama ditampilkan kanan atas + label kanan bawah (umumnya)
           />
         ))}
       </div>
