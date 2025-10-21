@@ -42,18 +42,14 @@ function decodeHtmlEntities(text: string): string {
 function toCommaNumber(val: string): string {
   const trimmed = val.trim();
   const hasPct = trimmed.endsWith("%");
-  const raw = hasPct ? trimmed.slice(0, -1) : trimmed;
+  const raw = hasPct ? trimmed.slice(0, -1) : trimmed; // normalisasi: jadikan titik sebagai desimal untuk parsing // (kalau input sudah "6,35" kita ubah sementara ke "6.35")
 
-  // normalisasi: jadikan titik sebagai desimal untuk parsing
-  // (kalau input sudah "6,35" kita ubah sementara ke "6.35")
   const normalized = raw.replace(/\s/g, "").replace(",", ".");
   const n = Number(normalized);
-  if (Number.isNaN(n)) return trimmed; // biarkan apa adanya
+  if (Number.isNaN(n)) return trimmed; // biarkan apa adanya // jika bilangan bulat, jangan paksa 2 desimal
 
-  // jika bilangan bulat, jangan paksa 2 desimal
-  let out = Math.round(n) === n ? String(Math.trunc(n)) : n.toFixed(2);
+  let out = Math.round(n) === n ? String(Math.trunc(n)) : n.toFixed(2); // kembalikan koma sebagai pemisah desimal
 
-  // kembalikan koma sebagai pemisah desimal
   out = out.replace(".", ",");
 
   return hasPct ? `${out}%` : out;
@@ -61,10 +57,8 @@ function toCommaNumber(val: string): string {
 
 /** Bersihkan noise LLM (code-block, komentar, print, execute_code, dsb) */
 function sanitizeLlmText(llm: string): string {
-  const withoutBlocks = llm
-    // hapus code block ``` ... ```
-    .replace(/```[\s\S]*?```/g, " ")
-    // hapus tag HTML
+  const withoutBlocks = llm // hapus code block ``` ... ```
+    .replace(/```[\s\S]*?```/g, " ") // hapus tag HTML
     .replace(/<[^>]+>/g, " ");
 
   const kept = withoutBlocks
@@ -86,12 +80,11 @@ function sanitizeLlmText(llm: string): string {
 
 /** Ambil dua pasangan pertama "Label: Value" (value boleh ada % dan desimal ,/. ) */
 function parseLlmKpi(llm: string): ParsedLlmKpi[] {
-  const cleaned = decodeHtmlEntities(sanitizeLlmText(llm));
+  const cleaned = decodeHtmlEntities(sanitizeLlmText(llm)); // Cari pasangan "Label: Value"
 
-  // Cari pasangan "Label: Value"
   const pairRe =
-    /([A-Za-z0-9À-ÿ()[\]/._\- ]+?)\s*:\s*([0-9]+(?:[.,][0-9]+)?%?)/g;
-
+    // BARU (BENAR) - Tambahkan # di dalam kurung siku
+    /([A-Za-z0-9À-ÿ()[\]/._\-# ]+?)\s*:\s*([0-9]+(?:[.,][0-9]+)?%?)/g;
   const pairs: { label: string; value: string }[] = [];
   let m: RegExpExecArray | null;
   while ((m = pairRe.exec(cleaned)) && pairs.length < 4) {
@@ -100,9 +93,8 @@ function parseLlmKpi(llm: string): ParsedLlmKpi[] {
     if (label && value) {
       pairs.push({ label, value });
     }
-  }
+  } // Jika ketemu minimal dua pasangan → ambil dua pertama (LOGIKA LAMA - TETAP)
 
-  // Jika ketemu minimal dua pasangan → ambil dua pertama
   if (pairs.length >= 2) {
     const a = pairs[0];
     const b = pairs[1];
@@ -120,7 +112,20 @@ function parseLlmKpi(llm: string): ParsedLlmKpi[] {
     ];
   }
 
-  // Fallback: cari dua angka pertama (dengan/ tanpa %)
+  // --- PENAMBAHAN LOGIKA BARU (DIMINTA) ---
+  // Jika hanya ketemu SATU pasangan, gunakan itu (daripada fallback ke "KPI")
+  if (pairs.length === 1) {
+    const a = pairs[0];
+    return [
+      {
+        mainTitle: a.label, // label kiri bawah
+        mainValue: toCommaNumber(a.value), // angka besar kiri
+        subItems: [], // Tidak ada item kedua
+      },
+    ];
+  } // Fallback: cari dua angka pertama (LOGIKA LAMA - TETAP)
+  // --- SELESAI PENAMBAHAN ---
+
   const numRe = /([0-9]+(?:[.,][0-9]+)?%?)/g;
   const nums: string[] = [];
   while ((m = numRe.exec(cleaned)) && nums.length < 2) {
@@ -136,9 +141,8 @@ function parseLlmKpi(llm: string): ParsedLlmKpi[] {
           : [],
       },
     ];
-  }
+  } // Kalau tetap tidak ada angka, tampilkan potongan awal teks
 
-  // Kalau tetap tidak ada angka, tampilkan potongan awal teks
   return [
     {
       mainTitle: "Info",
@@ -205,9 +209,8 @@ export default function ManageKpiOutput({
     })();
   }, [kpiType, llmResult, datasets, selectedDatasetIds, selectedColumns]);
 
-  if (loading) return <p className="text-gray-400">Loading KPI...</p>;
+  if (loading) return <p className="text-gray-400">Loading KPI...</p>; // Dataset KPI
 
-  // Dataset KPI
   if (kpiType === "dataset") {
     return (
       <div className="flex flex-wrap gap-4 mt-4">
@@ -226,9 +229,8 @@ export default function ManageKpiOutput({
         ))}
       </div>
     );
-  }
+  } // LLM KPI
 
-  // LLM KPI
   if (kpiType === "llm" && llmKpiData.length > 0) {
     return (
       <div className="flex flex-wrap gap-4 mt-4">
