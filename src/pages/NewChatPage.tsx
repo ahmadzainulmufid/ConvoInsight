@@ -330,21 +330,10 @@ export default function NewChatPage() {
     try {
       await saveChatMessage(domainDocId, sessionId!, "user", text);
 
-      // ⚡ Tampilkan "Analyze..." SEBELUM panggil backend
-      const baseSteps: ThinkingStep[] = [
-        { key: "router", message: "Routing and understanding user intent..." },
-        { key: "orchestrator", message: "Building orchestrator plan..." },
-        { key: "compiler", message: "Preparing response..." },
-      ];
-
-      const stepInterval = 600;
-      baseSteps.forEach((step, index) => {
-        const t = setTimeout(() => {
-          setCurrentThinkingSteps((prev) => [...prev, step]);
-          scrollToBottom("smooth");
-        }, index * stepInterval);
-        thinkingTimeoutRef.current.push(t);
-      });
+      // ⚡ tampilkan panel "Thinking..." segera (placeholder), nanti kita ganti dengan urutan final
+      setCurrentThinkingSteps([
+        { key: "pending", message: "Drafting plan..." },
+      ]);
 
       // 🔍 Mulai fetch dari backend (async berjalan paralel dengan animasi di atas)
       const res = await queryDomain({
@@ -356,32 +345,65 @@ export default function NewChatPage() {
         dataset: selectedDatasets.length > 0 ? selectedDatasets : undefined,
       });
 
-      // 🧠 Tambahkan langkah dinamis dari hasil backend
-      const dynamicSteps: ThinkingStep[] = [...baseSteps];
-      if (res.need_manipulator)
-        dynamicSteps.splice(2, 0, {
-          key: "manipulator",
-          message: "Manipulating datasets and cleaning data...",
-        });
-      if (res.need_analyzer)
-        dynamicSteps.splice(3, 0, {
-          key: "analyzer",
-          message: "Analyzing dataset patterns and relationships...",
-        });
-      if (res.need_visualizer)
-        dynamicSteps.splice(4, 0, {
-          key: "visualizer",
-          message: "Generating visualization for insights...",
-        });
+      // Hilangkan filler seperti "Of course, ..."
+      const sanitizeExplainer = (s?: string) =>
+        (s || "")
+          .trim()
+          .replace(/^\s*(?:of course[.,]?\s*)+/i, "")
+          .trim();
 
-      // Lanjutkan animasi langkah backend yang baru
-      const backendIntervalStart = baseSteps.length * stepInterval;
-      dynamicSteps.slice(baseSteps.length).forEach((step, index) => {
-        const timeoutId = setTimeout(() => {
+      // Susun urutan langkah final: Explainer → Router → Orchestrator → (Manipulator/Analyzer/Visualizer) → Compiler
+      const buildThinkingSteps = (res: DomainQueryResp): ThinkingStep[] => {
+        const steps: ThinkingStep[] = [];
+        const explainer = sanitizeExplainer(res.plan_explainer);
+
+        if (explainer) {
+          steps.push({ key: "explainer", message: explainer });
+        }
+        steps.push(
+          {
+            key: "router",
+            message: "Routing and understanding user intent...",
+          },
+          { key: "orchestrator", message: "Building orchestrator plan..." }
+        );
+        if (res.need_manipulator) {
+          steps.push({
+            key: "manipulator",
+            message: "Manipulating datasets and cleaning data...",
+          });
+        }
+        if (res.need_analyzer) {
+          steps.push({
+            key: "analyzer",
+            message: "Analyzing dataset patterns and relationships...",
+          });
+        }
+        if (res.need_visualizer) {
+          steps.push({
+            key: "visualizer",
+            message: "Generating visualization for insights...",
+          });
+        }
+        steps.push({ key: "compiler", message: "Preparing response..." });
+
+        return steps;
+      };
+
+      // 🧠 bangun langkah final dari hasil backend
+      const steps = buildThinkingSteps(res);
+
+      // tampilkan urutan final
+      const stepInterval = 600;
+      thinkingTimeoutRef.current.forEach(clearTimeout);
+      thinkingTimeoutRef.current = [];
+      setCurrentThinkingSteps([]);
+      steps.forEach((step, idx) => {
+        const t = setTimeout(() => {
           setCurrentThinkingSteps((prev) => [...prev, step]);
           scrollToBottom("smooth");
-        }, backendIntervalStart + index * stepInterval);
-        thinkingTimeoutRef.current.push(timeoutId);
+        }, idx * stepInterval);
+        thinkingTimeoutRef.current.push(t);
       });
 
       // Ambil chart kalau ada
@@ -410,7 +432,7 @@ export default function NewChatPage() {
       const cleaned = cleanHtmlResponse(rawResponse);
 
       // 🕒 Tunggu sampai semua langkah selesai tampil
-      const totalStepTime = (dynamicSteps.length + 1) * stepInterval + 800;
+      const totalStepTime = (steps.length + 1) * 600 + 800;
 
       setTimeout(async () => {
         // Hentikan timeout
@@ -427,7 +449,7 @@ export default function NewChatPage() {
           charts,
           animate: true,
           content: cleaned,
-          thinkingSteps: dynamicSteps,
+          thinkingSteps: steps,
         };
         setMessages((cur) => [...cur, assistantMsg]);
         scrollToBottom("smooth");
@@ -438,7 +460,7 @@ export default function NewChatPage() {
           "assistant",
           assistantMsg.content,
           chartHtml,
-          dynamicSteps,
+          steps,
           chartUrl,
           res.diagram_kind ?? null,
           res.diagram_gs_uri ?? null
@@ -724,36 +746,13 @@ export default function NewChatPage() {
                                       );
                                     }
 
-                                    // tampilkan langkah2 thinking
-                                    const baseSteps: ThinkingStep[] = [
+                                    // tampilkan placeholder agar panel muncul duluan
+                                    setCurrentThinkingSteps([
                                       {
-                                        key: "router",
-                                        message:
-                                          "Routing and understanding user intent...",
+                                        key: "pending",
+                                        message: "Drafting plan...",
                                       },
-                                      {
-                                        key: "orchestrator",
-                                        message:
-                                          "Building orchestrator plan...",
-                                      },
-                                      {
-                                        key: "compiler",
-                                        message: "Preparing response...",
-                                      },
-                                    ];
-                                    const stepInterval = 600;
-                                    baseSteps.forEach((step, idx) => {
-                                      const t = setTimeout(() => {
-                                        if (newController.signal.aborted)
-                                          return;
-                                        setCurrentThinkingSteps((p) => [
-                                          ...p,
-                                          step,
-                                        ]);
-                                        scrollToBottom("smooth");
-                                      }, idx * stepInterval);
-                                      thinkingTimeoutRef.current.push(t);
-                                    });
+                                    ]);
 
                                     try {
                                       const res = await queryDomain({
@@ -768,40 +767,91 @@ export default function NewChatPage() {
                                             : undefined,
                                       });
 
-                                      const dynamicSteps = [...baseSteps];
-                                      if (res.need_manipulator)
-                                        dynamicSteps.splice(2, 0, {
-                                          key: "manipulator",
-                                          message:
-                                            "Manipulating datasets and cleaning data...",
-                                        });
-                                      if (res.need_analyzer)
-                                        dynamicSteps.splice(3, 0, {
-                                          key: "analyzer",
-                                          message:
-                                            "Analyzing dataset patterns and relationships...",
-                                        });
-                                      if (res.need_visualizer)
-                                        dynamicSteps.splice(4, 0, {
-                                          key: "visualizer",
-                                          message:
-                                            "Generating visualization for insights...",
+                                      const sanitizeExplainer = (s?: string) =>
+                                        (s || "")
+                                          .trim()
+                                          .replace(
+                                            /^\s*(?:of course[.,]?\s*)+/i,
+                                            ""
+                                          )
+                                          .trim();
+
+                                      // Susun urutan langkah final: Explainer → Router → Orchestrator → (Manipulator/Analyzer/Visualizer) → Compiler
+                                      const buildThinkingSteps = (
+                                        res: DomainQueryResp
+                                      ): ThinkingStep[] => {
+                                        const steps: ThinkingStep[] = [];
+                                        const explainer = sanitizeExplainer(
+                                          res.plan_explainer
+                                        );
+
+                                        if (explainer) {
+                                          steps.push({
+                                            key: "explainer",
+                                            message: explainer,
+                                          });
+                                        }
+                                        steps.push(
+                                          {
+                                            key: "router",
+                                            message:
+                                              "Routing and understanding user intent...",
+                                          },
+                                          {
+                                            key: "orchestrator",
+                                            message:
+                                              "Building orchestrator plan...",
+                                          }
+                                        );
+                                        if (res.need_manipulator) {
+                                          steps.push({
+                                            key: "manipulator",
+                                            message:
+                                              "Manipulating datasets and cleaning data...",
+                                          });
+                                        }
+                                        if (res.need_analyzer) {
+                                          steps.push({
+                                            key: "analyzer",
+                                            message:
+                                              "Analyzing dataset patterns and relationships...",
+                                          });
+                                        }
+                                        if (res.need_visualizer) {
+                                          steps.push({
+                                            key: "visualizer",
+                                            message:
+                                              "Generating visualization for insights...",
+                                          });
+                                        }
+                                        steps.push({
+                                          key: "compiler",
+                                          message: "Preparing response...",
                                         });
 
-                                      const backendStart =
-                                        baseSteps.length * stepInterval;
-                                      dynamicSteps
-                                        .slice(baseSteps.length)
-                                        .forEach((step, idx) => {
-                                          const t = setTimeout(() => {
-                                            setCurrentThinkingSteps((p) => [
-                                              ...p,
-                                              step,
-                                            ]);
-                                            scrollToBottom("smooth");
-                                          }, backendStart + idx * stepInterval);
-                                          thinkingTimeoutRef.current.push(t);
-                                        });
+                                        return steps;
+                                      };
+
+                                      // 🧠 bangun langkah final dari hasil backend
+                                      const steps = buildThinkingSteps(res);
+
+                                      // tampilkan urutan final
+                                      const stepInterval = 600;
+                                      thinkingTimeoutRef.current.forEach(
+                                        clearTimeout
+                                      );
+                                      thinkingTimeoutRef.current = [];
+                                      setCurrentThinkingSteps([]);
+                                      steps.forEach((step, idx) => {
+                                        const t = setTimeout(() => {
+                                          setCurrentThinkingSteps((prev) => [
+                                            ...prev,
+                                            step,
+                                          ]);
+                                          scrollToBottom("smooth");
+                                        }, idx * stepInterval);
+                                        thinkingTimeoutRef.current.push(t);
+                                      });
 
                                       // chart (optional)
                                       let charts: ChartItem[] | undefined;
@@ -833,9 +883,7 @@ export default function NewChatPage() {
                                         res.response ?? "(empty)"
                                       );
                                       const totalStepTime =
-                                        (dynamicSteps.length + 1) *
-                                          stepInterval +
-                                        800;
+                                        (steps.length + 1) * stepInterval + 800;
 
                                       setTimeout(async () => {
                                         // bersih2 thinking
@@ -852,7 +900,7 @@ export default function NewChatPage() {
                                           chartUrl,
                                           charts,
                                           animate: true,
-                                          thinkingSteps: dynamicSteps,
+                                          thinkingSteps: steps,
                                         };
                                         setMessages((prev) => {
                                           const updated = [...prev];
@@ -873,7 +921,7 @@ export default function NewChatPage() {
                                             nextAssistantId,
                                             cleaned,
                                             chartHtml,
-                                            dynamicSteps,
+                                            steps,
                                             chartUrl,
                                             res.diagram_kind ?? null,
                                             res.diagram_gs_uri ?? null
@@ -886,7 +934,7 @@ export default function NewChatPage() {
                                             "assistant",
                                             cleaned,
                                             chartHtml,
-                                            dynamicSteps,
+                                            steps,
                                             chartUrl,
                                             res.diagram_kind ?? null,
                                             res.diagram_gs_uri ?? null

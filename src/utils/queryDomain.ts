@@ -21,6 +21,9 @@ export type DomainQueryResp = {
   need_analyzer?: boolean;
   need_visualizer?: boolean;
   need_compiler?: boolean;
+
+  plan_explainer?: string;
+  need_plan_explainer?: boolean;
 };
 
 export async function queryDomain({
@@ -82,5 +85,11 @@ export async function queryDomain({
     need_analyzer: data.need_analyzer ?? false,
     need_visualizer: data.need_visualizer ?? false,
     need_compiler: data.need_compiler ?? true,
+    plan_explainer:
+      typeof data.plan_explainer === "string" ? data.plan_explainer : "",
+    need_plan_explainer:
+      typeof data.need_plan_explainer === "boolean"
+        ? data.need_plan_explainer
+        : true,
   };
 }
