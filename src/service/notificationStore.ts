@@ -7,7 +7,7 @@ import {
   query,
   orderBy,
   onSnapshot,
-  getDocs,
+  Timestamp,
   deleteDoc,
 } from "firebase/firestore";
 
@@ -17,6 +17,7 @@ export type NotificationItem = {
   message: string;
   type: "domain" | "dataset" | "chat" | "insight";
   createdAt?: unknown;
+  expireAt?: Timestamp;
   read?: boolean;
 };
 
@@ -49,9 +50,7 @@ export async function addNotification(
   });
 }
 
-// ✅ Dengar notifikasi realtime
 export function listenNotifications(cb: (list: NotificationItem[]) => void) {
-  // Tunggu auth siap sebelum mendaftarkan listener
   let unsubAuth: (() => void) | null = null;
   let unsubFirestore: (() => void) | null = null;
 
@@ -62,29 +61,55 @@ export function listenNotifications(cb: (list: NotificationItem[]) => void) {
         orderBy("createdAt", "desc")
       );
 
-      unsubFirestore = onSnapshot(q, (snap) => {
-        const out: NotificationItem[] = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as NotificationItem),
-        }));
+      unsubFirestore = onSnapshot(q, async (snap) => {
+        const now = Date.now();
+        const ONE_HOUR_MS = 60 * 60 * 1000;
+        const out: NotificationItem[] = [];
+
+        for (const d of snap.docs) {
+          const data = d.data() as NotificationItem;
+
+          let createdAtMillis = 0;
+          const createdAtField: unknown = data.createdAt;
+
+          if (createdAtField instanceof Timestamp) {
+            createdAtMillis = createdAtField.toMillis();
+          } else if (
+            typeof createdAtField === "object" &&
+            createdAtField !== null &&
+            "seconds" in createdAtField &&
+            typeof (createdAtField as { seconds: number }).seconds === "number"
+          ) {
+            createdAtMillis =
+              (createdAtField as { seconds: number }).seconds * 1000;
+          }
+
+          if (!createdAtMillis) {
+            out.push({ id: d.id, ...data });
+            continue;
+          }
+
+          const ageInMs = now - createdAtMillis;
+
+          if (ageInMs > ONE_HOUR_MS) {
+            try {
+              await deleteDoc(d.ref);
+              console.log(`🧹 Deleted expired notification: ${d.id}`);
+            } catch (err) {
+              console.warn("Failed to delete expired notification", err);
+            }
+          } else {
+            out.push({ id: d.id, ...data });
+          }
+        }
+
         cb(out);
       });
     }
   });
 
-  // fungsi cleanup
   return () => {
     unsubAuth?.();
     unsubFirestore?.();
   };
-}
-
-export async function clearAllNotifications() {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return;
-  const notifRef = collection(db, "users", uid, "notifications");
-  const snap = await getDocs(notifRef);
-  for (const docSnap of snap.docs) {
-    await deleteDoc(docSnap.ref);
-  }
 }
