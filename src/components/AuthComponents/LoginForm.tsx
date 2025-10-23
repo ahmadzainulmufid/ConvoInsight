@@ -1,5 +1,5 @@
 // components/LoginComponents/LoginForm.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import {
@@ -29,6 +29,16 @@ const LoginForm: React.FC = () => {
   }>({});
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("rememberedEmail");
+    const savedPassword = localStorage.getItem("rememberedPassword");
+    const savedRemember = localStorage.getItem("rememberMe");
+
+    if (savedEmail) setEmail(savedEmail);
+    if (savedPassword) setPassword(savedPassword);
+    if (savedRemember === "true") setRemember(true);
+  }, []);
 
   const mapFirebaseError = (code: string) => {
     switch (code) {
@@ -60,12 +70,20 @@ const LoginForm: React.FC = () => {
     setResetSent(null);
 
     try {
-      await setPersistence(
-        auth,
-        remember ? browserLocalPersistence : browserSessionPersistence
-      );
+      await setPersistence(auth, browserLocalPersistence);
       await signInWithEmailAndPassword(auth, email, password);
       toast.success(`Signed in as ${auth.currentUser?.email ?? email}`);
+
+      if (remember) {
+        localStorage.setItem("rememberMe", "true");
+        localStorage.setItem("rememberedEmail", email);
+        localStorage.setItem("rememberedPassword", password);
+      } else {
+        localStorage.removeItem("rememberMe");
+        localStorage.removeItem("rememberedEmail");
+        localStorage.removeItem("rememberedPassword");
+      }
+
       const user = auth.currentUser;
       if (user) {
         const uid = user.uid;
