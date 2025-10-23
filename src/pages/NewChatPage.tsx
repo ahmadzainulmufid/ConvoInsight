@@ -1,7 +1,6 @@
 //src/Pages/NewChatPage.tsx
 import { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import HistorySidebar from "../components/ChatComponents/HistorySidebar";
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
 import { ChatInput } from "../components/ChatComponents/ChatInput";
 import AnimatedMessageBubble from "../components/ChatComponents/AnimatedMessageBubble";
@@ -508,7 +507,7 @@ export default function NewChatPage() {
   return (
     <div className="relative min-h-screen p-4 sm:p-6">
       {isNewConversation ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-6 max-w-7xl mx-auto min-h-[60vh] place-content-center">
+        <div className="grid grid-cols-1 gap-6 max-w-7xl mx-auto min-h-[60vh] place-content-center">
           <div className="w-full flex flex-col items-center">
             <div className="mb-6 text-center px-2 sm:px-0">
               <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
@@ -565,13 +564,9 @@ export default function NewChatPage() {
               }
             />
           </div>
-
-          <div className="hidden lg:block self-start">
-            <HistorySidebar open={true} onClose={() => {}} />
-          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 gap-6 max-w-7xl mx-auto">
           <div className="flex flex-col h-[calc(100vh-3rem)] sm:h-[calc(100vh-4rem)]">
             <div
               ref={chatScrollRef}
@@ -1052,7 +1047,7 @@ export default function NewChatPage() {
               )}
             </div>
 
-            <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4 border-t border-gray-800">
+            <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
               <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
                 <div className="mb-3">
                   <label className="block text-xs text-gray-400 mb-1">
@@ -1085,10 +1080,6 @@ export default function NewChatPage() {
                 />
               </div>
             </div>
-          </div>
-
-          <div className="hidden lg:block self-start">
-            <HistorySidebar open={true} onClose={() => {}} />
           </div>
         </div>
       )}

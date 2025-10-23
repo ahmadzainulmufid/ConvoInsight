@@ -1,17 +1,13 @@
-import { useState, useContext, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import SecondarySidebar from "./SecondarySidebar";
 import ThirdSidebar from "./ThirdSidebar";
-import { AuthContext } from "../../context/AuthContext";
 import Navbar from "../HomeComponents/Navbar";
 import RightSidebar from "../HomeComponents/RightSidebar";
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const user = useContext(AuthContext);
-
-  const userName = user?.email || user?.displayName || "Account";
 
   // Deteksi halaman
   const isManageDomain = location.pathname === "/domain/new";
@@ -21,6 +17,19 @@ export default function Layout() {
 
   const showPrimaryLayout =
     !inDomainRoot && !inDomainSection && !isManageDomain;
+
+  const isDashboardSetting = location.pathname.includes(
+    "/dashboard/dashboardSetting"
+  );
+  const isManageSetting = location.pathname.includes(
+    "/dashboardSetting/manageSettings"
+  );
+  const isDatasetDetail =
+    location.pathname.includes("/datasets/") &&
+    !location.pathname.endsWith("/edit");
+  const isDatasetEdit =
+    location.pathname.includes("/datasets/") &&
+    location.pathname.endsWith("/edit");
 
   const primaryWidth = collapsed ? 64 : 256;
   const secondaryWidth = 224;
@@ -55,11 +64,16 @@ export default function Layout() {
         )}
 
         {inDomainSection && (
-          <ThirdSidebar
-            collapsed={collapsed}
-            onToggle={() => setCollapsed((prev) => !prev)}
-            userName={userName}
-          />
+          <>
+            <ThirdSidebar
+              collapsed={collapsed}
+              onToggle={() => setCollapsed((prev) => !prev)}
+            />
+            {!isDashboardSetting &&
+              !isManageSetting &&
+              !isDatasetDetail &&
+              !isDatasetEdit && <RightSidebar />}
+          </>
         )}
 
         <main

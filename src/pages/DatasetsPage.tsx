@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import AppShell from "../components/DatasetsComponents/AppShell";
 import UploadDropzone from "../components/DatasetsComponents/UploadDropzone";
 import ConnectorsRow from "../components/DatasetsComponents/ConnectorsRow";
 import DatasetList, {
@@ -29,7 +28,7 @@ type DatasetApiItem = {
 const API_BASE =
   "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
 
-const DatasetsPage: React.FC<Props> = ({ userName }) => {
+const DatasetsPage: React.FC<Props> = () => {
   const navigate = useNavigate();
   const section = useSectionFromPath();
   const [items, setItems] = useState<DatasetItem[]>([]);
@@ -170,13 +169,13 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
 
   // --- Render UI ---
   return (
-    <AppShell userName={userName}>
-      <div className="space-y-8 px-4 md:px-6 lg:px-8">
+    <div className="min-h-screen w-full bg-[#1a1b1e] text-white px-6 md:px-10 py-10">
+      <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 grid place-items-center rounded-lg bg-indigo-100">
             <span className="text-indigo-600 text-xl">›_</span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-semibold text-white">
+          <h2 className="text-2xl md:text-3xl font-semibold">
             Getting started with ConvoInsight
           </h2>
         </div>
@@ -205,7 +204,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
                 "Your dataset upload completed successfully!"
               );
 
-              // Cache ke lokal juga
+              // cache ke lokal
               const savePromises = files.map((file) =>
                 saveDatasetBlob(file.name, file)
               );
@@ -213,7 +212,6 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
 
               await fetchDatasets();
 
-              // Redirect ke detail dataset pertama
               if (files.length === 1) {
                 navigate(`/domain/${section}/datasets/${files[0].name}`);
               }
@@ -242,7 +240,7 @@ const DatasetsPage: React.FC<Props> = ({ userName }) => {
           />
         )}
       </div>
-    </AppShell>
+    </div>
   );
 };
 

@@ -154,94 +154,96 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="relative min-h-screen p-6 bg-[#1a1b1e] text-white">
-      <h2 className="text-2xl font-bold mb-6">Dashboard {domain}</h2>
+    <div className="relative min-h-screen bg-[#1a1b1e] text-white">
+      <div className="p-6 pr-[100px]">
+        <h2 className="text-2xl font-bold mb-6">Dashboard {domain}</h2>
 
-      {loading ? (
-        <p className="text-gray-400">Loading dashboard...</p>
-      ) : group.length === 0 ? (
-        <p className="text-gray-400">No dashboard groups yet.</p>
-      ) : (
-        group.map((g) => {
-          const items = hydratedItems[g.id] ?? [];
+        {loading ? (
+          <p className="text-gray-400">Loading dashboard...</p>
+        ) : group.length === 0 ? (
+          <p className="text-gray-400">No dashboard groups yet.</p>
+        ) : (
+          group.map((g) => {
+            const items = hydratedItems[g.id] ?? [];
 
-          const kpiItems = items.filter((it) => it.type === "kpi");
-          const otherItems = items.filter((it) => it.type !== "kpi");
+            const kpiItems = items.filter((it) => it.type === "kpi");
+            const otherItems = items.filter((it) => it.type !== "kpi");
 
-          return (
-            <section key={g.id} className="mb-12">
-              <h3 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">
-                {g.name}
-              </h3>
+            return (
+              <section key={g.id} className="mb-12">
+                <h3 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                  {g.name}
+                </h3>
 
-              {items.length === 0 ? (
-                <p className="text-gray-500">No items yet.</p>
-              ) : (
-                <>
-                  {/* KPI container */}
-                  {kpiItems.length > 0 && (
-                    <div className="flex flex-wrap gap-4 mb-10">
-                      {kpiItems.map((item) =>
-                        item.result?.text ? (
-                          <ManageKpiOutput
-                            key={item.id}
-                            kpiType="llm"
-                            llmResult={item.result.text}
-                            prompt={item.prompt}
-                            datasets={[]}
-                            selectedDatasetIds={[]}
-                            selectedColumns={[]}
+                {items.length === 0 ? (
+                  <p className="text-gray-500">No items yet.</p>
+                ) : (
+                  <>
+                    {/* KPI container */}
+                    {kpiItems.length > 0 && (
+                      <div className="flex flex-wrap gap-4 mb-10">
+                        {kpiItems.map((item) =>
+                          item.result?.text ? (
+                            <ManageKpiOutput
+                              key={item.id}
+                              kpiType="llm"
+                              llmResult={item.result.text}
+                              prompt={item.prompt}
+                              datasets={[]}
+                              selectedDatasetIds={[]}
+                              selectedColumns={[]}
+                            />
+                          ) : null
+                        )}
+                      </div>
+                    )}
+
+                    {/* Chart / Table container */}
+                    {otherItems.map((item) => (
+                      <div key={item.id} className="space-y-4 mb-10">
+                        {item.result?.chartHtml && (
+                          <div className="w-full overflow-hidden rounded-lg bg-black/10">
+                            <iframe
+                              srcDoc={item.result.chartHtml}
+                              title={`chart-${item.id}`}
+                              className="w-full"
+                              style={{ height: "600px", border: "none" }}
+                            />
+                          </div>
+                        )}
+
+                        {item.includeInsight && item.result?.text && (
+                          <div
+                            className="text-gray-200 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2"
+                            dangerouslySetInnerHTML={{
+                              __html: cleanHtmlResponse(item.result.text),
+                            }}
                           />
-                        ) : null
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </section>
+            );
+          })
+        )}
 
-                  {/* Chart / Table container */}
-                  {otherItems.map((item) => (
-                    <div key={item.id} className="space-y-4 mb-10">
-                      {item.result?.chartHtml && (
-                        <div className="w-full overflow-hidden rounded-lg bg-black/10">
-                          <iframe
-                            srcDoc={item.result.chartHtml}
-                            title={`chart-${item.id}`}
-                            className="w-full"
-                            style={{ height: "600px", border: "none" }}
-                          />
-                        </div>
-                      )}
+        <button
+          onClick={reloadDashboard}
+          className="fixed top-6 right-[140px] p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white shadow-md transition"
+          title="Refresh Dashboard"
+        >
+          <FiRefreshCw size={20} className="animate-spin-once" />
+        </button>
 
-                      {item.includeInsight && item.result?.text && (
-                        <div
-                          className="text-gray-200 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2"
-                          dangerouslySetInnerHTML={{
-                            __html: cleanHtmlResponse(item.result.text),
-                          }}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </>
-              )}
-            </section>
-          );
-        })
-      )}
-
-      <button
-        onClick={reloadDashboard}
-        className="fixed top-6 right-16 p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white shadow-md transition mr-7"
-        title="Refresh Dashboard"
-      >
-        <FiRefreshCw size={20} className="animate-spin-once" />
-      </button>
-
-      <button
-        onClick={handleDashboardSettings}
-        className="fixed top-6 right-6 p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white shadow-md transition"
-      >
-        <FiSettings size={20} />
-      </button>
+        <button
+          onClick={handleDashboardSettings}
+          className="fixed top-6 right-[80px] p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white shadow-md transition"
+        >
+          <FiSettings size={20} />
+        </button>
+      </div>
     </div>
   );
 }

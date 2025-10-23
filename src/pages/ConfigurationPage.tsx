@@ -183,7 +183,7 @@ export default function ConfigurationUserPage() {
         </label>
 
         {/* Input Section */}
-        <section className="space-y-4">
+        <section className="space-y-4 max-w-7xl mr-auto">
           <textarea
             ref={textareaRef}
             placeholder="Tambahkan instruksi agar AI lebih paham konteks kamu..."
@@ -203,7 +203,6 @@ export default function ConfigurationUserPage() {
           />
 
           <div className="flex gap-3">
-            {/* Save / Update / Edit Button */}
             {!instructionDoc ? (
               <button
                 onClick={handleSaveOrUpdate}
@@ -229,7 +228,6 @@ export default function ConfigurationUserPage() {
               </button>
             )}
 
-            {/* Activate / Cancel Button */}
             {instructionDoc &&
               (isEditing ? (
                 <button

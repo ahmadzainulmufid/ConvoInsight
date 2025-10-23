@@ -1,16 +1,27 @@
-//src/components/SupportComponents/ThirdSidebar.tsx
-import { useEffect, useRef, useState } from "react";
+// src/components/SupportComponents/ThirdSidebar.tsx
+import { useState, useRef, useEffect } from "react";
 import {
   HiOutlineMenu,
   HiOutlineHome,
   HiOutlineCog,
   HiOutlineCollection,
   HiOutlinePlus,
+  HiOutlineChat,
+  HiDotsVertical,
 } from "react-icons/hi";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
-import { FiLogOut } from "react-icons/fi";
-import { signOut } from "firebase/auth";
-import { auth } from "../../utils/firebaseSetup";
+import {
+  NavLink,
+  useNavigate,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
+import { useChatHistory } from "../../hooks/useChatHistory";
+import {
+  getDomainDocId,
+  listenMessages,
+  type ChatMessage,
+} from "../../service/chatStore";
+import { exportChatToPdf } from "../../utils/exportPdf";
 import toast from "react-hot-toast";
 
 function SidebarItem({
@@ -52,46 +63,18 @@ function SidebarItem({
 export type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
-  userName: string;
 };
 
-export default function Sidebar({
-  collapsed,
-  onToggle,
-  userName,
-}: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const openedId = searchParams.get("id");
 
-  const [menuOpen, setMenuOpen] = useState(false);
+  const section = location.pathname.match(/^\/domain\/([^/]+)/)?.[1] || "";
+  const { items: historyItems, remove } = useChatHistory(section);
 
-  const asideRef = useRef<HTMLDivElement>(null);
-  const profileBtnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (!menuOpen) return;
-      const target = e.target as Node;
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(target) &&
-        profileBtnRef.current &&
-        !profileBtnRef.current.contains(target)
-      ) {
-        setMenuOpen(false);
-      }
-    };
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onEsc);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onEsc);
-    };
-  }, [menuOpen]);
+  const isNewChatPage = location.pathname.endsWith("/dashboard/newchat");
 
   const textTransition =
     "whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200";
@@ -102,7 +85,19 @@ export default function Sidebar({
   const baseItem =
     "flex items-center h-10 rounded-md text-sm transition-colors";
 
-  const section = location.pathname.match(/^\/domain\/([^/]+)/)?.[1] || "";
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const historyContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!historyContainerRef.current) return;
+      if (!historyContainerRef.current.contains(e.target as Node)) {
+        setMenuOpenId(null);
+      }
+    }
+    document.addEventListener("click", onDocClick, true);
+    return () => document.removeEventListener("click", onDocClick, true);
+  }, []);
 
   const mainNav = [
     {
@@ -130,16 +125,6 @@ export default function Sidebar({
     },
   ];
 
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      toast.success("Signed out");
-      navigate("/", { replace: true });
-    } catch {
-      toast.error("Gagal sign out, coba lagi");
-    }
-  };
-
   const toTitle = (s: string) =>
     decodeURIComponent(s)
       .replace(/[-_]/g, " ")
@@ -152,9 +137,56 @@ export default function Sidebar({
       : "Domain"
     : "ConvoInsight";
 
+  const handleExportPdf = async (id: string) => {
+    try {
+      if (!section) return;
+      const domainDocId = await getDomainDocId(section);
+      if (!domainDocId) {
+        alert("Domain not found.");
+        return;
+      }
+
+      const msgs = await new Promise<(ChatMessage & { chartHtml?: string })[]>(
+        (resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error("Timeout fetching messages"));
+          }, 8000);
+          const unsub = listenMessages(domainDocId, id, (snap) => {
+            clearTimeout(timeout);
+            unsub();
+            resolve(snap);
+          });
+        }
+      );
+
+      if (!msgs || msgs.length === 0) {
+        alert("No messages in this session.");
+        return;
+      }
+
+      await exportChatToPdf(msgs, `chat-${id}.pdf`, {
+        domain: section ?? "-",
+        sessionId: id,
+        generatedAt: new Date(),
+      });
+    } catch (e) {
+      console.error("Export PDF failed:", e);
+      alert("Export PDF failed. Try again.");
+    } finally {
+      setMenuOpenId(null);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    remove(id, section);
+    setMenuOpenId(null); // Jika chat yang aktif dihapus, kembali ke newchat
+    if (openedId === id) {
+      navigate(`/domain/${section}/dashboard/newchat`, { replace: true });
+    }
+  };
+
   return (
     <aside
-      ref={asideRef}
       className={`fixed left-0 top-0 z-40 h-screen bg-[#202123] text-white flex flex-col transition-[width] duration-300 ${
         collapsed ? "w-16" : "w-64"
       }`}
@@ -179,8 +211,7 @@ export default function Sidebar({
           <HiOutlineMenu size={20} />
         </button>
       </div>
-
-      <nav className="flex-1 overflow-y-auto p-2">
+      <nav ref={historyContainerRef} className="flex-1 overflow-y-auto p-2">
         <div className="space-y-2">
           {mainNav.map((item) => (
             <SidebarItem
@@ -191,9 +222,7 @@ export default function Sidebar({
               labelClass={labelClass}
             />
           ))}
-
           <hr className="border-[#2A2B32] my-2" />
-
           {extraNav.map((item) => (
             <SidebarItem
               key={item.to}
@@ -203,82 +232,125 @@ export default function Sidebar({
               labelClass={labelClass}
             />
           ))}
-        </div>
-      </nav>
+          {isNewChatPage && (
+            <>
+              <hr className="border-[#2A2B32] my-2" />
 
-      <div className="relative border-t border-[#2A2B32] bg-[#2A2B32] px-3 py-3">
-        <div className="flex items-center justify-start gap-3">
-          {/* Avatar Button */}
-          <button
-            ref={profileBtnRef}
-            onClick={() => setMenuOpen((v) => !v)}
-            className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-xl border-2 border-blue-400 focus:outline-none transition hover:opacity-90"
-            style={{ backgroundColor: "#3B82F6" }}
-            title={userName}
-          >
-            {userName.charAt(0).toUpperCase()}
-          </button>
+              {!collapsed && (
+                <div className="flex items-center justify-between px-3 py-2">
+                  <span className="text-xs font-semibold text-gray-400 block">
+                    History
+                  </span>
+                  <button
+                    onClick={() =>
+                      navigate(`/domain/${section}/dashboard/newchat`)
+                    }
+                    title="New Chat"
+                    className="p-1 rounded text-gray-400 hover:text-white hover:bg-[#2A2B32]"
+                  >
+                    <HiOutlinePlus size={16} />
+                  </button>
+                </div>
+              )}
 
-          {/* Nama user (opsional, hanya tampil kalau sidebar tidak collapsed) */}
-          {!collapsed && (
-            <span className="text-sm font-medium text-white truncate max-w-[8rem]">
-              {userName}
-            </span>
+              {historyItems.length === 0 && !collapsed && (
+                <span className="px-3 py-1 text-sm text-gray-500 italic">
+                  No history yet
+                </span>
+              )}
+
+              {historyItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`relative group flex items-center py-2 rounded-md text-sm transition-colors ${
+                    openedId === item.id ? "bg-[#343541]" : "hover:bg-[#2A2B32]"
+                  }`}
+                >
+                  <NavLink
+                    to={`/domain/${section}/dashboard/newchat?id=${item.id}`}
+                    title={item.title}
+                    className={`flex-1 flex items-center min-w-0 ${
+                      collapsed
+                        ? "justify-center px-0 gap-0"
+                        : "justify-start px-3 gap-3"
+                    }`}
+                  >
+                    <div className={collapsed ? "w-6 flex justify-center" : ""}>
+                      <HiOutlineChat className="shrink-0" />
+                    </div>
+
+                    <div className={`${labelClass} flex flex-col min-w-0`}>
+                      <span className="truncate text-sm text-white">
+                        {item.title}
+                      </span>
+                      <span className="truncate text-[11px] text-gray-400">
+                        {new Date(item.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </NavLink>
+
+                  {!collapsed && (
+                    <div className="relative z-10 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpenId((prev) =>
+                            prev === item.id ? null : item.id
+                          );
+                        }}
+                        className="px-2 py-1 rounded hover:bg-[#343541] opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        aria-haspopup="menu"
+                        aria-expanded={menuOpenId === item.id}
+                        title="Actions"
+                      >
+                        <HiDotsVertical />
+                      </button>
+
+                      {menuOpenId === item.id && (
+                        <div
+                          role="menu"
+                          className="absolute right-0 bottom-full mb-1 w-40 rounded-md border border-[#3a3b42] bg-[#2A2B32] shadow-lg z-20"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            role="menuitem"
+                            onClick={async () => {
+                              const baseUrl = window.location.origin;
+                              const fullUrl = `${baseUrl}/domain/${section}/dashboard/newchat?id=${item.id}`;
+                              await navigator.clipboard.writeText(fullUrl);
+                              toast.success("✅ Link copied to clipboard!");
+                              setMenuOpenId(null);
+                            }}
+                            className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541] rounded-t-md"
+                          >
+                            Copy Link
+                          </button>
+
+                          <button
+                            role="menuitem"
+                            onClick={() => handleExportPdf(item.id)}
+                            className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541]"
+                          >
+                            Export to PDF
+                          </button>
+
+                          <button
+                            role="menuitem"
+                            onClick={() => handleDelete(item.id)}
+                            className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541] text-red-400 rounded-b-md"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
           )}
         </div>
-
-        {/* Popup Sign-Out Menu */}
-        {menuOpen && (
-          <div
-            ref={menuRef}
-            className="absolute right-full mr-3 bottom-3 w-56 bg-[#2d2e30] rounded-lg shadow-lg border border-gray-700 p-3 text-gray-300 z-50"
-          >
-            {/* Profile Info */}
-            <div className="flex items-center gap-3 mb-3 min-w-0">
-              <div
-                className="flex-shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold text-base border border-blue-400"
-                style={{ backgroundColor: "#3B82F6" }}
-              >
-                {userName.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-white truncate text-sm">
-                  {userName}
-                </p>
-                <p className="text-xs text-gray-400 truncate">
-                  {auth.currentUser?.email || "No email"}
-                </p>
-              </div>
-            </div>
-
-            {/* Tombol Sign Out */}
-            <button
-              onClick={handleSignOut}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-md transition"
-            >
-              <FiLogOut />
-              Sign Out
-            </button>
-          </div>
-        )}
-      </div>
-
-      {menuOpen && (
-        <div
-          ref={menuRef}
-          className="absolute bottom-16 left-2 right-2 rounded-md border border-[#3a3b42] bg-[#2A2B32] shadow-xl p-1"
-        >
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-[#343541] text-sm"
-          >
-            <FiLogOut />
-            <span className={labelClass.replace("max-w-[12rem]", "max-w-none")}>
-              Sign out
-            </span>
-          </button>
-        </div>
-      )}
+      </nav>
     </aside>
   );
 }
