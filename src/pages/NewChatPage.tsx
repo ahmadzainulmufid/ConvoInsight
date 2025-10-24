@@ -566,11 +566,11 @@ export default function NewChatPage() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1">
           <div className="flex flex-col h-[calc(100vh-3rem)] sm:h-[calc(100vh-4rem)]">
             <div
               ref={chatScrollRef}
-              className="flex-1 space-y-6 py-4 overflow-y-auto scrollbar-hide"
+              className="flex-1 space-y-6 py-4 overflow-y-auto"
             >
               {messages.map((m, i) => (
                 <div
