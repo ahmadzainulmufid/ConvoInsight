@@ -28,6 +28,7 @@ import DashboardSettingPage from "./pages/DashboardSettingPage";
 import ManageSettingsPage from "./pages/ManageSettings";
 import ConfigurationUserPage from "./pages/ConfigurationUserPage";
 import DatasetEditPage from "./pages/DatasetEditPage";
+import RequireDataset from "./routes/RequireDataset";
 
 function LegacyDatasetRedirect() {
   const { id } = useParams();
@@ -116,6 +117,14 @@ const App: React.FC = () => {
               <Route path="datasets/connect" element={<ConnectPage />} />
               <Route path="configuration" element={<ConfigurationPage />} />
             </Route>
+            <Route
+              path="dashboard"
+              element={
+                <RequireDataset>
+                  <DashboardPage />
+                </RequireDataset>
+              }
+            />
 
             {/* legacy redirect juga protected */}
             <Route path="/datasets/:id" element={<LegacyDatasetRedirect />} />
