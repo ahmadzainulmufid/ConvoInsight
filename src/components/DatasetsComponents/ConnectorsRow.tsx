@@ -10,16 +10,19 @@ import {
 import { Link } from "react-router-dom";
 import useSectionFromPath from "../../utils/useSectionFromPath";
 
-const ConnectorsRow: React.FC = () => {
+type ConnectorsRowProps = {
+  className?: string;
+};
+
+const ConnectorsRow: React.FC<ConnectorsRowProps> = ({ className }) => {
   const section = useSectionFromPath();
 
-  // fallback kalau section kosong (misalnya user langsung ke /connect)
   const connectUrl = section
     ? `/domain/${section}/datasets/connect`
     : "/connect";
 
   return (
-    <div className="mt-6">
+    <div className={`mt-6 ${className || ""}`}>
       <div className="rounded-xl border-2 border-dashed border-[#3a3b42] bg-[#1f2024] p-6 text-center">
         <div className="flex items-center justify-center flex-wrap gap-6 text-2xl">
           <SiMysql title="MySQL" className="text-[#4479A1]" />

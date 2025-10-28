@@ -6,6 +6,7 @@ export type UploadDropzoneProps = {
   section: string;
   onUploaded?: (files: File[]) => void;
   maxSize?: number;
+  className?: string;
 };
 
 const API_BASE =

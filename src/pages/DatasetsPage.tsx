@@ -13,6 +13,10 @@ import {
   deleteDatasetBlob,
 } from "../utils/fileStore";
 import { addNotification } from "../service/notificationStore";
+import DatasetTour from "../components/OnboardingComponents/DatasetTour";
+import { db } from "../utils/firebaseSetup";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useAuthUser } from "../utils/firebaseSetup";
 
 type Props = { userName: string };
 
@@ -167,9 +171,40 @@ const DatasetsPage: React.FC<Props> = () => {
     }
   };
 
+  const { user } = useAuthUser();
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    const checkTourStatus = async () => {
+      if (!user) return;
+
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return;
+      const data = snap.data();
+
+      if (!data.hasSeenDatasetTour) {
+        setShowTour(true);
+      }
+    };
+
+    void checkTourStatus();
+  }, [user]);
+
   // --- Render UI ---
   return (
     <div className="min-h-screen w-full bg-[#1a1b1e] text-white px-6 md:px-10 py-10">
+      {showTour && (
+        <DatasetTour
+          onFinish={async () => {
+            if (user) {
+              const userRef = doc(db, "users", user.uid);
+              await updateDoc(userRef, { hasSeenDatasetTour: true });
+            }
+            setShowTour(false);
+          }}
+        />
+      )}
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 grid place-items-center rounded-lg bg-indigo-100">
@@ -181,6 +216,7 @@ const DatasetsPage: React.FC<Props> = () => {
         </div>
 
         <UploadDropzone
+          className="dataset-upload-area"
           section={section}
           onUploaded={async (files) => {
             try {
@@ -222,7 +258,7 @@ const DatasetsPage: React.FC<Props> = () => {
           }}
         />
 
-        <ConnectorsRow />
+        <ConnectorsRow className="dataset-connectors-row" />
 
         {loading ? (
           <p className="text-sm text-gray-400">Loading datasets…</p>
@@ -230,6 +266,7 @@ const DatasetsPage: React.FC<Props> = () => {
           <p className="text-sm text-gray-400">No datasets uploaded yet.</p>
         ) : (
           <DatasetList
+            className="dataset-list-section"
             items={items}
             onEdit={(ds) =>
               navigate(`/domain/${section}/datasets/${ds.id}/edit`)
