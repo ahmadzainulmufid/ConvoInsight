@@ -1,19 +1,42 @@
-import React, { useState } from "react";
-import { useDomains } from "../hooks/useDomains";
+import { useState, useEffect } from "react";
+import { db, useAuthUser } from "../utils/firebaseSetup";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { NavLink } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useDomains } from "../hooks/useDomains";
 import { addNotification } from "../service/notificationStore";
+import { useNavigate } from "react-router-dom";
 
 export default function CreateDomainPage() {
-  const { domains, addDomain, removeDomain, uid } = useDomains({
+  const { user } = useAuthUser();
+  const { domains, addDomain, uid } = useDomains({
     seedDefaultOnEmpty: false,
   });
   const [name, setName] = useState("");
+  const [showHint, setShowHint] = useState(false);
+  const navigate = useNavigate();
 
-  const [domainToDelete, setDomainToDelete] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
+  // ✅ Cek Firestore apakah user sudah pernah lihat hint
+  useEffect(() => {
+    const checkHint = async () => {
+      if (!user) return;
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+
+      if (!data.hasSeenDomainHint) setShowHint(true);
+    };
+    void checkHint();
+  }, [user]);
+
+  const handleGotIt = async () => {
+    if (user) {
+      const ref = doc(db, "users", user.uid);
+      await updateDoc(ref, { hasSeenDomainHint: true });
+    }
+    setShowHint(false);
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,26 +56,49 @@ export default function CreateDomainPage() {
         `Domain "${name}" has been added.`
       );
 
+      const userRef = doc(db, "users", uid);
+      const snap = await getDoc(userRef);
+
+      if (snap.exists()) {
+        const data = snap.data();
+        // kalau user belum pernah buat domain sebelumnya
+        if (!data.hasCreatedDomain) {
+          await updateDoc(userRef, { hasCreatedDomain: true });
+          navigate("/configuser"); // cuma sekali di onboarding
+        } else {
+          toast.success("Domain created successfully!");
+        }
+      }
+
       setName("");
     } else {
       toast.error(res.reason || "Failed to add domain");
     }
   };
 
-  const confirmDelete = async () => {
-    if (!domainToDelete) return;
-    const res = await removeDomain(domainToDelete.id);
-    if (res.ok) toast.success(`Domain "${domainToDelete.name}" deleted`);
-    await addNotification(
-      "domain",
-      "Domain Deleted",
-      `Domain "${domainToDelete.name}" deleted.`
-    );
-    setDomainToDelete(null);
-  };
-
   return (
     <div className="p-6 space-y-6">
+      {/* ✨ Hint Overlay */}
+      {showHint && (
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-[#111216] border border-indigo-500 text-white p-8 rounded-2xl shadow-[0_0_40px_rgba(79,70,229,0.3)] max-w-2xl text-center">
+            <h2 className="text-2xl font-bold mb-4">
+              ✨ Step 1: Create Your First Domain
+            </h2>
+            <p className="text-gray-300 mb-6 text-lg leading-relaxed">
+              Enter a domain name like <b>Sales</b> or <b>Marketing</b>, then
+              click <b>Create Domain</b> to get started.
+            </p>
+            <button
+              onClick={handleGotIt}
+              className="bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-lg font-semibold text-lg"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Manage Domains</h1>
         <NavLink
@@ -62,13 +108,6 @@ export default function CreateDomainPage() {
           Back to Home
         </NavLink>
       </header>
-
-      {!uid && (
-        <div className="text-sm text-amber-300">
-          You're not logged in. Please log in so your domain information can be
-          saved to your account.
-        </div>
-      )}
 
       <form
         onSubmit={handleAdd}
@@ -90,57 +129,19 @@ export default function CreateDomainPage() {
         </button>
       </form>
 
-      <section className="bg-[#2A2B32] p-4 rounded-lg">
-        <h2 className="text-sm text-gray-300 mb-3">Current Domain</h2>
-        {domains.length === 0 ? (
-          <p className="text-gray-400 text-sm">There is no domain yet</p>
-        ) : (
-          <ul className="space-y-2">
-            {domains.map((d) => (
-              <li
-                key={d.id}
-                className="flex items-center justify-between rounded border border-[#3a3b42] px-3 py-2"
-              >
-                <span>{d.name}</span>
-                <button
-                  onClick={() => setDomainToDelete({ id: d.id, name: d.name })}
-                  className="px-3 py-1.5 text-sm rounded bg-red-600 hover:bg-red-700"
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {domainToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">
-            <h2 className="text-lg font-semibold">Delete Domain?</h2>
-            <p className="text-sm text-gray-300">
-              Are you sure you want to delete the domain?{" "}
-              <span className="font-semibold text-white">
-                "{domainToDelete.name}"
-              </span>
-              ?
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setDomainToDelete(null)}
-                className="px-4 py-1.5 text-sm rounded-md bg-white/10 hover:bg-white/20"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-1.5 text-sm rounded-md bg-red-600 hover:bg-red-500 text-white"
-              >
-                Delete
-              </button>
+      {/* daftar domain */}
+      {domains.length > 0 && (
+        <section className="bg-[#2A2B32] p-4 rounded-lg">
+          <h2 className="text-sm text-gray-300 mb-3">Current Domain</h2>
+          {domains.map((d) => (
+            <div
+              key={d.id}
+              className="flex items-center justify-between border border-[#3a3b42] px-3 py-2 rounded"
+            >
+              <span>{d.name}</span>
             </div>
-          </div>
-        </div>
+          ))}
+        </section>
       )}
     </div>
   );

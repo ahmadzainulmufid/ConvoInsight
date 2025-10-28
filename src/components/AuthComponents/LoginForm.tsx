@@ -9,10 +9,11 @@ import {
   browserSessionPersistence,
   signInWithPopup,
 } from "firebase/auth";
-import { auth, googleProvider } from "../../utils/firebaseSetup";
+import { auth, db, googleProvider } from "../../utils/firebaseSetup";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
@@ -87,6 +88,18 @@ const LoginForm: React.FC = () => {
       const user = auth.currentUser;
       if (user) {
         const uid = user.uid;
+
+        const userRef = doc(db, "users", uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          await setDoc(userRef, {
+            email: user.email,
+            displayName: user.displayName || "",
+            hasSeenOnboarding: false,
+            createdAt: new Date(),
+          });
+        }
+
         // 🧹 Hapus cache chat dari user lain
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
@@ -124,7 +137,19 @@ const LoginForm: React.FC = () => {
       );
 
       const res = await signInWithPopup(auth, googleProvider);
+      const user = res.user;
 
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+
+      if (!snap.exists()) {
+        await setDoc(userRef, {
+          email: user.email,
+          displayName: user.displayName || "",
+          hasSeenOnboarding: false,
+          createdAt: new Date(),
+        });
+      }
       toast.success(`Welcome ${res.user.displayName || res.user.email}`);
       navigate("/home");
     } catch (err) {

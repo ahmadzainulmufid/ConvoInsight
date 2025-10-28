@@ -146,11 +146,13 @@ export default function HomeContent() {
       title: "Create a new Domain",
       desc: "Add your domain to start managing datasets and building apps",
       to: "/domain/new",
+      className: "home-create-domain",
     },
     {
       title: "Configuration User",
       desc: "Configure your user settings, preferences, and account details to personalize your experience",
       to: "/configuser",
+      className: "home-config-user",
     },
   ];
 
@@ -209,7 +211,7 @@ export default function HomeContent() {
                     <div
                       key={item.title}
                       onClick={() => navigate(item.to)}
-                      className="bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg hover:bg-[#2A2A2A] cursor-pointer transition"
+                      className={`${item.className} bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg hover:bg-[#2A2A2A] cursor-pointer transition`}
                     >
                       <h3 className="font-semibold text-white">{item.title}</h3>
                       <p className="text-sm text-gray-400 mt-1">{item.desc}</p>
@@ -217,7 +219,7 @@ export default function HomeContent() {
                   ))}
                 </div>
 
-                <div className="bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg">
+                <div className="home-domains bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg">
                   <div className="flex items-center gap-2 mb-5 border-b border-gray-700 pb-2">
                     <FiSearch className="text-gray-400" />
                     <input
@@ -248,7 +250,7 @@ export default function HomeContent() {
               </div>
             </section>
 
-            <section className="mb-16 pb-8">
+            <section className="home-history mb-16 pb-8">
               <h2 className="text-xl font-semibold mb-4 text-white">
                 History ConvoInsight in Domains
               </h2>

@@ -56,7 +56,7 @@ export default function RightSidebar() {
     <aside className="fixed top-0 right-0 h-screen w-16 bg-[#202124] border-l border-gray-700 flex flex-col items-center justify-between py-4 z-50">
       <div className="flex flex-col items-center gap-6">
         {/* Avatar */}
-        <div className="relative">
+        <div className="relative right-sidebar-account">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-xl border-2 border-blue-400 focus:outline-none transition"
@@ -93,19 +93,23 @@ export default function RightSidebar() {
         </div>
 
         {/* Icon Panel Controls */}
-        <NotificationPopover
-          isActive={activePanel === "notif"}
-          onToggle={() =>
-            setActivePanel((prev) => (prev === "notif" ? null : "notif"))
-          }
-        />
+        <div className="right-sidebar-notification">
+          <NotificationPopover
+            isActive={activePanel === "notif"}
+            onToggle={() =>
+              setActivePanel((prev) => (prev === "notif" ? null : "notif"))
+            }
+          />
+        </div>
 
-        <HelpPopover
-          isActive={activePanel === "help"}
-          onToggle={() =>
-            setActivePanel((prev) => (prev === "help" ? null : "help"))
-          }
-        />
+        <div className="right-sidebar-help">
+          <HelpPopover
+            isActive={activePanel === "help"}
+            onToggle={() =>
+              setActivePanel((prev) => (prev === "help" ? null : "help"))
+            }
+          />
+        </div>
       </div>
     </aside>
   );

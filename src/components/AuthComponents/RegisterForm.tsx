@@ -4,8 +4,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { FiMail, FiLock, FiUser, FiEye, FiEyeOff } from "react-icons/fi";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
-import { auth } from "../../utils/firebaseSetup";
+import { auth, db } from "../../utils/firebaseSetup";
 import toast from "react-hot-toast";
+import { doc, setDoc } from "firebase/firestore";
 
 const RegisterForm: React.FC = () => {
   const navigate = useNavigate();
@@ -47,14 +48,28 @@ const RegisterForm: React.FC = () => {
 
     setLoading(true);
     try {
+      // 🔹 1. Buat akun di Firebase Auth
       const userCred = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
-      if (userCred.user) {
-        await updateProfile(userCred.user, { displayName: fullName });
+      const user = userCred.user;
+
+      // 🔹 2. Update profil user (nama tampilannya)
+      if (user) {
+        await updateProfile(user, { displayName: fullName });
+
+        // 🔹 3. Buat dokumen user di Firestore
+        const userRef = doc(db, "users", user.uid);
+        await setDoc(userRef, {
+          email: user.email,
+          displayName: fullName,
+          hasSeenOnboarding: false, // 🚀 inilah flag penting untuk onboarding
+          createdAt: new Date(),
+        });
       }
+
       toast.success("Account created successfully!");
       navigate("/");
     } catch (err) {

@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   query,
   limit,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../utils/firebaseSetup";
 import { useNavigate } from "react-router-dom";
@@ -83,6 +84,21 @@ export default function ConfigurationUserPage() {
 
   const [providerList, setProviderList] = useState<string[]>([]);
   const [modelGroups, setModelGroups] = useState<Record<string, string[]>>({});
+
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    const check = async () => {
+      if (!user) return;
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+
+      const data = snap.data();
+      if (!data.hasSeenConfigHint) setShowHint(true);
+    };
+    void check();
+  }, [user]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -409,8 +425,35 @@ export default function ConfigurationUserPage() {
     );
   }
 
+  const handleGotIt = async () => {
+    if (user) {
+      const ref = doc(db, "users", user.uid);
+      await updateDoc(ref, { hasSeenConfigHint: true });
+    }
+    setShowHint(false);
+  };
+
   return (
     <div className="relative min-h-screen flex bg-[#1a1b1e] text-white">
+      {showHint && (
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-[#111216] border border-indigo-500 text-white p-8 rounded-2xl shadow-[0_0_40px_rgba(79,70,229,0.3)] max-w-xl text-center">
+            <h2 className="text-2xl font-bold mb-4">
+              ✨ Step 2: Configure AI Provider
+            </h2>
+            <p className="text-gray-300 mb-6 text-lg leading-relaxed">
+              Pilih provider seperti <b>Gemini</b> atau <b>OpenAI</b>, lalu isi
+              API Key kamu di sini untuk mulai menggunakan ConvoInsight.
+            </p>
+            <button
+              onClick={handleGotIt}
+              className="bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-lg font-semibold text-lg"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
       <Toaster position="top-right" />
       <main className="flex-1 overflow-y-auto px-6 md:px-12 py-8 mr-20 lg:mr-24">
         <div className="flex items-center justify-between mb-8">
