@@ -6,10 +6,12 @@ import {
   getDocs,
   updateDoc,
   doc,
+  getDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db, useAuthUser } from "../utils/firebaseSetup";
 import { useParams } from "react-router-dom";
+import ConfigurationTour from "../components/OnboardingComponents/ConfigurationTour";
 
 type InstructionItem = {
   id: string;
@@ -32,6 +34,7 @@ export default function ConfigurationUserPage() {
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showTour, setShowTour] = useState(false);
 
   // 🔹 Fetch hanya satu instruction
   const fetchInstruction = useCallback(async () => {
@@ -79,6 +82,21 @@ export default function ConfigurationUserPage() {
       el.style.height = el.scrollHeight + "px";
     }
   }, [instruction]);
+
+  useEffect(() => {
+    const checkTourStatus = async () => {
+      if (!user) return;
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return;
+      const data = snap.data();
+
+      if (!data.hasSeenConfigTour) {
+        setShowTour(true);
+      }
+    };
+    void checkTourStatus();
+  }, [user]);
 
   // 🔹 Simpan / Update instruction
   const handleSaveOrUpdate = async () => {
@@ -174,6 +192,17 @@ export default function ConfigurationUserPage() {
 
   return (
     <div className="relative min-h-screen flex bg-[#1a1b1e] text-white">
+      {showTour && (
+        <ConfigurationTour
+          onFinish={async () => {
+            if (user) {
+              const userRef = doc(db, "users", user.uid);
+              await updateDoc(userRef, { hasSeenConfigTour: true });
+            }
+            setShowTour(false);
+          }}
+        />
+      )}
       <Toaster position="top-right" />
       <main className="flex-1 overflow-y-auto pb-20 px-6 md:px-10 py-8">
         <h2 className="text-lg font-semibold mb-8">Configuration Domain</h2>
@@ -186,10 +215,10 @@ export default function ConfigurationUserPage() {
         <section className="space-y-4 max-w-7xl mr-auto">
           <textarea
             ref={textareaRef}
-            placeholder="Tambahkan instruksi agar AI lebih paham konteks kamu..."
+            placeholder="Add instructions to make AI better understand your context..."
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            className={`w-full p-3 rounded text-white resize-none overflow-hidden transition-all duration-300 ${
+            className={`instruction-textarea w-full p-3 rounded text-white resize-none overflow-hidden transition-all duration-300 ${
               instructionDoc?.is_active
                 ? "bg-gray-800 border-2 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]"
                 : "bg-gray-800 border border-gray-700"
@@ -207,7 +236,7 @@ export default function ConfigurationUserPage() {
               <button
                 onClick={handleSaveOrUpdate}
                 disabled={loading}
-                className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
+                className="instruction-save-btn px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
               >
                 Save Instruction
               </button>
