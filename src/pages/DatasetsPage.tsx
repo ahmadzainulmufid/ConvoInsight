@@ -183,13 +183,13 @@ const DatasetsPage: React.FC<Props> = () => {
       if (!snap.exists()) return;
       const data = snap.data();
 
-      if (!data.hasSeenDatasetTour) {
+      if (!data.hasSeenDatasetTour && items.length === 0) {
         setShowTour(true);
       }
     };
 
     void checkTourStatus();
-  }, [user]);
+  }, [user, items]);
 
   // --- Render UI ---
   return (
@@ -266,7 +266,6 @@ const DatasetsPage: React.FC<Props> = () => {
           <p className="text-sm text-gray-400">No datasets uploaded yet.</p>
         ) : (
           <DatasetList
-            className="dataset-list-section"
             items={items}
             onEdit={(ds) =>
               navigate(`/domain/${section}/datasets/${ds.id}/edit`)

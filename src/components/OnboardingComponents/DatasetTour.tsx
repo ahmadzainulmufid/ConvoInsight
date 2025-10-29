@@ -103,11 +103,6 @@ export default function DatasetTour({ onFinish }: { onFinish: () => void }) {
           content:
             "Or connect an external database like PostgreSQL or BigQuery.",
         },
-        {
-          selector: ".dataset-list-section",
-          content:
-            "All datasets you have uploaded will appear in this section.",
-        },
       ]}
       styles={{
         popover: (base) => ({
@@ -119,6 +114,9 @@ export default function DatasetTour({ onFinish }: { onFinish: () => void }) {
           padding: "16px",
         }),
         badge: (base) => ({ ...base, backgroundColor: "#6366F1" }),
+        close: () => ({
+          display: "none",
+        }),
       }}
       disableInteraction
       disableKeyboardNavigation={["esc"]}
@@ -145,8 +143,8 @@ export default function DatasetTour({ onFinish }: { onFinish: () => void }) {
               🎉 Dataset Setup Completed!
             </h2>
             <p className="text-gray-300 mb-6 leading-relaxed">
-              You've completed the dataset wizard. Now, you're ready to upload
-              or connect a data source to ConvoInsight.
+              You’ve completed the dataset setup. You’re now ready to upload or
+              connect a data source in ConvoInsight.
             </p>
             <button
               onClick={onFinish}

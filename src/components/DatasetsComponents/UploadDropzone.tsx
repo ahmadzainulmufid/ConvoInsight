@@ -24,6 +24,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
   section,
   onUploaded,
   maxSize = 50 * 1024 * 1024,
+  className,
 }) => {
   const [dragging, setDragging] = useState(false);
   const [items, setItems] = useState<UploadItem[]>([]);
@@ -180,7 +181,11 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
   };
 
   return (
-    <div className="bg-[#232427] rounded-2xl shadow-sm border border-[#2a2b32] p-5 md:p-6">
+    <div
+      className={`bg-[#232427] rounded-2xl shadow-sm border border-[#2a2b32] p-5 md:p-6 ${
+        className ?? ""
+      }`}
+    >
       <h2 className="text-xl font-bold text-white">Add datasets</h2>
       <p className="text-gray-300 mt-1">
         Upload one or more <b>CSV</b>, <b>Excel</b> (<b>.xls</b>, <b>.xlsx</b>),

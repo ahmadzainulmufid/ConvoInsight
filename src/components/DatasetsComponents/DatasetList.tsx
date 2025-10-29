@@ -18,7 +18,6 @@ type Props = {
   onView?: (item: DatasetItem) => void;
   onDelete?: (item: DatasetItem) => void;
   onDeleteAll?: () => void;
-  className?: string;
 };
 
 const DatasetList: React.FC<Props> = ({
