@@ -7,7 +7,6 @@ type Props = {
   dataset?: string | string[];
 };
 
-// Default fallback kalau API gagal
 const defaultQuestions = [
   "Compare revenue m1 vs m0",
   "Top 3 drivers of churn",
@@ -25,10 +24,24 @@ const SuggestedQuestions: React.FC<Props> = ({
   dataset,
 }) => {
   const [loading, setLoading] = useState(true);
-  const [suggestions, setSuggestions] = useState<string[]>(defaultQuestions);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const hasDataset = Array.isArray(dataset)
+    ? dataset.length > 0
+    : Boolean(dataset);
 
   useEffect(() => {
+    if (!hasDataset) {
+      setSuggestions([]);
+      setLoading(false);
+      setError("no-dataset");
+      return;
+    }
+
     let ignore = false;
+    setLoading(true);
+    setError(null);
 
     async function fetchSuggestions() {
       try {
@@ -37,10 +50,7 @@ const SuggestedQuestions: React.FC<Props> = ({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            domain,
-            dataset,
-          }),
+          body: JSON.stringify({ domain, dataset }),
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -50,27 +60,31 @@ const SuggestedQuestions: React.FC<Props> = ({
           (s: string) => typeof s === "string" && s.trim().length > 0
         );
 
-        if (!ignore && sug.length === 4) {
+        if (!ignore && sug.length > 0) {
           setSuggestions(sug);
+        } else if (!ignore) {
+          // fallback default jika kosong
+          setSuggestions(defaultQuestions);
         }
       } catch (err) {
         console.warn("Failed to fetch suggestions:", err);
-        // fallback ke default
-        if (!ignore) setSuggestions(defaultQuestions);
+        if (!ignore) {
+          setError("api-error");
+          setSuggestions([]);
+        }
       } finally {
         if (!ignore) setLoading(false);
       }
     }
 
     fetchSuggestions();
-
     return () => {
       ignore = true;
     };
-  }, [domain, dataset]);
+  }, [domain, dataset, hasDataset]);
 
   return (
-    <div className="mt-4 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 flex flex-col gap-2">
+    <div className="mt-4 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 flex flex-col gap-2 text-gray-300">
       {loading ? (
         <>
           {Array.from({ length: 4 }).map((_, i) => (
@@ -80,7 +94,16 @@ const SuggestedQuestions: React.FC<Props> = ({
             />
           ))}
         </>
-      ) : (
+      ) : error === "no-dataset" ? (
+        <div className="text-center text-gray-400 text-sm py-3">
+          ⚠️ Please upload the dataset first to display suggested questions.
+        </div>
+      ) : error === "api-error" ? (
+        <div className="text-center text-gray-400 text-sm py-3">
+          ⚠️ Suggested questions are having problems. Please type your question
+          manually.
+        </div>
+      ) : suggestions.length > 0 ? (
         suggestions.map((q, i) => (
           <button
             key={i}
@@ -90,6 +113,10 @@ const SuggestedQuestions: React.FC<Props> = ({
             {q}
           </button>
         ))
+      ) : (
+        <div className="text-center text-gray-400 text-sm py-3">
+          There are no suggested questions at this time.
+        </div>
       )}
     </div>
   );
