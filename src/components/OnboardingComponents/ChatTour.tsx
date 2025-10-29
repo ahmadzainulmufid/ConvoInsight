@@ -130,7 +130,7 @@ export default function ChatTour({ onFinish }: { onFinish: () => void }) {
           padding: "16px",
         }),
         badge: (base) => ({ ...base, backgroundColor: "#6366F1" }),
-        close: () => ({ display: "none" }), // ❌ no X button
+        close: () => ({ display: "none" }),
       }}
       disableInteraction
       disableKeyboardNavigation={["esc"]}
