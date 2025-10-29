@@ -10,6 +10,7 @@ export function ChatComposer({
   busy = false,
   onStop,
   placeholder = "Ask Anything",
+  className = "",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -17,6 +18,7 @@ export function ChatComposer({
   busy?: boolean; // ⬅️ sama seperti ChatInput
   onStop?: () => void;
   placeholder?: string;
+  className?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const hasText = value.trim().length > 0;
@@ -71,7 +73,7 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full flex items-center rounded-xl bg-gray-700 px-4 py-3"
+      className={`w-full flex items-center rounded-xl bg-gray-700 px-4 py-3 ${className}`}
     >
       <textarea
         ref={ref}

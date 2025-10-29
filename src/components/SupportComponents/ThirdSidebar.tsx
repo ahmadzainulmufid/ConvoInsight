@@ -246,107 +246,113 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       navigate(`/domain/${section}/dashboard/newchat`)
                     }
                     title="New Chat"
-                    className="p-1 rounded text-gray-400 hover:text-white hover:bg-[#2A2B32]"
+                    className="chat-add-btn p-1 rounded text-gray-400 hover:text-white hover:bg-[#2A2B32]"
                   >
                     <HiOutlinePlus size={16} />
                   </button>
                 </div>
               )}
 
-              {historyItems.length === 0 && !collapsed && (
-                <span className="px-3 py-1 text-sm text-gray-500 italic">
-                  No history yet
-                </span>
-              )}
+              <div className="chat-history-list">
+                {historyItems.length === 0 && !collapsed && (
+                  <span className="px-3 py-1 text-sm text-gray-500 italic">
+                    No history yet
+                  </span>
+                )}
 
-              {historyItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={`relative group flex items-center py-2 rounded-md text-sm transition-colors ${
-                    openedId === item.id ? "bg-[#343541]" : "hover:bg-[#2A2B32]"
-                  }`}
-                >
-                  <NavLink
-                    to={`/domain/${section}/dashboard/newchat?id=${item.id}`}
-                    title={item.title}
-                    className={`flex-1 flex items-center min-w-0 ${
-                      collapsed
-                        ? "justify-center px-0 gap-0"
-                        : "justify-start px-3 gap-3"
+                {historyItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`relative group flex items-center py-2 rounded-md text-sm transition-colors ${
+                      openedId === item.id
+                        ? "bg-[#343541]"
+                        : "hover:bg-[#2A2B32]"
                     }`}
                   >
-                    <div className={collapsed ? "w-6 flex justify-center" : ""}>
-                      <HiOutlineChat className="shrink-0" />
-                    </div>
-
-                    <div className={`${labelClass} flex flex-col min-w-0`}>
-                      <span className="truncate text-sm text-white">
-                        {item.title}
-                      </span>
-                      <span className="truncate text-[11px] text-gray-400">
-                        {new Date(item.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                  </NavLink>
-
-                  {!collapsed && (
-                    <div className="relative z-10 shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMenuOpenId((prev) =>
-                            prev === item.id ? null : item.id
-                          );
-                        }}
-                        className="px-2 py-1 rounded hover:bg-[#343541] opacity-0 group-hover:opacity-100 focus:opacity-100"
-                        aria-haspopup="menu"
-                        aria-expanded={menuOpenId === item.id}
-                        title="Actions"
+                    <NavLink
+                      to={`/domain/${section}/dashboard/newchat?id=${item.id}`}
+                      title={item.title}
+                      className={`flex-1 flex items-center min-w-0 ${
+                        collapsed
+                          ? "justify-center px-0 gap-0"
+                          : "justify-start px-3 gap-3"
+                      }`}
+                    >
+                      <div
+                        className={collapsed ? "w-6 flex justify-center" : ""}
                       >
-                        <HiDotsVertical />
-                      </button>
+                        <HiOutlineChat className="shrink-0" />
+                      </div>
 
-                      {menuOpenId === item.id && (
-                        <div
-                          role="menu"
-                          className="absolute right-0 bottom-full mb-1 w-40 rounded-md border border-[#3a3b42] bg-[#2A2B32] shadow-lg z-20"
-                          onClick={(e) => e.stopPropagation()}
+                      <div className={`${labelClass} flex flex-col min-w-0`}>
+                        <span className="truncate text-sm text-white">
+                          {item.title}
+                        </span>
+                        <span className="truncate text-[11px] text-gray-400">
+                          {new Date(item.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </NavLink>
+
+                    {!collapsed && (
+                      <div className="relative z-10 shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpenId((prev) =>
+                              prev === item.id ? null : item.id
+                            );
+                          }}
+                          className="px-2 py-1 rounded hover:bg-[#343541] opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          aria-haspopup="menu"
+                          aria-expanded={menuOpenId === item.id}
+                          title="Actions"
                         >
-                          <button
-                            role="menuitem"
-                            onClick={async () => {
-                              const baseUrl = window.location.origin;
-                              const fullUrl = `${baseUrl}/domain/${section}/dashboard/newchat?id=${item.id}`;
-                              await navigator.clipboard.writeText(fullUrl);
-                              toast.success("✅ Link copied to clipboard!");
-                              setMenuOpenId(null);
-                            }}
-                            className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541] rounded-t-md"
-                          >
-                            Copy Link
-                          </button>
+                          <HiDotsVertical />
+                        </button>
 
-                          <button
-                            role="menuitem"
-                            onClick={() => handleExportPdf(item.id)}
-                            className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541]"
+                        {menuOpenId === item.id && (
+                          <div
+                            role="menu"
+                            className="absolute right-0 bottom-full mb-1 w-40 rounded-md border border-[#3a3b42] bg-[#2A2B32] shadow-lg z-20"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            Export to PDF
-                          </button>
+                            <button
+                              role="menuitem"
+                              onClick={async () => {
+                                const baseUrl = window.location.origin;
+                                const fullUrl = `${baseUrl}/domain/${section}/dashboard/newchat?id=${item.id}`;
+                                await navigator.clipboard.writeText(fullUrl);
+                                toast.success("✅ Link copied to clipboard!");
+                                setMenuOpenId(null);
+                              }}
+                              className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541] rounded-t-md"
+                            >
+                              Copy Link
+                            </button>
 
-                          <button
-                            role="menuitem"
-                            onClick={() => handleDelete(item.id)}
-                            className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541] text-red-400 rounded-b-md"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                            <button
+                              role="menuitem"
+                              onClick={() => handleExportPdf(item.id)}
+                              className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541]"
+                            >
+                              Export to PDF
+                            </button>
+
+                            <button
+                              role="menuitem"
+                              onClick={() => handleDelete(item.id)}
+                              className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541] text-red-400 rounded-b-md"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </>
           )}
         </div>

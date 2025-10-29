@@ -24,6 +24,10 @@ import MultiSelectDropdown from "../components/ChatComponents/MultiSelectDropdow
 import SuggestedQuestions from "../components/ChatComponents/SuggestedQuestions";
 import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
 import { addNotification } from "../service/notificationStore";
+import ChatTour from "../components/OnboardingComponents/ChatTour";
+import { db } from "../utils/firebaseSetup";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useAuthUser } from "../utils/firebaseSetup";
 
 /** Type Definitions **/
 type ThinkingStep = {
@@ -90,6 +94,9 @@ export default function NewChatPage() {
 
   const [inFlight, setInFlight] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
+
+  const { user } = useAuthUser();
+  const [showTour, setShowTour] = useState(false);
 
   const stopAll = () => {
     controller?.abort();
@@ -168,6 +175,21 @@ export default function NewChatPage() {
       });
     }
   }, [domain, isGenerating, navigate, searchParams]);
+
+  useEffect(() => {
+    const checkTourStatus = async () => {
+      if (!user) return;
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return;
+      const data = snap.data();
+
+      if (!data.hasSeenChatTour) {
+        setShowTour(true);
+      }
+    };
+    void checkTourStatus();
+  }, [user]);
 
   /** Listen to Saved Messages **/
   useEffect(() => {
@@ -506,6 +528,17 @@ export default function NewChatPage() {
   /** UI **/
   return (
     <div className="relative min-h-screen p-4 sm:p-6">
+      {showTour && (
+        <ChatTour
+          onFinish={async () => {
+            if (user) {
+              const userRef = doc(db, "users", user.uid);
+              await updateDoc(userRef, { hasSeenChatTour: true });
+            }
+            setShowTour(false);
+          }}
+        />
+      )}
       {isNewConversation ? (
         <div className="grid grid-cols-1 gap-6 max-w-7xl mx-auto min-h-[60vh] place-content-center">
           <div className="w-full flex flex-col items-center">
@@ -518,7 +551,7 @@ export default function NewChatPage() {
 
             <div className="w-full flex justify-center">
               <div className="w-full max-w-2xl md:max-w-3xl px-2 sm:px-0">
-                <div className="mb-3">
+                <div className="chat-dataset-dropdown mb-3">
                   <label className="block text-xs text-gray-400 mb-1">
                     Dataset
                   </label>
@@ -531,6 +564,7 @@ export default function NewChatPage() {
                 </div>
 
                 <ChatComposer
+                  className="chat-input-box"
                   value={message}
                   onChange={setMessage}
                   onSend={() => handleSend()}
@@ -548,6 +582,7 @@ export default function NewChatPage() {
             </div>
 
             <SuggestedQuestions
+              className="chat-suggested-section"
               onQuestionClick={(q) => {
                 if (!domainDocId) {
                   toast.loading("Preparing connection...");

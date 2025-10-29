@@ -5,6 +5,7 @@ type Props = {
   onQuestionClick: (question: string) => void;
   domain?: string;
   dataset?: string | string[];
+  className?: string;
 };
 
 const defaultQuestions = [
@@ -22,6 +23,7 @@ const SuggestedQuestions: React.FC<Props> = ({
   onQuestionClick,
   domain = "general",
   dataset,
+  className,
 }) => {
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -84,7 +86,9 @@ const SuggestedQuestions: React.FC<Props> = ({
   }, [domain, dataset, hasDataset]);
 
   return (
-    <div className="mt-4 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 flex flex-col gap-2 text-gray-300">
+    <div
+      className={`mt-4 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 flex flex-col gap-2 text-gray-300 ${className}`}
+    >
       {loading ? (
         <>
           {Array.from({ length: 4 }).map((_, i) => (
