@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import HomeContent from "../components/HomeComponents/HomeContent";
 import OnboardingModal from "../components/OnboardingComponents/OnboardingFirst";
 import { db } from "../utils/firebaseSetup";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  updateDoc,
+} from "firebase/firestore";
 import { useAuthUser } from "../utils/firebaseSetup";
 import { useDomains } from "../hooks/useDomains";
 import { useChatHistory } from "../hooks/useChatHistory";
@@ -24,15 +30,42 @@ export default function HomePage() {
       if (!snap.exists()) return;
       const data = snap.data();
 
+      // 🔹 Ambil semua koleksi penting dari Firestore
+      const domainSnap = await getDocs(
+        collection(db, "users", user.uid, "domains")
+      );
+      const chatSnap = await getDocs(
+        collection(db, "users", user.uid, "chats")
+      );
+      const dashboardSnap = await getDocs(
+        collection(db, "users", user.uid, "dashboards")
+      );
+      const datasetSnap = await getDocs(
+        collection(db, "users", user.uid, "datasets")
+      );
+
+      // 🔹 User benar-benar baru kalau semua koleksi kosong
       const isNewUser =
-        !data.hasSeenOnboarding &&
-        domains.length === 0 &&
-        allChats.length === 0;
+        domainSnap.empty &&
+        chatSnap.empty &&
+        dashboardSnap.empty &&
+        datasetSnap.empty;
 
-      const needTour = data.hasSeenConfigHint && !data.hasSeenHomeTour;
+      // 🔹 Step 1 (Onboarding) → muncul kalau user baru & belum pernah lihat onboarding
+      const needOnboarding = !data.hasSeenOnboarding && isNewUser;
 
-      if (isNewUser) setShowOnboarding(true);
-      else if (needTour) setShowTour(true);
+      // 🔹 Step 3 (HomeTour) → muncul kalau user baru, sudah lewat config (step 2), tapi belum pernah lihat HomeTour
+      const needHomeTour =
+        data.hasSeenConfigHint &&
+        !data.hasSeenHomeTour &&
+        isNewUser &&
+        !needOnboarding;
+
+      if (needOnboarding) {
+        setShowOnboarding(true);
+      } else if (needHomeTour) {
+        setShowTour(true);
+      }
     };
 
     void checkUserStatus();
@@ -57,7 +90,7 @@ export default function HomePage() {
   return (
     <div className="bg-[#1A1B1E] text-gray-200 min-h-screen flex flex-col items-center justify-center transition-all duration-300 ease-in-out mr-50 relative">
       {showOnboarding && <OnboardingModal onFinish={handleFinishOnboarding} />}
-      {showTour && <HomeTour onFinish={handleFinishTour} />} {/* 🔹 */}
+      {showTour && <HomeTour onFinish={handleFinishTour} />}
       <HomeContent />
     </div>
   );

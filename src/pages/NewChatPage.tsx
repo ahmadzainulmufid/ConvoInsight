@@ -26,7 +26,13 @@ import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
 import { addNotification } from "../service/notificationStore";
 import ChatTour from "../components/OnboardingComponents/ChatTour";
 import { db } from "../utils/firebaseSetup";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  updateDoc,
+} from "firebase/firestore";
 import { useAuthUser } from "../utils/firebaseSetup";
 
 /** Type Definitions **/
@@ -177,18 +183,42 @@ export default function NewChatPage() {
   }, [domain, isGenerating, navigate, searchParams]);
 
   useEffect(() => {
-    const checkTourStatus = async () => {
+    const checkChatTour = async () => {
       if (!user) return;
+
       const userRef = doc(db, "users", user.uid);
       const snap = await getDoc(userRef);
       if (!snap.exists()) return;
       const data = snap.data();
 
-      if (!data.hasSeenChatTour) {
+      // Ambil semua koleksi penting
+      const domainSnap = await getDocs(
+        collection(db, "users", user.uid, "domains")
+      );
+      const chatSnap = await getDocs(
+        collection(db, "users", user.uid, "chats")
+      );
+      const dashboardSnap = await getDocs(
+        collection(db, "users", user.uid, "dashboards")
+      );
+      const datasetSnap = await getDocs(
+        collection(db, "users", user.uid, "datasets")
+      );
+
+      // User benar-benar baru kalau semua koleksi kosong
+      const isNewUser =
+        domainSnap.empty &&
+        chatSnap.empty &&
+        dashboardSnap.empty &&
+        datasetSnap.empty;
+
+      // Munculkan ChatTour hanya kalau user baru dan belum pernah lihat
+      if (isNewUser && !data.hasSeenChatTour) {
         setShowTour(true);
       }
     };
-    void checkTourStatus();
+
+    void checkChatTour();
   }, [user]);
 
   /** Listen to Saved Messages **/
@@ -525,20 +555,18 @@ export default function NewChatPage() {
     }
   };
 
+  const handleFinishChatTour = async () => {
+    if (user) {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, { hasSeenChatTour: true });
+    }
+    setShowTour(false);
+  };
+
   /** UI **/
   return (
     <div className="relative min-h-screen p-4 sm:p-6">
-      {showTour && (
-        <ChatTour
-          onFinish={async () => {
-            if (user) {
-              const userRef = doc(db, "users", user.uid);
-              await updateDoc(userRef, { hasSeenChatTour: true });
-            }
-            setShowTour(false);
-          }}
-        />
-      )}
+      {showTour && <ChatTour onFinish={handleFinishChatTour} />}
       {isNewConversation ? (
         <div className="grid grid-cols-1 gap-6 max-w-7xl mx-auto min-h-[60vh] place-content-center">
           <div className="w-full flex flex-col items-center">

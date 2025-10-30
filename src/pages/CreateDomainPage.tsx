@@ -1,22 +1,25 @@
 import { useState, useEffect } from "react";
 import { db, useAuthUser } from "../utils/firebaseSetup";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { NavLink } from "react-router-dom";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  getDocs,
+  deleteDoc,
+} from "firebase/firestore";
+import { NavLink, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useDomains } from "../hooks/useDomains";
 import { addNotification } from "../service/notificationStore";
-import { useNavigate } from "react-router-dom";
 
 export default function CreateDomainPage() {
   const { user } = useAuthUser();
-  const { domains, addDomain, uid } = useDomains({
-    seedDefaultOnEmpty: false,
-  });
+  const { domains, addDomain, uid } = useDomains({ seedDefaultOnEmpty: false });
   const [name, setName] = useState("");
   const [showHint, setShowHint] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ Cek Firestore apakah user sudah pernah lihat hint
   useEffect(() => {
     const checkHint = async () => {
       if (!user) return;
@@ -25,7 +28,28 @@ export default function CreateDomainPage() {
       if (!snap.exists()) return;
       const data = snap.data();
 
-      if (!data.hasSeenDomainHint) setShowHint(true);
+      const domainSnap = await getDocs(
+        collection(db, "users", user.uid, "domains")
+      );
+      const chatSnap = await getDocs(
+        collection(db, "users", user.uid, "chats")
+      );
+      const dashboardSnap = await getDocs(
+        collection(db, "users", user.uid, "dashboards")
+      );
+      const datasetSnap = await getDocs(
+        collection(db, "users", user.uid, "datasets")
+      );
+
+      const isNewUser =
+        domainSnap.empty &&
+        chatSnap.empty &&
+        dashboardSnap.empty &&
+        datasetSnap.empty;
+
+      if (!data.hasSeenDomainHint && isNewUser) {
+        setShowHint(true);
+      }
     };
     void checkHint();
   }, [user]);
@@ -36,6 +60,27 @@ export default function CreateDomainPage() {
       await updateDoc(ref, { hasSeenDomainHint: true });
     }
     setShowHint(false);
+  };
+
+  // 🗑️ Hapus domain
+  const handleDeleteDomain = async (domainId: string, domainName: string) => {
+    if (!user) return;
+    if (!confirm(`Are you sure you want to delete domain "${domainName}"?`))
+      return;
+
+    try {
+      await deleteDoc(doc(db, "users", user.uid, "domains", domainId));
+      toast.success(`Domain "${domainName}" deleted.`);
+      await addNotification(
+        "domain",
+        "Domain Deleted",
+        `Domain "${domainName}" has been removed.`
+      );
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to delete domain:", err);
+      toast.error("Failed to delete domain");
+    }
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -49,7 +94,6 @@ export default function CreateDomainPage() {
     const res = await addDomain(name);
     if (res.ok) {
       toast.success("Domain added");
-
       await addNotification(
         "domain",
         "New Domain Created",
@@ -58,13 +102,11 @@ export default function CreateDomainPage() {
 
       const userRef = doc(db, "users", uid);
       const snap = await getDoc(userRef);
-
       if (snap.exists()) {
         const data = snap.data();
-        // kalau user belum pernah buat domain sebelumnya
         if (!data.hasCreatedDomain) {
           await updateDoc(userRef, { hasCreatedDomain: true });
-          navigate("/configuser"); // cuma sekali di onboarding
+          navigate("/configuser");
         } else {
           toast.success("Domain created successfully!");
         }
@@ -109,6 +151,7 @@ export default function CreateDomainPage() {
         </NavLink>
       </header>
 
+      {/* ➕ Form tambah domain */}
       <form
         onSubmit={handleAdd}
         className="bg-[#2A2B32] p-4 rounded-lg space-y-3"
@@ -129,18 +172,26 @@ export default function CreateDomainPage() {
         </button>
       </form>
 
-      {/* daftar domain */}
+      {/* 📋 Daftar domain */}
       {domains.length > 0 && (
-        <section className="bg-[#2A2B32] p-4 rounded-lg">
+        <section className="bg-[#2A2B32] p-4 rounded-lg mb-6">
           <h2 className="text-sm text-gray-300 mb-3">Current Domain</h2>
-          {domains.map((d) => (
-            <div
-              key={d.id}
-              className="flex items-center justify-between border border-[#3a3b42] px-3 py-2 rounded"
-            >
-              <span>{d.name}</span>
-            </div>
-          ))}
+          <div className="flex flex-col space-y-3">
+            {domains.map((d) => (
+              <div
+                key={d.id}
+                className="flex items-center justify-between border border-[#3a3b42] px-3 py-2 rounded"
+              >
+                <span>{d.name}</span>
+                <button
+                  onClick={() => handleDeleteDomain(d.id, d.name)}
+                  className="text-red-400 hover:text-red-500 font-medium transition"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
         </section>
       )}
     </div>

@@ -1,3 +1,4 @@
+// src/Pages/ConfigurationUserPage.tsx
 import { useState, useEffect, useCallback, useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import {
@@ -24,7 +25,6 @@ type InstructionItem = {
 export default function ConfigurationUserPage() {
   const { user, loading: authLoading } = useAuthUser();
   const userId = user?.uid || null;
-
   const { section: domainDocId } = useParams<{ section: string }>();
 
   const [instruction, setInstruction] = useState("");
@@ -36,7 +36,7 @@ export default function ConfigurationUserPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showTour, setShowTour] = useState(false);
 
-  // 🔹 Fetch hanya satu instruction
+  // 🔹 Fetch instruction (satu dokumen saja)
   const fetchInstruction = useCallback(async () => {
     if (!userId || !domainDocId) return;
     setLoading(true);
@@ -74,7 +74,7 @@ export default function ConfigurationUserPage() {
     if (!authLoading && userId) fetchInstruction();
   }, [authLoading, userId, fetchInstruction]);
 
-  // 🔹 Auto expand textarea sesuai isi
+  // 🔹 Auto expand textarea
   useEffect(() => {
     const el = textareaRef.current;
     if (el) {
@@ -83,18 +83,43 @@ export default function ConfigurationUserPage() {
     }
   }, [instruction]);
 
+  // ✅ Cek apakah user baru (tidak punya domain/chat/dataset/dashboard)
   useEffect(() => {
     const checkTourStatus = async () => {
       if (!user) return;
+
       const userRef = doc(db, "users", user.uid);
       const snap = await getDoc(userRef);
       if (!snap.exists()) return;
       const data = snap.data();
 
-      if (!data.hasSeenConfigTour) {
+      // Ambil semua koleksi penting
+      const domainSnap = await getDocs(
+        collection(db, "users", user.uid, "domains")
+      );
+      const chatSnap = await getDocs(
+        collection(db, "users", user.uid, "chats")
+      );
+      const dashboardSnap = await getDocs(
+        collection(db, "users", user.uid, "dashboards")
+      );
+      const datasetSnap = await getDocs(
+        collection(db, "users", user.uid, "datasets")
+      );
+
+      // User benar-benar baru kalau semua koleksi kosong
+      const isNewUser =
+        domainSnap.empty &&
+        chatSnap.empty &&
+        dashboardSnap.empty &&
+        datasetSnap.empty;
+
+      // Hanya tampilkan tour kalau user baru dan belum pernah lihat
+      if (isNewUser && !data.hasSeenConfigTour) {
         setShowTour(true);
       }
     };
+
     void checkTourStatus();
   }, [user]);
 
@@ -112,7 +137,6 @@ export default function ConfigurationUserPage() {
     setLoading(true);
     try {
       if (instructionDoc) {
-        // Update
         const ref = doc(
           db,
           "users",
@@ -130,7 +154,6 @@ export default function ConfigurationUserPage() {
         setIsEditing(false);
         fetchInstruction();
       } else {
-        // Save baru
         const ref = collection(
           db,
           "users",
@@ -192,6 +215,7 @@ export default function ConfigurationUserPage() {
 
   return (
     <div className="relative min-h-screen flex bg-[#1a1b1e] text-white">
+      {/* 🟣 Step 5: Domain Configuration Tour */}
       {showTour && (
         <ConfigurationTour
           onFinish={async () => {
@@ -203,6 +227,7 @@ export default function ConfigurationUserPage() {
           }}
         />
       )}
+
       <Toaster position="top-right" />
       <main className="flex-1 overflow-y-auto pb-20 px-6 md:px-10 py-8">
         <h2 className="text-lg font-semibold mb-8">Configuration Domain</h2>

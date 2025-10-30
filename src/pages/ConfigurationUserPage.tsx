@@ -63,10 +63,6 @@ export default function ConfigurationUserPage() {
   const [history, setHistory] = useState<ProviderItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const [validationStatus] = useState<"idle" | "loading" | "success" | "error">(
-    "idle"
-  );
-
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateProvider, setUpdateProvider] = useState<string | null>(null);
   const [newApiKey, setNewApiKey] = useState("");
@@ -83,21 +79,46 @@ export default function ConfigurationUserPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [providerList, setProviderList] = useState<string[]>([]);
-  const [modelGroups, setModelGroups] = useState<Record<string, string[]>>({});
 
+  // 🟣 bagian atas tetap seperti ini
   const [showHint, setShowHint] = useState(false);
-
   useEffect(() => {
-    const check = async () => {
+    const checkHint = async () => {
       if (!user) return;
+
       const ref = doc(db, "users", user.uid);
       const snap = await getDoc(ref);
       if (!snap.exists()) return;
-
       const data = snap.data();
-      if (!data.hasSeenConfigHint) setShowHint(true);
+
+      // ambil semua koleksi penting
+      const domainSnap = await getDocs(
+        collection(db, "users", user.uid, "domains")
+      );
+      const chatSnap = await getDocs(
+        collection(db, "users", user.uid, "chats")
+      );
+      const dashboardSnap = await getDocs(
+        collection(db, "users", user.uid, "dashboards")
+      );
+      const datasetSnap = await getDocs(
+        collection(db, "users", user.uid, "datasets")
+      );
+
+      // user benar-benar baru kalau belum punya data apa pun
+      const isNewUser =
+        domainSnap.empty &&
+        chatSnap.empty &&
+        dashboardSnap.empty &&
+        datasetSnap.empty;
+
+      // tampilkan hint hanya kalau belum pernah lihat dan masih user baru
+      if (!data.hasSeenConfigHint && isNewUser) {
+        setShowHint(true);
+      }
     };
-    void check();
+
+    void checkHint();
   }, [user]);
 
   useEffect(() => {
@@ -124,16 +145,13 @@ export default function ConfigurationUserPage() {
     (async () => {
       try {
         const res = await fetch(`${API_BASE}/litellm/models`);
-        if (!res.ok) throw new Error("Failed to fetch models");
-
+        if (!res.ok) throw new Error("Failed to fetch providers");
         const data = await res.json();
-        // modelData.groups = { provider: [models] }
         const groups = data.groups ?? {};
-        setModelGroups(groups);
-        setProviderList(Object.keys(groups)); // ambil provider dari key-nya
+        setProviderList(Object.keys(groups));
       } catch (e) {
         console.error(e);
-        toast.error("Failed to load model list");
+        toast.error("Failed to load provider list");
       }
     })();
   }, []);
@@ -474,23 +492,16 @@ export default function ConfigurationUserPage() {
               <label className="block text-sm font-medium mb-2">
                 Select Provider
               </label>
-
               <select
                 value={provider}
                 onChange={(e) => {
-                  if (history.length > 0) return; // 🔒 mencegah perubahan manual
-                  const value = e.target.value;
-                  setProvider(value as ProviderKey);
+                  setProvider(e.target.value as ProviderKey);
+                  setApiKey("");
                   setValidated(false);
-                  setModels(modelGroups[value] ?? []);
+                  setModels([]);
                   setSelectedModel("");
                 }}
-                disabled={history.length > 0} // 🔒 nonaktifkan dropdown
-                className={`w-full p-2 rounded border ${
-                  history.length > 0
-                    ? "bg-gray-700 border-gray-600 cursor-not-allowed opacity-70"
-                    : "bg-gray-800 border-gray-700"
-                }`}
+                className="w-full p-2 rounded bg-gray-800 border border-gray-700"
               >
                 <option value="">-- Choose --</option>
                 {providerList.map((prov) => (
@@ -499,20 +510,11 @@ export default function ConfigurationUserPage() {
                   </option>
                 ))}
               </select>
-
-              {history.length > 0 && (
-                <>
-                  <p className="text-xs text-gray-400 mt-1">
-                    You already have a saved provider. Delete it first to
-                    change.
-                  </p>
-                </>
-              )}
             </div>
 
             {/* API Key Input */}
             {provider && (
-              <div>
+              <div className="mt-4">
                 <label className="block text-sm font-medium mb-2">
                   Input API Key
                 </label>
@@ -528,18 +530,12 @@ export default function ConfigurationUserPage() {
                     disabled={loading}
                     onClick={handleValidate}
                     className={`px-4 py-2 rounded ${
-                      validationStatus === "success"
-                        ? "bg-green-600"
-                        : validationStatus === "error"
-                        ? "bg-red-600"
+                      loading
+                        ? "bg-gray-700 cursor-not-allowed"
                         : "bg-blue-600 hover:bg-blue-700"
                     }`}
                   >
-                    {loading
-                      ? "Validating..."
-                      : validationStatus === "success"
-                      ? "Valid"
-                      : "Validate"}
+                    {loading ? "Validating..." : "Validate"}
                   </button>
                 </div>
               </div>
@@ -547,7 +543,7 @@ export default function ConfigurationUserPage() {
 
             {/* Model List */}
             {validated && models.length > 0 && (
-              <div>
+              <div className="mt-4">
                 <label className="block text-sm font-medium mb-2">
                   Select Model
                 </label>
@@ -568,7 +564,7 @@ export default function ConfigurationUserPage() {
 
             {/* Advanced Config */}
             {selectedModel && (
-              <>
+              <div className="mt-4 space-y-4">
                 {/* Verbosity */}
                 <div>
                   <label className="block text-sm font-medium mb-2">
@@ -628,7 +624,7 @@ export default function ConfigurationUserPage() {
                 >
                   Save Configuration
                 </button>
-              </>
+              </div>
             )}
           </div>
 
