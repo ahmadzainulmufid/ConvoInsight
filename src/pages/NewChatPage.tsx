@@ -26,13 +26,7 @@ import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
 import { addNotification } from "../service/notificationStore";
 import ChatTour from "../components/OnboardingComponents/ChatTour";
 import { db } from "../utils/firebaseSetup";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  updateDoc,
-} from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuthUser } from "../utils/firebaseSetup";
 
 /** Type Definitions **/
@@ -191,30 +185,9 @@ export default function NewChatPage() {
       if (!snap.exists()) return;
       const data = snap.data();
 
-      // Ambil semua koleksi penting
-      const domainSnap = await getDocs(
-        collection(db, "users", user.uid, "domains")
-      );
-      const chatSnap = await getDocs(
-        collection(db, "users", user.uid, "chats")
-      );
-      const dashboardSnap = await getDocs(
-        collection(db, "users", user.uid, "dashboards")
-      );
-      const datasetSnap = await getDocs(
-        collection(db, "users", user.uid, "datasets")
-      );
-
-      // User benar-benar baru kalau semua koleksi kosong
-      const isNewUser =
-        domainSnap.empty &&
-        chatSnap.empty &&
-        dashboardSnap.empty &&
-        datasetSnap.empty;
-
-      // Munculkan ChatTour hanya kalau user baru dan belum pernah lihat
-      if (isNewUser && !data.hasSeenChatTour) {
-        setShowTour(true);
+      // ✅ Munculkan ChatTour jika user sudah selesai Step-5 dan belum pernah lihat Step-6
+      if (data.hasSeenConfigTour && !data.hasSeenChatTour) {
+        setTimeout(() => setShowTour(true), 600); // kasih sedikit delay biar transisi smooth
       }
     };
 

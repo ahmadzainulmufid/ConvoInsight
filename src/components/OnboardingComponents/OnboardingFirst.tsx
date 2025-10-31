@@ -1,7 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { FiArrowLeft } from "react-icons/fi";
-import { useNavigate } from "react-router-dom"; // 👈 tambahkan ini
+import { useNavigate } from "react-router-dom";
+import introVideo from "/videos/intro.mp4";
+import domainVideo from "/videos/domain-dataset.mp4";
 
 export default function OnboardingModal({
   onFinish,
@@ -9,17 +11,17 @@ export default function OnboardingModal({
   onFinish: () => void;
 }) {
   const [step, setStep] = useState(0);
-  const navigate = useNavigate(); // 👈 inisialisasi
+  const navigate = useNavigate();
 
   const slides = [
     {
       title: "Welcome to ConvoInsight",
-      video: "/videos/intro.mp4",
+      video: introVideo,
       text: "ConvoInsight is an AI-powered Business Intelligence assistant. You can ask questions about your business data, and ConvoInsight will respond with insights, graphs, and automated analysis.",
     },
     {
       title: "Starting from Domain and Dataset",
-      video: "/videos/domain-dataset.mp4",
+      video: domainVideo,
       text: "Get started by creating a domain, uploading your dataset, and let ConvoInsight help you understand your business performance in a smarter way.",
     },
   ];

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDashboardSetting } from "../hooks/useDashboardSettings";
 import toast from "react-hot-toast";
 import { NavLink, useParams, useNavigate } from "react-router-dom";
@@ -17,6 +17,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { DragEndEvent } from "@dnd-kit/core";
+import DashboardSettingTour from "../components/OnboardingComponents/DashboardSettingTour";
+import { auth, db } from "../utils/firebaseSetup";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 function SortableItem({
   id,
@@ -85,11 +88,36 @@ export default function DashboardSettingPage() {
     name: string;
   } | null>(null);
 
-  React.useEffect(() => {
-    setItems(group.map((g) => g.id));
-  }, [group]);
+  const [showTour, setShowTour] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor));
+
+  useEffect(() => setItems(group.map((g) => g.id)), [group]);
+
+  useEffect(() => {
+    const checkTour = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return;
+      const data = snap.data();
+
+      if (data.hasSeenDashboardTour && !data.hasSeenDashboardSettingTour) {
+        setTimeout(() => setShowTour(true), 600);
+      }
+    };
+    checkTour();
+  }, []);
+
+  const handleFinishTour = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, { hasSeenDashboardSettingTour: true });
+    setShowTour(false);
+    toast.success("✅ Step 7 Complete! Continue manually by clicking Manage.");
+  };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -147,19 +175,21 @@ export default function DashboardSettingPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="mis. Program Summary, Trend Daily, Daily Transaction Achievement"
-          className="w-full rounded border border-[#3a3b42] bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          className="dashboard-group-name w-full rounded border border-[#3a3b42] bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <button
           type="submit"
           disabled={!uid}
-          className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50"
+          className="dashboard-create-btn px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50"
         >
           Create Group
         </button>
       </form>
 
       <section className="bg-[#2A2B32] p-4 rounded-lg">
-        <h2 className="text-sm text-gray-300 mb-3">Current Group Dashboard</h2>
+        <h2 className="dashboard-group-list text-sm text-gray-300 mb-3">
+          Current Group Dashboard
+        </h2>
         {group.length === 0 ? (
           <p className="text-gray-400 text-sm">There is no group yet</p>
         ) : (
@@ -198,36 +228,7 @@ export default function DashboardSettingPage() {
         )}
       </section>
 
-      {/* <section className="bg-[#2A2B32] p-4 rounded-lg space-y-4">
-        <h3 className="text-white font-medium">Builtin KPI Picker</h3>
-
-        <div className="flex gap-3 items-center">
-          <button
-            onClick={() => setActive(!active)}
-            className={classNames(
-              "px-3 py-2 rounded transition",
-              active
-                ? "bg-indigo-600 text-white"
-                : "bg-[#2A2B32] text-gray-200 hover:bg-[#343541]"
-            )}
-          >
-            {active ? "Active" : "Inactive"}
-          </button>
-
-          <select
-            value={selectedBuiltin}
-            onChange={(e) => setSelectedBuiltin(e.target.value)}
-            className="w-full rounded bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white"
-          >
-            <option value="">Select KPI</option>
-            {BUILTIN_KPIS.map((kpi) => (
-              <option key={kpi.key} value={kpi.key}>
-                {kpi.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </section> */}
+      {showTour && <DashboardSettingTour onFinish={handleFinishTour} />}
 
       {groupToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

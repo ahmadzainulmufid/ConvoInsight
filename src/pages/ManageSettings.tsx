@@ -24,9 +24,10 @@ import {
   reorderDashboardItems,
 } from "../service/dashboardStore";
 
-import { auth } from "../utils/firebaseSetup";
-
+import { auth, db } from "../utils/firebaseSetup";
 import { addNotification } from "../service/notificationStore";
+import ManageSettingsTour from "../components/OnboardingComponents/ManageSettingsTour";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 type DatasetMeta = {
   id: string;
@@ -296,6 +297,35 @@ export default function ManageSettings() {
       setIsLoadingItems(false);
     })();
   }, [items, domainDocId]);
+
+  const [showTour, setShowTour] = useState(false);
+
+  // 🧭 check onboarding flag
+  useEffect(() => {
+    const checkTour = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return;
+      const data = snap.data();
+
+      // ✅ tampilkan ManageSettingsTour jika DashboardSettingTour sudah selesai tapi ManageSettingsTour belum
+      if (data.hasSeenDashboardSettingTour && !data.hasSeenManageSettingsTour) {
+        setTimeout(() => setShowTour(true), 500);
+      }
+    };
+    checkTour();
+  }, []);
+
+  // ✅ Fungsi untuk menyelesaikan tour
+  const handleFinishTour = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, { hasSeenManageSettingsTour: true });
+    setShowTour(false);
+  };
 
   // execute prompt
   const handleExecutePrompt = async () => {
@@ -753,6 +783,8 @@ export default function ManageSettings() {
             </div>
           </motion.div>
         )}
+
+        {showTour && <ManageSettingsTour onFinish={handleFinishTour} />}
 
         <AnimatePresence>
           {viewingItem && (

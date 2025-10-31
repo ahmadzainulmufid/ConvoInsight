@@ -15,13 +15,7 @@ import {
 import { addNotification } from "../service/notificationStore";
 import DatasetTour from "../components/OnboardingComponents/DatasetTour";
 import { db } from "../utils/firebaseSetup";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  updateDoc,
-} from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuthUser } from "../utils/firebaseSetup";
 
 type Props = { userName: string };
@@ -189,27 +183,11 @@ const DatasetsPage: React.FC<Props> = () => {
       if (!snap.exists()) return;
       const data = snap.data();
 
-      // cek apakah user masih baru (belum ada domain/chat/dataset/dashboard)
-      const domainSnap = await getDocs(
-        collection(db, "users", user.uid, "domains")
-      );
-      const chatSnap = await getDocs(
-        collection(db, "users", user.uid, "chats")
-      );
-      const dashboardSnap = await getDocs(
-        collection(db, "users", user.uid, "dashboards")
-      );
-      const datasetSnap = await getDocs(
-        collection(db, "users", user.uid, "datasets")
-      );
-
-      const isNewUser =
-        domainSnap.empty &&
-        chatSnap.empty &&
-        dashboardSnap.empty &&
-        datasetSnap.empty;
-
-      if (!data.hasSeenDatasetTour && isNewUser && items.length === 0) {
+      if (
+        data.hasSeenHomeTour &&
+        !data.hasSeenDatasetTour &&
+        items.length === 0
+      ) {
         setShowTour(true);
       }
     };

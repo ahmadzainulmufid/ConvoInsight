@@ -133,8 +133,11 @@ export default function HomeTour({ onFinish }: { onFinish: () => void }) {
         }),
         badge: (base) => ({ ...base, backgroundColor: "#6366F1" }),
       }}
+      showCloseButton={false}
+      showDots={true}
+      showNavigation={true}
       disableInteraction
-      disableKeyboardNavigation={["esc"]} // 🔹 hapus tombol X
+      disableKeyboardNavigation={["esc"]}
       components={{
         // custom navigasi (Back / Next)
         Navigation: ({ currentStep, steps, setCurrentStep, setIsOpen }) => (

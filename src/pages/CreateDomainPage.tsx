@@ -94,6 +94,7 @@ export default function CreateDomainPage() {
     const res = await addDomain(name);
     if (res.ok) {
       toast.success("Domain added");
+      setTimeout(() => navigate("/configuser"), 1000);
       await addNotification(
         "domain",
         "New Domain Created",

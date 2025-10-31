@@ -91,29 +91,29 @@ export default function ConfigurationUserPage() {
       if (!snap.exists()) return;
       const data = snap.data();
 
-      // ambil semua koleksi penting
-      const domainSnap = await getDocs(
-        collection(db, "users", user.uid, "domains")
-      );
-      const chatSnap = await getDocs(
-        collection(db, "users", user.uid, "chats")
-      );
-      const dashboardSnap = await getDocs(
-        collection(db, "users", user.uid, "dashboards")
-      );
-      const datasetSnap = await getDocs(
-        collection(db, "users", user.uid, "datasets")
-      );
+      // // ambil semua koleksi penting
+      // const domainSnap = await getDocs(
+      //   collection(db, "users", user.uid, "domains")
+      // );
+      // const chatSnap = await getDocs(
+      //   collection(db, "users", user.uid, "chats")
+      // );
+      // const dashboardSnap = await getDocs(
+      //   collection(db, "users", user.uid, "dashboards")
+      // );
+      // const datasetSnap = await getDocs(
+      //   collection(db, "users", user.uid, "datasets")
+      // );
 
-      // user benar-benar baru kalau belum punya data apa pun
-      const isNewUser =
-        domainSnap.empty &&
-        chatSnap.empty &&
-        dashboardSnap.empty &&
-        datasetSnap.empty;
+      // // user benar-benar baru kalau belum punya data apa pun
+      // const isNewUser =
+      //   domainSnap.empty &&
+      //   chatSnap.empty &&
+      //   dashboardSnap.empty &&
+      //   datasetSnap.empty;
 
       // tampilkan hint hanya kalau belum pernah lihat dan masih user baru
-      if (!data.hasSeenConfigHint && isNewUser) {
+      if (!data.hasSeenConfigHint) {
         setShowHint(true);
       }
     };
@@ -214,8 +214,17 @@ export default function ConfigurationUserPage() {
 
   useEffect(() => {
     if (!authLoading && userId) {
-      fetchHistory();
-      fetchInstructions();
+      // 🟢 Skip loading history kalau user baru
+      const checkIfNewUser = async () => {
+        const snap = await getDocs(collection(db, "users", userId, "domains"));
+        if (snap.empty) {
+          setHistory([]); // kosong aja tanpa loading
+        } else {
+          fetchHistory();
+        }
+        fetchInstructions();
+      };
+      void checkIfNewUser();
     }
   }, [authLoading, userId, fetchHistory, fetchInstructions]);
 
