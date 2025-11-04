@@ -143,18 +143,46 @@ export default function ConfigurationUserPage() {
 
   useEffect(() => {
     (async () => {
+      const tryFetch = async (url: string) => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed ${url}`);
+        return res.json();
+      };
+
+      let provs: string[] = [];
       try {
-        const res = await fetch(`${API_BASE}/litellm/models`);
-        if (!res.ok) throw new Error("Failed to fetch providers");
-        const data = await res.json();
-        const groups = data.groups ?? {};
-        setProviderList(Object.keys(groups));
-      } catch (e) {
-        console.error(e);
+        const a = await tryFetch(`${API_BASE}/litellm/providers`);
+        provs = a?.providers ?? [];
+      } catch (err) {
+        console.debug("registry fallback #1 (/litellm/providers) failed:", err);
+      }
+
+      if (!provs?.length) {
+        try {
+          const b = await tryFetch(`${API_BASE}/llm/registry`);
+          provs = b?.providers ?? Object.keys(b?.groups ?? {});
+        } catch (err) {
+          console.debug("registry fallback #2 (/llm/registry) failed:", err);
+        }
+      }
+
+      if (!provs?.length) {
+        try {
+          const c = await tryFetch(`${API_BASE}/litellm/models`);
+          provs = Object.keys(c?.groups ?? {});
+        } catch (err) {
+          console.debug("registry fallback #3 (/litellm/models) failed:", err);
+        }
+      }
+
+      if (!provs?.length) {
         toast.error("Failed to load provider list");
+      } else {
+        setProviderList([...new Set(provs)].sort());
       }
     })();
   }, []);
+
 
   // --- Fetch History ---
   const fetchHistory = useCallback(async () => {
