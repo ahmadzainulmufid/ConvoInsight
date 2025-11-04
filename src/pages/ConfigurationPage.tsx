@@ -83,45 +83,61 @@ export default function ConfigurationUserPage() {
     }
   }, [instruction]);
 
-  // ✅ Cek apakah user baru (tidak punya domain/chat/dataset/dashboard)
   useEffect(() => {
-    const checkTourStatus = async () => {
-      if (!user) return;
+    if (authLoading || !user) return;
 
+    (async () => {
       const userRef = doc(db, "users", user.uid);
       const snap = await getDoc(userRef);
       if (!snap.exists()) return;
       const data = snap.data();
 
-      // Ambil semua koleksi penting
-      const domainSnap = await getDocs(
-        collection(db, "users", user.uid, "domains")
-      );
-      const chatSnap = await getDocs(
-        collection(db, "users", user.uid, "chats")
-      );
-      const dashboardSnap = await getDocs(
-        collection(db, "users", user.uid, "dashboards")
-      );
-      const datasetSnap = await getDocs(
-        collection(db, "users", user.uid, "datasets")
-      );
-
-      // User benar-benar baru kalau semua koleksi kosong
-      const isNewUser =
-        domainSnap.empty &&
-        chatSnap.empty &&
-        dashboardSnap.empty &&
-        datasetSnap.empty;
-
-      // Hanya tampilkan tour kalau user baru dan belum pernah lihat
-      if (isNewUser && !data.hasSeenConfigTour) {
-        setShowTour(true);
+      // ✅ Tampilkan Step-5 jika user sudah selesai Step-4, dan belum pernah lihat Step-5
+      if (data.hasSeenDatasetTour && !data.hasSeenConfigTour) {
+        setTimeout(() => setShowTour(true), 500); // kecilkan/jemput UX transisi
       }
-    };
+    })();
+  }, [authLoading, user]);
 
-    void checkTourStatus();
-  }, [user]);
+  // // ✅ Cek apakah user baru (tidak punya domain/chat/dataset/dashboard)
+  // useEffect(() => {
+  //   const checkTourStatus = async () => {
+  //     if (!user) return;
+
+  //     const userRef = doc(db, "users", user.uid);
+  //     const snap = await getDoc(userRef);
+  //     if (!snap.exists()) return;
+  //     const data = snap.data();
+
+  //     // Ambil semua koleksi penting
+  //     const domainSnap = await getDocs(
+  //       collection(db, "users", user.uid, "domains")
+  //     );
+  //     const chatSnap = await getDocs(
+  //       collection(db, "users", user.uid, "chats")
+  //     );
+  //     const dashboardSnap = await getDocs(
+  //       collection(db, "users", user.uid, "dashboards")
+  //     );
+  //     const datasetSnap = await getDocs(
+  //       collection(db, "users", user.uid, "datasets")
+  //     );
+
+  //     // User benar-benar baru kalau semua koleksi kosong
+  //     const isNewUser =
+  //       domainSnap.empty &&
+  //       chatSnap.empty &&
+  //       dashboardSnap.empty &&
+  //       datasetSnap.empty;
+
+  //     // Hanya tampilkan tour kalau user baru dan belum pernah lihat
+  //     if (isNewUser && !data.hasSeenConfigTour) {
+  //       setShowTour(true);
+  //     }
+  //   };
+
+  //   void checkTourStatus();
+  // }, [user]);
 
   // 🔹 Simpan / Update instruction
   const handleSaveOrUpdate = async () => {

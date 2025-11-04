@@ -7,10 +7,12 @@ import { getDomainDocId, fetchMessagesOnce } from "../service/chatStore";
 import { useDashboardSetting } from "../hooks/useDashboardSettings";
 import { cleanHtmlResponse } from "../utils/cleanHtmlResponse";
 import ManageKpiOutput from "../components/ManageComponents/ManageKpiOutput";
-import { auth } from "../utils/firebaseSetup";
+import { auth, db } from "../utils/firebaseSetup";
 import { fetchChartHtml } from "../utils/fetchChart";
 
 import { listDashboardItemsOnce } from "../service/dashboardStore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import DashboardTour from "../components/OnboardingComponents/DashboardTour";
 
 type ExecutionResult = { text: string; chartHtml?: string };
 
@@ -144,6 +146,33 @@ export default function DashboardPage() {
     loadAll();
   }, [domainDocId, group, reloadKey]);
 
+  const [showTour, setShowTour] = useState(false);
+
+  // 🧭 check onboarding step
+  useEffect(() => {
+    const checkTour = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return;
+      const data = snap.data();
+
+      if (data.hasSeenChatTour && !data.hasSeenDashboardTour) {
+        setTimeout(() => setShowTour(true), 500);
+      }
+    };
+    checkTour();
+  }, []);
+
+  const handleFinishTour = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, { hasSeenDashboardTour: true }); // flag jadi true
+    setShowTour(false);
+  };
+
   const handleDashboardSettings = () => {
     navigate(`/domain/${domain}/dashboard/dashboardSetting`);
   };
@@ -159,9 +188,9 @@ export default function DashboardPage() {
         <h2 className="text-2xl font-bold mb-6">Dashboard {domain}</h2>
 
         {loading ? (
-          <p className="text-gray-400">Loading dashboard...</p>
-        ) : group.length === 0 ? (
           <p className="text-gray-400">No dashboard groups yet.</p>
+        ) : group.length === 0 ? (
+          <p className="text-gray-400">Loading Dashboard...</p>
         ) : (
           group.map((g) => {
             const items = hydratedItems[g.id] ?? [];
@@ -228,6 +257,8 @@ export default function DashboardPage() {
             );
           })
         )}
+
+        {showTour && <DashboardTour onFinish={handleFinishTour} />}
 
         <button
           onClick={reloadDashboard}

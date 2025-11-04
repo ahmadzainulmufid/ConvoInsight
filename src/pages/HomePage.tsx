@@ -12,7 +12,7 @@ import {
 import { useAuthUser } from "../utils/firebaseSetup";
 import { useDomains } from "../hooks/useDomains";
 import { useChatHistory } from "../hooks/useChatHistory";
-import HomeTour from "../components/OnboardingComponents/HomeTour"; // 🔹 komponen tour baru
+import HomeTour from "../components/OnboardingComponents/HomeTour";
 
 export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -51,15 +51,12 @@ export default function HomePage() {
         dashboardSnap.empty &&
         datasetSnap.empty;
 
-      // 🔹 Step 1 (Onboarding) → muncul kalau user baru & belum pernah lihat onboarding
+      // 🔹 Ganti blok penentuan step
       const needOnboarding = !data.hasSeenOnboarding && isNewUser;
 
-      // 🔹 Step 3 (HomeTour) → muncul kalau user baru, sudah lewat config (step 2), tapi belum pernah lihat HomeTour
+      // 🔹 Ubah jadi seperti ini:
       const needHomeTour =
-        data.hasSeenConfigHint &&
-        !data.hasSeenHomeTour &&
-        isNewUser &&
-        !needOnboarding;
+        data.hasSeenConfigHint && !data.hasSeenHomeTour && !needOnboarding;
 
       if (needOnboarding) {
         setShowOnboarding(true);
