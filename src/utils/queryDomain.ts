@@ -34,6 +34,10 @@ export async function queryDomain({
   signal,
   dataset,
   includeInsight,
+  provider,
+  model,
+  apiKey,
+  userId,
 }: {
   apiBase: string;
   domain: string;
@@ -42,6 +46,10 @@ export async function queryDomain({
   signal?: AbortSignal;
   dataset?: string[];
   includeInsight?: boolean;
+  provider?: string;
+  model?: string;
+  apiKey?: string | null;
+  userId?: string | null;
 }): Promise<DomainQueryResp> {
   const r = await fetch(`${apiBase}/query`, {
     method: "POST",
@@ -52,6 +60,10 @@ export async function queryDomain({
       session_id: sessionId ?? undefined,
       dataset: dataset ?? undefined,
       includeInsight: includeInsight ?? true,
+      provider,
+      model,
+      apiKey,
+      userId,
     }),
     signal,
   });

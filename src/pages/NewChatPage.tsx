@@ -58,6 +58,16 @@ type ChartUrlFields = Pick<
   "chart_url" | "diagram_signed_url" | "diagram_public_url"
 >;
 
+type UserConfig = {
+  provider: string;
+  token: string | null; // 'token' adalah encrypted key Anda
+  models: string[];
+  selectedModel: string;
+  verbosity: string;
+  reasoning: string;
+  seed: number;
+};
+
 /** Main Chat Page **/
 export default function NewChatPage() {
   const { section: domain } = useParams();
@@ -98,6 +108,8 @@ export default function NewChatPage() {
   const { user } = useAuthUser();
   const [showTour, setShowTour] = useState(false);
 
+  const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
+
   const stopAll = () => {
     controller?.abort();
     setIsGenerating(false);
@@ -109,6 +121,22 @@ export default function NewChatPage() {
     thinkingTimeoutRef.current.forEach(clearTimeout);
     setCurrentThinkingSteps([]);
   };
+
+  useEffect(() => {
+    const storedConfig = localStorage.getItem("user_config");
+    if (storedConfig) {
+      setUserConfig(JSON.parse(storedConfig));
+    } else {
+      // Jika config tidak ada, beri tahu user
+      toast.error(
+        "AI configuration not found. Please save your API Key on the Configuration page.",
+        {
+          duration: 6000,
+          id: "config-error",
+        }
+      ); // Opsional: paksa user kembali ke halaman konfigurasi // navigate("/configuser");
+    }
+  }, []);
 
   const pickChartFetchUrl = (
     apiBase: string,
@@ -367,6 +395,11 @@ export default function NewChatPage() {
         sessionId,
         signal: abortCtrl.signal,
         dataset: selectedDatasets.length > 0 ? selectedDatasets : undefined,
+
+        provider: userConfig?.provider,
+        model: userConfig?.selectedModel,
+        apiKey: userConfig?.token,
+        userId: user?.uid,
       });
 
       // Hilangkan filler seperti "Of course, ..."
@@ -796,6 +829,11 @@ export default function NewChatPage() {
                                           selectedDatasets.length > 0
                                             ? selectedDatasets
                                             : undefined,
+
+                                        provider: userConfig?.provider,
+                                        model: userConfig?.selectedModel,
+                                        apiKey: userConfig?.token,
+                                        userId: user?.uid,
                                       });
 
                                       const sanitizeExplainer = (s?: string) =>

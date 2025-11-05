@@ -33,6 +33,10 @@ type ProviderItem = {
   models: string[];
   is_active?: boolean;
   updated_at?: string;
+  selectedModel?: string;
+  verbosity?: string;
+  reasoning?: string;
+  seed?: number;
 };
 
 type InstructionItem = {
@@ -254,15 +258,6 @@ export default function ConfigurationUserPage() {
 
   useEffect(() => {
     if (!authLoading && userId) {
-      // 🟢 ADDED: Load active config from localStorage
-      const storedConfig = localStorage.getItem("user_config");
-      if (storedConfig) {
-        const config = JSON.parse(storedConfig);
-        setActiveConfig(config);
-        setProvider(config.provider); // Set provider dropdown to active
-        setIsConfigSaved(true); // 🟢 ADDED: Hide form if already configured
-      }
-
       // 🟢 Skip loading history kalau user baru
       const checkIfNewUser = async () => {
         const snap = await getDocs(collection(db, "users", userId, "domains"));
@@ -276,6 +271,70 @@ export default function ConfigurationUserPage() {
       void checkIfNewUser();
     }
   }, [authLoading, userId, fetchHistory, fetchInstructions]);
+
+  // 🟢 TAMBAHKAN: useEffect baru untuk bereaksi terhadap perubahan history
+  useEffect(() => {
+    // Cek apakah data history sudah terisi
+    if (history.length > 0) {
+      // Cari config yang aktif dari database
+      const activeFromDB = history.find((h) => h.is_active && h.selectedModel);
+
+      if (activeFromDB) {
+        // Jika ADA config aktif, isi state form
+        setProvider(activeFromDB.provider);
+        setSelectedModel(activeFromDB.selectedModel || "");
+        setVerbosity(activeFromDB.verbosity || "medium");
+        setReasoning(activeFromDB.reasoning || "medium");
+        setSeed(activeFromDB.seed || 0);
+
+        // Atur UI
+        setIsConfigSaved(true); // Sembunyikan form, nonaktifkan dropdown
+
+        // Cek localStorage (cache)
+        const storedConfig = localStorage.getItem("user_config");
+        if (storedConfig) {
+          const config: UserConfig = JSON.parse(storedConfig);
+          // Sync state activeConfig jika cache = data DB
+          if (config.provider === activeFromDB.provider) {
+            setActiveConfig(config);
+          } else {
+            // Jika cache beda (misal user ganti di browser lain),
+            // Hapus cache & update state
+            localStorage.removeItem("user_config");
+
+            // 🟡 MODIFIKASI: Ganti baris ini
+            // setActiveConfig({ ...activeFromDB, token: null });
+            setActiveConfig({
+              provider: activeFromDB.provider,
+              token: null,
+              models: activeFromDB.models,
+              selectedModel: activeFromDB.selectedModel ?? "",
+              verbosity: activeFromDB.verbosity ?? "medium",
+              reasoning: activeFromDB.reasoning ?? "medium",
+              seed: activeFromDB.seed ?? 0,
+            });
+          }
+        } else {
+          // Jika cache tidak ada
+          // 🟡 MODIFIKASI: Ganti baris ini
+          // setActiveConfig({ ...activeFromDB, token: null });
+          setActiveConfig({
+            provider: activeFromDB.provider,
+            token: null,
+            models: activeFromDB.models,
+            selectedModel: activeFromDB.selectedModel ?? "",
+            verbosity: activeFromDB.verbosity ?? "medium",
+            reasoning: activeFromDB.reasoning ?? "medium",
+            seed: activeFromDB.seed ?? 0,
+          });
+        }
+      } else {
+        // Jika TIDAK ADA config aktif dari DB
+        setIsConfigSaved(false); // Tampilkan form
+        setActiveConfig(null); // Tidak ada config aktif
+      }
+    }
+  }, [history]); // Dijalankan setiap kali fetchHistory() selesai
 
   // --- Validate Key ---
   const handleValidate = async () => {
@@ -397,42 +456,65 @@ export default function ConfigurationUserPage() {
   };
 
   // --- Save Config ---
-  const handleSave = () => {
+  // --- Save Config ---
+  const handleSave = async () => {
+    // 🟡 MODIFIKASI: jadikan async
     if (!provider || !validated || !selectedModel) {
       toast.error("Complete all steps first!");
       return;
     }
 
-    // 🟢 ADDED: Check if tempToken exists from validation step
     if (!tempToken) {
       toast.error(
         "Validation token is missing. Please re-validate your API key."
       );
       return;
-    }
+    } // 1. Simpan config lengkap (termasuk token) ke localStorage
 
-    // 🔴 REMOVED: Old way of merging configs
-    // const config = JSON.parse(localStorage.getItem("user_config") || "{}");
-
-    // 🟢 ADDED: Create full config from scratch
-    const newConfig = {
-      // ...config, // 🔴 REMOVED
-      provider, // 🟢 ADDED
-      token: tempToken, // 🟢 ADDED
-      models: models, // 🟢 ADDED (list of all available models)
+    // Ini tetap berguna sebagai cache untuk Halaman LAIN di aplikasi
+    const newConfig: UserConfig = {
+      provider,
+      token: tempToken,
+      models: models,
       selectedModel,
       verbosity,
       reasoning,
       seed,
     };
     localStorage.setItem("user_config", JSON.stringify(newConfig));
-    setActiveConfig(newConfig);
-    setIsConfigSaved(true);
 
-    toast.success("Configuration saved");
+    // 2. Kirim preferensi ke backend untuk disimpan di database
+    try {
+      const res = await fetch(`${API_BASE}/set-active-config`, {
+        // 🟡 MODIFIKASI: Endpoint baru
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          provider,
+          selectedModel,
+          verbosity,
+          reasoning,
+          seed,
+        }),
+      });
 
-    // 🟢 ADDED: Fetch history only AFTER saving config
-    fetchHistory();
+      const data = await res.json();
+      if (!data.saved) {
+        throw new Error(data.error || "Failed to save config to backend");
+      }
+
+      toast.success("Configuration saved");
+
+      // 3. Panggil fetchHistory. Ini akan memicu useEffect untuk update UI
+      fetchHistory();
+      // 🔴 HAPUS baris-baris ini, biarkan useEffect yg menanganinya // setActiveConfig(newConfig); // setIsConfigSaved(true);
+    } catch (e) {
+      console.error(e);
+      const errorMessage =
+        e instanceof Error ? e.message : "An unknown error occurred";
+      toast.error(`Failed to save configuration: ${errorMessage}`);
+    }
   };
 
   const clearActiveConfig = () => {
@@ -755,14 +837,12 @@ export default function ConfigurationUserPage() {
               <div className="space-y-2">
                 {/* 🟡 MODIFIED: History mapping logic */}
                 {history.map((item) => {
-                  // Cek apakah item history ini adalah config yang sedang aktif
-                  const isActive =
-                    activeConfig && activeConfig.provider === item.provider;
+                  // Gunakan flag 'is_active' dari database
+                  const isActive = !!item.is_active; // Tampilkan model yg dipilih jika ada, jika tidak, baru fallback
 
-                  // Tampilkan model yang dipilih jika aktif, jika tidak tampilkan 2 model pertama
-                  const displayModelText = isActive
-                    ? activeConfig.selectedModel // 👈 Tampilkan model yang DIPILIH
-                    : item.models?.slice(0, 2).join(", ") ?? "-"; // 👈 Fallback
+                  const displayModelText = item.selectedModel
+                    ? item.selectedModel // 👈 Ini sumber kebenaran yg baru
+                    : item.models?.slice(0, 2).join(", ") ?? "-";
 
                   return (
                     <div
