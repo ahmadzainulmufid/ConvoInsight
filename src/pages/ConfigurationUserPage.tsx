@@ -41,6 +41,16 @@ type InstructionItem = {
   is_active: boolean;
 };
 
+type UserConfig = {
+  provider: string;
+  token: string | null;
+  models: string[];
+  selectedModel: string;
+  verbosity: string;
+  reasoning: string;
+  seed: number;
+};
+
 const API_BASE =
   import.meta.env.VITE_API_URL ||
   "https://convoinsight-be-flask-32684464346.asia-southeast2.run.app";
@@ -79,6 +89,9 @@ export default function ConfigurationUserPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [providerList, setProviderList] = useState<string[]>([]);
+  const [tempToken, setTempToken] = useState<string | null>(null);
+  const [activeConfig, setActiveConfig] = useState<UserConfig | null>(null);
+  const [isConfigSaved, setIsConfigSaved] = useState(false);
 
   // 🟣 bagian atas tetap seperti ini
   const [showHint, setShowHint] = useState(false);
@@ -183,7 +196,6 @@ export default function ConfigurationUserPage() {
     })();
   }, []);
 
-
   // --- Fetch History ---
   const fetchHistory = useCallback(async () => {
     if (!userId) return;
@@ -242,6 +254,15 @@ export default function ConfigurationUserPage() {
 
   useEffect(() => {
     if (!authLoading && userId) {
+      // 🟢 ADDED: Load active config from localStorage
+      const storedConfig = localStorage.getItem("user_config");
+      if (storedConfig) {
+        const config = JSON.parse(storedConfig);
+        setActiveConfig(config);
+        setProvider(config.provider); // Set provider dropdown to active
+        setIsConfigSaved(true); // 🟢 ADDED: Hide form if already configured
+      }
+
       // 🟢 Skip loading history kalau user baru
       const checkIfNewUser = async () => {
         const snap = await getDocs(collection(db, "users", userId, "domains"));
@@ -281,22 +302,27 @@ export default function ConfigurationUserPage() {
         toast.success("API Key valid");
         setValidated(true);
         setModels(data.models ?? []);
-        fetchHistory();
+        if (data.token) {
+          setTempToken(data.token); // 🟢 ADDED: Save token to state
+        }
+        // fetchHistory(); // 🔴 REMOVED: Don't fetch history here
 
-        localStorage.setItem(
-          "user_config",
-          JSON.stringify({
-            provider,
-            token: data.token,
-            models: data.models ?? [],
-          })
-        );
+        // 🔴 REMOVED: Don't save to localStorage here
+        // localStorage.setItem(
+        //   "user_config",
+        //   JSON.stringify({
+        //     provider,
+        //     token: data.token,
+        //     models: data.models ?? [],
+        //   })
+        // );
       } else {
         toast.error(
           `API Key no validation (${data.error ?? data.detail ?? "Unknown"})`
         );
         setValidated(false);
         setModels([]);
+        setTempToken(null); // 🟢 ADDED: Clear token on fail
       }
     } catch (e) {
       console.error(e);
@@ -377,17 +403,48 @@ export default function ConfigurationUserPage() {
       return;
     }
 
-    const config = JSON.parse(localStorage.getItem("user_config") || "{}");
+    // 🟢 ADDED: Check if tempToken exists from validation step
+    if (!tempToken) {
+      toast.error(
+        "Validation token is missing. Please re-validate your API key."
+      );
+      return;
+    }
+
+    // 🔴 REMOVED: Old way of merging configs
+    // const config = JSON.parse(localStorage.getItem("user_config") || "{}");
+
+    // 🟢 ADDED: Create full config from scratch
     const newConfig = {
-      ...config,
+      // ...config, // 🔴 REMOVED
+      provider, // 🟢 ADDED
+      token: tempToken, // 🟢 ADDED
+      models: models, // 🟢 ADDED (list of all available models)
       selectedModel,
       verbosity,
       reasoning,
       seed,
     };
     localStorage.setItem("user_config", JSON.stringify(newConfig));
+    setActiveConfig(newConfig);
+    setIsConfigSaved(true);
 
     toast.success("Configuration saved");
+
+    // 🟢 ADDED: Fetch history only AFTER saving config
+    fetchHistory();
+  };
+
+  const clearActiveConfig = () => {
+    localStorage.removeItem("user_config");
+    setActiveConfig(null);
+    setIsConfigSaved(false);
+    setProvider("");
+    setApiKey("");
+    setValidated(false);
+    setModels([]);
+    setSelectedModel("");
+    setTempToken(null);
   };
 
   const handleUpdate = (prov: string) => {
@@ -419,6 +476,12 @@ export default function ConfigurationUserPage() {
         toast.success(`API Key for ${updateProvider} updated`);
         setShowUpdateModal(false);
         fetchHistory();
+
+        // 🟢 ADDED: If user updates the *active* key, force re-validation
+        if (activeConfig && activeConfig.provider === updateProvider) {
+          clearActiveConfig();
+          toast.success("Active config cleared. Please re-validate.");
+        }
       } else {
         toast.error(data.error ?? "Failed to update API key");
       }
@@ -449,6 +512,12 @@ export default function ConfigurationUserPage() {
       if (data.deleted) {
         toast.success(`Provider ${prov} successfully deleted`);
         setHistory((prev) => prev.filter((h) => h.provider !== prov));
+
+        // 🟢 ADDED: If user deletes the *active* key, clear config
+        if (activeConfig && activeConfig.provider === prov) {
+          clearActiveConfig();
+          toast.success("Active config cleared.");
+        }
       } else {
         toast.error(data.error ?? "Failed to delete");
       }
@@ -531,14 +600,17 @@ export default function ConfigurationUserPage() {
               </label>
               <select
                 value={provider}
+                disabled={isConfigSaved}
                 onChange={(e) => {
                   setProvider(e.target.value as ProviderKey);
                   setApiKey("");
                   setValidated(false);
                   setModels([]);
                   setSelectedModel("");
+                  setTempToken(null);
+                  setIsConfigSaved(false);
                 }}
-                className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+                className="w-full p-2 rounded bg-gray-800 border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">-- Choose --</option>
                 {providerList.map((prov) => (
@@ -550,118 +622,123 @@ export default function ConfigurationUserPage() {
             </div>
 
             {/* API Key Input */}
-            {provider && (
-              <div className="mt-4">
-                <label className="block text-sm font-medium mb-2">
-                  Input API Key
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="password"
-                    placeholder="API Key"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    className="flex-1 p-2 rounded bg-gray-800 border border-gray-700"
-                  />
-                  <button
-                    disabled={loading}
-                    onClick={handleValidate}
-                    className={`px-4 py-2 rounded ${
-                      loading
-                        ? "bg-gray-700 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700"
-                    }`}
-                  >
-                    {loading ? "Validating..." : "Validate"}
-                  </button>
-                </div>
-              </div>
-            )}
+            {!isConfigSaved && (
+              <>
+                {/* API Key Input */}
+                {provider && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium mb-2">
+                      Input API Key
+                    </label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="password"
+                        placeholder="API Key"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        className="flex-1 p-2 rounded bg-gray-800 border border-gray-700"
+                      />
+                      <button
+                        disabled={loading}
+                        onClick={handleValidate}
+                        className={`px-4 py-2 rounded ${
+                          loading
+                            ? "bg-gray-700 cursor-not-allowed"
+                            : "bg-blue-600 hover:bg-blue-700"
+                        }`}
+                      >
+                        {loading ? "Validating..." : "Validate"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-            {/* Model List */}
-            {validated && models.length > 0 && (
-              <div className="mt-4">
-                <label className="block text-sm font-medium mb-2">
-                  Select Model
-                </label>
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className="w-full p-2 rounded bg-gray-800 border border-gray-700"
-                >
-                  <option value="">-- Select Model --</option>
-                  {models.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+                {/* Model List */}
+                {validated && models.length > 0 && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium mb-2">
+                      Select Model
+                    </label>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+                    >
+                      <option value="">-- Select Model --</option>
+                      {models.map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-            {/* Advanced Config */}
-            {selectedModel && (
-              <div className="mt-4 space-y-4">
-                {/* Verbosity */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Verbosity (Tingkat Panjang Jawaban)
-                  </label>
-                  <select
-                    value={verbosity}
-                    onChange={(e) => setVerbosity(e.target.value)}
-                    className="w-full p-2 rounded bg-gray-800 border border-gray-700"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
+                {/* Advanced Config */}
+                {selectedModel && (
+                  <div className="mt-4 space-y-4">
+                    {/* Verbosity */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Verbosity (Tingkat Panjang Jawaban)
+                      </label>
+                      <select
+                        value={verbosity}
+                        onChange={(e) => setVerbosity(e.target.value)}
+                        className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                    </div>
 
-                {/* Reasoning */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Reasoning Effort (Upaya Penalaran)
-                  </label>
-                  <select
-                    value={reasoning}
-                    onChange={(e) => setReasoning(e.target.value)}
-                    className="w-full p-2 rounded bg-gray-800 border border-gray-700"
-                  >
-                    <option value="minimum">Minimum</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
+                    {/* Reasoning */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Reasoning Effort (Upaya Penalaran)
+                      </label>
+                      <select
+                        value={reasoning}
+                        onChange={(e) => setReasoning(e.target.value)}
+                        className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+                      >
+                        <option value="minimum">Minimum</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                    </div>
 
-                {/* Seed */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Seed (Kontrol Randomisasi)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={9999}
-                    placeholder="Misal 42"
-                    value={seed}
-                    onChange={(e) => setSeed(Number(e.target.value))}
-                    className="w-full p-2 rounded bg-gray-800 border border-gray-700"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Usually the value is between 0 and 9999
-                  </p>
-                </div>
+                    {/* Seed */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Seed (Kontrol Randomisasi)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={9999}
+                        placeholder="Misal 42"
+                        value={seed}
+                        onChange={(e) => setSeed(Number(e.target.value))}
+                        className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        Usually the value is between 0 and 9999
+                      </p>
+                    </div>
 
-                {/* Save */}
-                <button
-                  onClick={handleSave}
-                  className="w-full py-2 mt-4 bg-green-600 rounded hover:bg-green-700"
-                >
-                  Save Configuration
-                </button>
-              </div>
+                    {/* Save */}
+                    <button
+                      onClick={handleSave}
+                      className="w-full py-2 mt-4 bg-green-600 rounded hover:bg-green-700"
+                    >
+                      Save Configuration
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -676,33 +753,49 @@ export default function ConfigurationUserPage() {
               </p>
             ) : (
               <div className="space-y-2">
-                {history.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between bg-gray-800 p-3 rounded border border-gray-700"
-                  >
-                    <div>
-                      <p className="font-medium">{item.provider}</p>
-                      <p className="text-xs text-gray-400">
-                        {item.models?.slice(0, 2).join(", ") ?? "-"}
-                      </p>
+                {/* 🟡 MODIFIED: History mapping logic */}
+                {history.map((item) => {
+                  // Cek apakah item history ini adalah config yang sedang aktif
+                  const isActive =
+                    activeConfig && activeConfig.provider === item.provider;
+
+                  // Tampilkan model yang dipilih jika aktif, jika tidak tampilkan 2 model pertama
+                  const displayModelText = isActive
+                    ? activeConfig.selectedModel // 👈 Tampilkan model yang DIPILIH
+                    : item.models?.slice(0, 2).join(", ") ?? "-"; // 👈 Fallback
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between bg-gray-800 p-3 rounded border ${
+                        // Beri highlight jika ini adalah config yg aktif
+                        isActive ? "border-green-500" : "border-gray-700"
+                      }`}
+                    >
+                      <div>
+                        <p className="font-medium">{item.provider}</p>
+                        <p className="text-xs text-gray-400">
+                          {/* Tampilkan model yang benar */}
+                          {displayModelText}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUpdate(item.provider)}
+                          className="px-3 py-1 text-sm bg-yellow-600 rounded hover:bg-yellow-700"
+                        >
+                          Update
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.provider)}
+                          className="px-3 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleUpdate(item.provider)}
-                        className="px-3 py-1 text-sm bg-yellow-600 rounded hover:bg-yellow-700"
-                      >
-                        Update
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.provider)}
-                        className="px-3 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
