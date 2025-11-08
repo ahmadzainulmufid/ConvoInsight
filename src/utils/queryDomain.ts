@@ -6,15 +6,15 @@ export type DomainQueryResp = {
   chart_url?: string | null;
 
   // baru (Supabase / atau signed link lain)
-  diagram_kind?: "charts" | "tables" | string;
+  diagram_kind?: "charts" | "tables" | string | null;
   diagram_signed_url?: string | null;
   diagram_public_url?: string | null;
-  diagram_gs_uri?: string | null; // info tambahan (optional)
+  diagram_gs_uri?: string | null;
 
   execution_time: number;
   insights?: string[];
 
-  // 🧩 Tambahan flag dari backend (opsional)
+  // flags opsional dari backend
   need_router?: boolean;
   need_orchestrator?: boolean;
   need_manipulator?: boolean;
@@ -24,6 +24,24 @@ export type DomainQueryResp = {
 
   plan_explainer?: string;
   need_plan_explainer?: boolean;
+};
+
+type QueryOpts = {
+  apiBase: string;
+  domain: string;
+  prompt: string;
+  sessionId?: string | null;
+  signal?: AbortSignal;
+
+  dataset?: string[] | string;
+  includeInsight?: boolean;
+
+  provider?: string;
+  model?: string;
+  apiKey?: string | null;  // bisa terenkripsi
+  userId?: string | null;
+
+  // pg?: { ... } // kalau nanti mau diterusin ke BE
 };
 
 export async function queryDomain({
@@ -38,37 +56,27 @@ export async function queryDomain({
   model,
   apiKey,
   userId,
-}: {
-  apiBase: string;
-  domain: string;
-  prompt: string;
-  sessionId?: string | null;
-  signal?: AbortSignal;
-  dataset?: string[];
-  includeInsight?: boolean;
-  provider?: string;
-  model?: string;
-  apiKey?: string | null;
-  userId?: string | null;
-}): Promise<DomainQueryResp> {
+}: QueryOpts): Promise<DomainQueryResp> {
+  const body: Record<string, unknown> = {
+    domain,
+    prompt,
+    session_id: sessionId ?? undefined,
+    dataset: dataset ?? undefined,
+    includeInsight: includeInsight ?? true,
+    provider: provider ?? undefined,
+    model: model ?? undefined,
+    // penting: jangan kirim null supaya tidak jadi "apiKey": null
+    apiKey: apiKey ?? undefined,
+    userId: userId ?? undefined,
+  };
+
   const r = await fetch(`${apiBase}/query`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      domain,
-      prompt,
-      session_id: sessionId ?? undefined,
-      dataset: dataset ?? undefined,
-      includeInsight: includeInsight ?? true,
-      provider,
-      model,
-      apiKey,
-      userId,
-    }),
+    body: JSON.stringify(body),
     signal,
   });
 
-  // --- Aman dari error parsing ---
   const raw = await r.json().catch(() => ({}));
   const data = raw as Partial<DomainQueryResp> & { detail?: unknown };
 
@@ -80,12 +88,11 @@ export async function queryDomain({
     throw new Error(msg);
   }
 
-  // --- Normalisasi field biar selalu ada ---
   return {
     session_id: data.session_id ?? "",
     response: data.response ?? "",
     chart_url: data.chart_url ?? null,
-    diagram_kind: data.diagram_kind ?? undefined,
+    diagram_kind: (data.diagram_kind as DomainQueryResp["diagram_kind"]) ?? null,
     diagram_signed_url: data.diagram_signed_url ?? null,
     diagram_public_url: data.diagram_public_url ?? null,
     diagram_gs_uri: data.diagram_gs_uri ?? null,

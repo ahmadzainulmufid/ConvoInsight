@@ -610,23 +610,27 @@ export default function NewChatPage() {
               </div>
             </div>
 
-            <SuggestedQuestions
-              className="chat-suggested-section"
-              onQuestionClick={(q) => {
-                if (!domainDocId) {
-                  toast.loading("Preparing connection...");
-                  setTimeout(() => handleSend(q), 800);
-                } else {
-                  handleSend(q);
-                }
-              }}
-              domain={domain}
-              dataset={
-                selectedDatasets.length > 0
-                  ? selectedDatasets
-                  : availableDatasets
-              }
-            />
+<SuggestedQuestions
+  className="chat-suggested-section"
+  onQuestionClick={(q) => {
+    if (!domainDocId) {
+      toast.loading("Preparing connection...");
+      setTimeout(() => handleSend(q), 800);
+    } else {
+      handleSend(q);
+    }
+  }}
+  domain={domain}
+  dataset={
+    selectedDatasets.length > 0 ? selectedDatasets : availableDatasets
+  }
+  /** NEW: forward manual creds to /suggest */
+  provider={userConfig?.provider}
+  model={userConfig?.selectedModel}
+  apiKey={userConfig?.token}
+  userId={user?.uid ?? null}
+/>
+
           </div>
         </div>
       ) : (

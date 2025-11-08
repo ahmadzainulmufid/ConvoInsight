@@ -1,22 +1,16 @@
-// src/components/ChatComponents/SuggestedQuestions.tsx
-import React, { useEffect, useMemo, useState } from "react";
-import { useAuthUser } from "../../utils/firebaseSetup";
+import React, { useEffect, useState } from "react";
 
 type Props = {
   onQuestionClick: (question: string) => void;
   domain?: string;
   dataset?: string | string[];
   className?: string;
-};
 
-type UserConfig = {
-  provider: string;          // e.g. "GEMINI" | "OPENAI" | ...
-  token: string | null;      // encrypted or plaintext; we pass as-is (BE will decrypt)
-  models: string[];
-  selectedModel: string;     // e.g. "gemini/gemini-2.5-pro"
-  verbosity?: string;
-  reasoning?: string;
-  seed?: number;
+  /** NEW: pass-through creds so /suggest uses the same user key as /query */
+  provider?: string;
+  model?: string;
+  apiKey?: string | null;
+  userId?: string | null;
 };
 
 const defaultQuestions = [
@@ -35,83 +29,75 @@ const SuggestedQuestions: React.FC<Props> = ({
   domain = "general",
   dataset,
   className,
+  provider,
+  model,
+  apiKey,
+  userId,
 }) => {
-  const { user } = useAuthUser();
-
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [error, setError] = useState<
-    | null
-    | "no-dataset"
-    | "api-error"
-    | "config-missing"
-  >(null);
+  const [error, setError] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // read user_config once
-  const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("user_config");
-      if (stored) setUserConfig(JSON.parse(stored));
-      else setUserConfig(null);
-    } catch {
-      setUserConfig(null);
-    }
-  }, []);
-
-  const hasDataset = useMemo(() => {
-    if (Array.isArray(dataset)) return dataset.length > 0;
-    return Boolean(dataset);
-  }, [dataset]);
+  const hasDataset = Array.isArray(dataset)
+    ? dataset.length > 0
+    : Boolean(dataset);
 
   useEffect(() => {
-    // guard: dataset wajib ada
     if (!hasDataset) {
       setSuggestions([]);
       setLoading(false);
       setError("no-dataset");
-      return;
-    }
-
-    // guard: config wajib ada supaya /suggest dapat kredensial
-    if (!userConfig || !userConfig.provider || !userConfig.selectedModel) {
-      setSuggestions([]);
-      setLoading(false);
-      setError("config-missing");
+      setErrorMsg(null);
       return;
     }
 
     let ignore = false;
     setLoading(true);
     setError(null);
+    setErrorMsg(null);
 
     async function fetchSuggestions() {
       try {
-        const body = {
-          domain,
-          dataset,
-          // kirim kredensial dinamis – BE akan decrypt token jika terenkripsi
-          provider: userConfig?.provider,
-          model: userConfig?.selectedModel,
-          apiKey: userConfig?.token ?? undefined,
-          userId: user?.uid ?? undefined,
-        };
+        // Build payload ONLY with defined fields
+        const payload: Record<string, unknown> = { domain, dataset };
+        if (provider) payload.provider = provider;
+        if (model) payload.model = model;
+        if (userId) payload.userId = userId;
+        if (apiKey) payload.apiKey = apiKey;
 
         const res = await fetch(`${API_BASE}/suggest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
-          // biarkan FE kasih pesan ramah
-          console.warn("Fetch /suggest failed:", res.status, await res.text());
-          throw new Error(`HTTP ${res.status}`);
+          // Try to surface BE error details (400s, etc.)
+          try {
+            const j = await res.json();
+            if (!ignore) {
+              setError("api-error");
+              setErrorMsg(
+                typeof j?.detail === "string"
+                  ? j.detail
+                  : "Suggestion service returned an error."
+              );
+              setSuggestions([]);
+            }
+          } catch {
+            if (!ignore) {
+              setError("api-error");
+              setErrorMsg("Suggestion service returned an error.");
+              setSuggestions([]);
+            }
+          }
+          return;
         }
 
         const data = await res.json();
         const sug = (data.suggestions ?? []).filter(
-          (s: unknown) => typeof s === "string" && s.trim().length > 0
+          (s: string) => typeof s === "string" && s.trim().length > 0
         );
 
         if (!ignore && sug.length > 0) {
@@ -123,6 +109,9 @@ const SuggestedQuestions: React.FC<Props> = ({
         console.warn("Failed to fetch suggestions:", err);
         if (!ignore) {
           setError("api-error");
+          setErrorMsg(
+            "Network error while fetching suggestions. Please type your question manually."
+          );
           setSuggestions([]);
         }
       } finally {
@@ -134,7 +123,7 @@ const SuggestedQuestions: React.FC<Props> = ({
     return () => {
       ignore = true;
     };
-  }, [domain, dataset, hasDataset, userConfig, user?.uid]);
+  }, [domain, dataset, hasDataset, provider, model, apiKey, userId]);
 
   return (
     <div
@@ -150,13 +139,10 @@ const SuggestedQuestions: React.FC<Props> = ({
         <div className="text-center text-gray-400 text-sm py-3">
           ⚠️ Please upload the dataset first to display suggested questions.
         </div>
-      ) : error === "config-missing" ? (
-        <div className="text-center text-gray-400 text-sm py-3">
-          ⚠️ AI configuration not found. Save your API key & model on the Configuration page.
-        </div>
       ) : error === "api-error" ? (
         <div className="text-center text-gray-400 text-sm py-3">
-          ⚠️ Suggested questions are having problems. Please type your question manually.
+          ⚠️ Suggested questions are having problems. Please type your question
+          manually{errorMsg ? ` — ${errorMsg}` : ""}.
         </div>
       ) : suggestions.length > 0 ? (
         suggestions.map((q, i) => (
