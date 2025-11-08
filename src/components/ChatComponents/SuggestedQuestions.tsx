@@ -1,23 +1,22 @@
 // src/components/ChatComponents/SuggestedQuestions.tsx
-import React, { useEffect, useState } from "react";
-
-/** Match the shape saved in localStorage on the Configuration page */
-type UserConfig = {
-  provider: string;
-  token: string | null;     // can be plaintext or the encrypted token returned by /validate-key
-  models: string[];
-  selectedModel: string;
-  verbosity?: string;
-  reasoning?: string;
-  seed?: number;
-  userId?: string;          // optional; we’ll include it if present
-};
+import React, { useEffect, useMemo, useState } from "react";
+import { useAuthUser } from "../../utils/firebaseSetup";
 
 type Props = {
   onQuestionClick: (question: string) => void;
   domain?: string;
   dataset?: string | string[];
   className?: string;
+};
+
+type UserConfig = {
+  provider: string;          // e.g. "GEMINI" | "OPENAI" | ...
+  token: string | null;      // encrypted or plaintext; we pass as-is (BE will decrypt)
+  models: string[];
+  selectedModel: string;     // e.g. "gemini/gemini-2.5-pro"
+  verbosity?: string;
+  reasoning?: string;
+  seed?: number;
 };
 
 const defaultQuestions = [
@@ -37,33 +36,48 @@ const SuggestedQuestions: React.FC<Props> = ({
   dataset,
   className,
 }) => {
+  const { user } = useAuthUser();
+
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<
+    | null
+    | "no-dataset"
+    | "api-error"
+    | "config-missing"
+  >(null);
 
-  const hasDataset = Array.isArray(dataset)
-    ? dataset.length > 0
-    : Boolean(dataset);
-
-  /** Safely read the user_config once per mount */
-  const readUserConfig = (): UserConfig | null => {
+  // read user_config once
+  const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
+  useEffect(() => {
     try {
-      const raw = localStorage.getItem("user_config");
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      // tolerate partially saved configs
-      if (!parsed || typeof parsed !== "object") return null;
-      return parsed as UserConfig;
+      const stored = localStorage.getItem("user_config");
+      if (stored) setUserConfig(JSON.parse(stored));
+      else setUserConfig(null);
     } catch {
-      return null;
+      setUserConfig(null);
     }
-  };
+  }, []);
+
+  const hasDataset = useMemo(() => {
+    if (Array.isArray(dataset)) return dataset.length > 0;
+    return Boolean(dataset);
+  }, [dataset]);
 
   useEffect(() => {
+    // guard: dataset wajib ada
     if (!hasDataset) {
       setSuggestions([]);
       setLoading(false);
       setError("no-dataset");
+      return;
+    }
+
+    // guard: config wajib ada supaya /suggest dapat kredensial
+    if (!userConfig || !userConfig.provider || !userConfig.selectedModel) {
+      setSuggestions([]);
+      setLoading(false);
+      setError("config-missing");
       return;
     }
 
@@ -73,14 +87,15 @@ const SuggestedQuestions: React.FC<Props> = ({
 
     async function fetchSuggestions() {
       try {
-        const userConfig = readUserConfig();
-
-        // Build the POST body; include provider/model/apiKey/userId if we have them
-        const body: Record<string, unknown> = { domain, dataset };
-        if (userConfig?.provider) body.provider = userConfig.provider;
-        if (userConfig?.selectedModel) body.model = userConfig.selectedModel;
-        if (userConfig?.token) body.apiKey = userConfig.token; // BE accepts plaintext or its own encrypted token
-        if (userConfig?.userId) body.userId = userConfig.userId;
+        const body = {
+          domain,
+          dataset,
+          // kirim kredensial dinamis – BE akan decrypt token jika terenkripsi
+          provider: userConfig?.provider,
+          model: userConfig?.selectedModel,
+          apiKey: userConfig?.token ?? undefined,
+          userId: user?.uid ?? undefined,
+        };
 
         const res = await fetch(`${API_BASE}/suggest`, {
           method: "POST",
@@ -89,28 +104,19 @@ const SuggestedQuestions: React.FC<Props> = ({
         });
 
         if (!res.ok) {
-          // Try to surface a meaningful error from the BE
-          let detail = "api-error";
-          try {
-            const j = await res.json();
-            // BE uses {detail: "..."} for 4xx; prefer that
-            if (typeof j?.detail === "string") detail = j.detail;
-          } catch {
-            /* noop */
-          }
-          throw new Error(detail);
+          // biarkan FE kasih pesan ramah
+          console.warn("Fetch /suggest failed:", res.status, await res.text());
+          throw new Error(`HTTP ${res.status}`);
         }
 
         const data = await res.json();
-
         const sug = (data.suggestions ?? []).filter(
-          (s: string) => typeof s === "string" && s.trim().length > 0
+          (s: unknown) => typeof s === "string" && s.trim().length > 0
         );
 
         if (!ignore && sug.length > 0) {
           setSuggestions(sug);
         } else if (!ignore) {
-          // fallback defaults if BE gave nothing
           setSuggestions(defaultQuestions);
         }
       } catch (err) {
@@ -128,7 +134,7 @@ const SuggestedQuestions: React.FC<Props> = ({
     return () => {
       ignore = true;
     };
-  }, [domain, dataset, hasDataset]);
+  }, [domain, dataset, hasDataset, userConfig, user?.uid]);
 
   return (
     <div
@@ -137,21 +143,20 @@ const SuggestedQuestions: React.FC<Props> = ({
       {loading ? (
         <>
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-10 rounded-lg bg-gray-700/50 animate-pulse"
-            />
+            <div key={i} className="h-10 rounded-lg bg-gray-700/50 animate-pulse" />
           ))}
         </>
       ) : error === "no-dataset" ? (
         <div className="text-center text-gray-400 text-sm py-3">
           ⚠️ Please upload the dataset first to display suggested questions.
         </div>
+      ) : error === "config-missing" ? (
+        <div className="text-center text-gray-400 text-sm py-3">
+          ⚠️ AI configuration not found. Save your API key & model on the Configuration page.
+        </div>
       ) : error === "api-error" ? (
         <div className="text-center text-gray-400 text-sm py-3">
-          ⚠️ Suggested questions are having problems. Please check your AI
-          configuration (provider, model, API key) on the Configuration page,
-          then try again.
+          ⚠️ Suggested questions are having problems. Please type your question manually.
         </div>
       ) : suggestions.length > 0 ? (
         suggestions.map((q, i) => (
