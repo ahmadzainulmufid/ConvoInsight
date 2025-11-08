@@ -1,4 +1,3 @@
-//src/Pages/NewChatPage.tsx
 import { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { ChatComposer } from "../components/ChatComponents/ChatComposer";
@@ -60,7 +59,7 @@ type ChartUrlFields = Pick<
 
 type UserConfig = {
   provider: string;
-  token: string | null; // 'token' adalah encrypted key Anda
+  token: string | null; // encrypted token; DO NOT send to BE
   models: string[];
   selectedModel: string;
   verbosity: string;
@@ -127,14 +126,10 @@ export default function NewChatPage() {
     if (storedConfig) {
       setUserConfig(JSON.parse(storedConfig));
     } else {
-      // Jika config tidak ada, beri tahu user
       toast.error(
         "AI configuration not found. Please save your API Key on the Configuration page.",
-        {
-          duration: 6000,
-          id: "config-error",
-        }
-      ); // Opsional: paksa user kembali ke halaman konfigurasi // navigate("/configuser");
+        { duration: 6000, id: "config-error" }
+      );
     }
   }, []);
 
@@ -188,7 +183,6 @@ export default function NewChatPage() {
       searchParams.get("gen") === "true";
 
     if (wasGenerating) {
-      // langsung aktifkan sebelum render pertama
       setIsGenerating(true);
       sessionStorage.removeItem("activeChatGenerating");
     }
@@ -213,9 +207,8 @@ export default function NewChatPage() {
       if (!snap.exists()) return;
       const data = snap.data();
 
-      // ✅ Munculkan ChatTour jika user sudah selesai Step-5 dan belum pernah lihat Step-6
       if (data.hasSeenConfigTour && !data.hasSeenChatTour) {
-        setTimeout(() => setShowTour(true), 600); // kasih sedikit delay biar transisi smooth
+        setTimeout(() => setShowTour(true), 600);
       }
     };
 
@@ -230,7 +223,6 @@ export default function NewChatPage() {
       sessionStorage.getItem("activeChatGenerating") === "true" ||
       searchParams.get("gen") === "true";
 
-    // Reset messages ketika user berpindah ke chat baru
     setMessages([]);
     setMessage("");
     setSending(!!continuing);
@@ -322,6 +314,19 @@ export default function NewChatPage() {
 
   /** Handle Send **/
   const handleSend = async (prompt?: string) => {
+    // ✅ Early guard: don't hit BE if user config is missing/incomplete
+    if (
+      !userConfig ||
+      !userConfig.provider ||
+      !userConfig.selectedModel ||
+      !user?.uid
+    ) {
+      toast.error(
+        "AI configuration not found. Please save your API Key on the Configuration page."
+      );
+      return;
+    }
+
     if (controller) {
       controller.abort();
       setController(null);
@@ -387,7 +392,7 @@ export default function NewChatPage() {
         { key: "pending", message: "Drafting plan..." },
       ]);
 
-      // 🔍 Mulai fetch dari backend (async berjalan paralel dengan animasi di atas)
+      // 🔍 Mulai fetch dari backend
       const res = await queryDomain({
         apiBase: API_BASE,
         domain: domain!,
@@ -398,18 +403,17 @@ export default function NewChatPage() {
 
         provider: userConfig?.provider,
         model: userConfig?.selectedModel,
-        apiKey: userConfig?.token,
+        // ❌ do NOT send encrypted token; let BE fetch+decrypt using userId+provider
+        apiKey: undefined, // keep type happy; JSON.stringify will drop it
         userId: user?.uid,
       });
 
-      // Hilangkan filler seperti "Of course, ..."
       const sanitizeExplainer = (s?: string) =>
         (s || "")
           .trim()
           .replace(/^\s*(?:of course[.,]?\s*)+/i, "")
           .trim();
 
-      // Susun urutan langkah final: Explainer → Router → Orchestrator → (Manipulator/Analyzer/Visualizer) → Compiler
       const buildThinkingSteps = (res: DomainQueryResp): ThinkingStep[] => {
         const steps: ThinkingStep[] = [];
         const explainer = sanitizeExplainer(res.plan_explainer);
@@ -447,10 +451,8 @@ export default function NewChatPage() {
         return steps;
       };
 
-      // 🧠 bangun langkah final dari hasil backend
       const steps = buildThinkingSteps(res);
 
-      // tampilkan urutan final
       const stepInterval = 600;
       thinkingTimeoutRef.current.forEach(clearTimeout);
       thinkingTimeoutRef.current = [];
@@ -463,7 +465,6 @@ export default function NewChatPage() {
         thinkingTimeoutRef.current.push(t);
       });
 
-      // Ambil chart kalau ada
       let charts: ChartItem[] | undefined;
       let chartHtml: string | undefined;
 
@@ -484,22 +485,16 @@ export default function NewChatPage() {
         }
       }
 
-      // Bersihkan teks jawaban
       const rawResponse = res.response ?? "(empty)";
       const cleaned = cleanHtmlResponse(rawResponse);
 
-      // 🕒 Tunggu sampai semua langkah selesai tampil
       const totalStepTime = (steps.length + 1) * 600 + 800;
 
       setTimeout(async () => {
-        // Hentikan timeout
         thinkingTimeoutRef.current.forEach(clearTimeout);
         thinkingTimeoutRef.current = [];
-
-        // Kosongkan panel "Analyze..."
         setCurrentThinkingSteps([]);
 
-        // Tampilkan hasil akhir
         const assistantMsg: Msg = {
           role: "assistant",
           chartUrl,
@@ -745,6 +740,19 @@ export default function NewChatPage() {
                                         "Session ID not found"
                                       );
 
+                                    // ✅ Early guard for edit flow as well
+                                    if (
+                                      !userConfig ||
+                                      !userConfig.provider ||
+                                      !userConfig.selectedModel ||
+                                      !user?.uid
+                                    ) {
+                                      toast.error(
+                                        "AI configuration not found. Please save your API Key on the Configuration page."
+                                      );
+                                      return;
+                                    }
+
                                     setEditingIndex(null);
                                     setEditText("");
 
@@ -766,7 +774,6 @@ export default function NewChatPage() {
                                     setInFlight(true);
                                     setEditBusy(true);
 
-                                    // ⬅️ id dokumen pertanyaan lama & id jawaban setelahnya (kalau ada)
                                     const userMsgId = messages[i]?.id;
                                     if (!userMsgId) {
                                       toast.error("User message ID not found.");
@@ -793,7 +800,7 @@ export default function NewChatPage() {
                                         ...updated[i],
                                         content: edited,
                                       };
-                                      if (updated[i + 1]?.role === "assistant")
+                                    if (updated[i + 1]?.role === "assistant")
                                         updated.splice(i + 1, 1);
                                       return updated;
                                     });
@@ -832,7 +839,8 @@ export default function NewChatPage() {
 
                                         provider: userConfig?.provider,
                                         model: userConfig?.selectedModel,
-                                        apiKey: userConfig?.token,
+                                        // ❌ do NOT send encrypted token
+                                        apiKey: undefined,
                                         userId: user?.uid,
                                       });
 
@@ -845,7 +853,6 @@ export default function NewChatPage() {
                                           )
                                           .trim();
 
-                                      // Susun urutan langkah final: Explainer → Router → Orchestrator → (Manipulator/Analyzer/Visualizer) → Compiler
                                       const buildThinkingSteps = (
                                         res: DomainQueryResp
                                       ): ThinkingStep[] => {
@@ -901,10 +908,8 @@ export default function NewChatPage() {
                                         return steps;
                                       };
 
-                                      // 🧠 bangun langkah final dari hasil backend
                                       const steps = buildThinkingSteps(res);
 
-                                      // tampilkan urutan final
                                       const stepInterval = 600;
                                       thinkingTimeoutRef.current.forEach(
                                         clearTimeout
@@ -955,14 +960,12 @@ export default function NewChatPage() {
                                         (steps.length + 1) * stepInterval + 800;
 
                                       setTimeout(async () => {
-                                        // bersih2 thinking
                                         thinkingTimeoutRef.current.forEach(
                                           clearTimeout
                                         );
                                         thinkingTimeoutRef.current = [];
                                         setCurrentThinkingSteps([]);
 
-                                        // 2) Pasang jawaban BARU tepat di bawah pertanyaan (replace if exists)
                                         const newAssistant: Msg = {
                                           role: "assistant",
                                           content: cleaned,
@@ -973,7 +976,6 @@ export default function NewChatPage() {
                                         };
                                         setMessages((prev) => {
                                           const updated = [...prev];
-                                          // selipkan jawaban baru di bawah pertanyaan yang diedit
                                           updated.splice(
                                             i + 1,
                                             0,
@@ -982,9 +984,7 @@ export default function NewChatPage() {
                                           return updated;
                                         });
 
-                                        // 3) Update/Upsert di Firestore:
                                         if (nextAssistantId) {
-                                          // replace dokumen jawaban lama
                                           await updateAssistantMessage(
                                             domainDocId,
                                             nextAssistantId,
@@ -996,7 +996,6 @@ export default function NewChatPage() {
                                             res.diagram_gs_uri ?? null
                                           );
                                         } else {
-                                          // belum ada jawaban → buat satu kali
                                           await saveChatMessage(
                                             domainDocId,
                                             sessionId,

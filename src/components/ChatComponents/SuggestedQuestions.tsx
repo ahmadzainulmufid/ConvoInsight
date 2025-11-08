@@ -1,11 +1,22 @@
-// src/components/ChatComponents/SuggestedQuestions.tsx
 import React, { useEffect, useState } from "react";
+import { useAuthUser } from "../../utils/firebaseSetup";
 
 type Props = {
   onQuestionClick: (question: string) => void;
   domain?: string;
   dataset?: string | string[];
   className?: string;
+};
+
+// Minimal local type for reading saved user config from localStorage
+type UserConfig = {
+  provider: string;
+  token: string | null; // encrypted token saved via /validate-key (DO NOT send to BE)
+  models: string[];
+  selectedModel: string;
+  verbosity?: string;
+  reasoning?: string;
+  seed?: number;
 };
 
 const defaultQuestions = [
@@ -29,17 +40,52 @@ const SuggestedQuestions: React.FC<Props> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
+  const { user } = useAuthUser();
+
   const hasDataset = Array.isArray(dataset)
     ? dataset.length > 0
     : Boolean(dataset);
 
+  // Read user_config once
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user_config");
+      if (raw) {
+        const parsed = JSON.parse(raw) as UserConfig;
+        setUserConfig(parsed);
+      } else {
+        setUserConfig(null);
+      }
+    } catch {
+      setUserConfig(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    // If no dataset selected/available → skip calling BE and show hint
     if (!hasDataset) {
       setSuggestions([]);
       setLoading(false);
       setError("no-dataset");
       return;
     }
+
+    // If no user config or no signed-in user → don't call BE
+    if (
+      !userConfig ||
+      !userConfig.provider ||
+      !userConfig.selectedModel ||
+      !user?.uid
+    ) {
+      setSuggestions([]);
+      setLoading(false);
+      setError("no-config");
+      return;
+    }
+
+    // From here userConfig is guaranteed by the guards above
+    const uc = userConfig!;
 
     let ignore = false;
     setLoading(true);
@@ -52,7 +98,14 @@ const SuggestedQuestions: React.FC<Props> = ({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ domain, dataset }),
+          // ✅ DO NOT send encrypted token; let BE retrieve & decrypt using userId+provider
+          body: JSON.stringify({
+            domain,
+            dataset,
+            provider: uc.provider,
+            model: uc.selectedModel,
+            userId: user?.uid,
+          }),
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -83,7 +136,7 @@ const SuggestedQuestions: React.FC<Props> = ({
     return () => {
       ignore = true;
     };
-  }, [domain, dataset, hasDataset]);
+  }, [domain, dataset, hasDataset, userConfig, user?.uid]);
 
   return (
     <div
@@ -101,6 +154,11 @@ const SuggestedQuestions: React.FC<Props> = ({
       ) : error === "no-dataset" ? (
         <div className="text-center text-gray-400 text-sm py-3">
           ⚠️ Please upload the dataset first to display suggested questions.
+        </div>
+      ) : error === "no-config" ? (
+        <div className="text-center text-gray-400 text-sm py-3">
+          ⚠️ AI configuration not found. Please save your API Key on the
+          Configuration page to enable suggestions.
         </div>
       ) : error === "api-error" ? (
         <div className="text-center text-gray-400 text-sm py-3">
