@@ -6,7 +6,7 @@ type Props = {
   dataset?: string | string[];
   className?: string;
 
-  /** NEW: pass-through creds so /suggest uses the same user key as /query */
+  /** NEW: forward manual creds to /suggest */
   provider?: string;
   model?: string;
   apiKey?: string | null;
@@ -37,7 +37,6 @@ const SuggestedQuestions: React.FC<Props> = ({
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const hasDataset = Array.isArray(dataset)
     ? dataset.length > 0
@@ -48,70 +47,66 @@ const SuggestedQuestions: React.FC<Props> = ({
       setSuggestions([]);
       setLoading(false);
       setError("no-dataset");
-      setErrorMsg(null);
       return;
     }
 
     let ignore = false;
     setLoading(true);
     setError(null);
-    setErrorMsg(null);
 
     async function fetchSuggestions() {
       try {
-        // Build payload ONLY with defined fields
-        const payload: Record<string, unknown> = { domain, dataset };
+        // Build payload with only defined fields
+        const payload: Record<string, unknown> = {
+          domain,
+          dataset,
+        };
         if (provider) payload.provider = provider;
         if (model) payload.model = model;
-        if (userId) payload.userId = userId;
-        if (apiKey) payload.apiKey = apiKey;
+        if (typeof apiKey === "string") payload.apiKey = apiKey;
+        if (typeof userId === "string") payload.userId = userId;
 
         const res = await fetch(`${API_BASE}/suggest`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify(payload),
         });
 
+        // Attempt to parse JSON safely
+        type SuggestResp = {
+          suggestions?: unknown;
+          detail?: unknown;
+        };
+        const data: SuggestResp = await res.json().catch(() => ({}));
+
         if (!res.ok) {
-          // Try to surface BE error details (400s, etc.)
-          try {
-            const j = await res.json();
-            if (!ignore) {
-              setError("api-error");
-              setErrorMsg(
-                typeof j?.detail === "string"
-                  ? j.detail
-                  : "Suggestion service returned an error."
-              );
-              setSuggestions([]);
-            }
-          } catch {
-            if (!ignore) {
-              setError("api-error");
-              setErrorMsg("Suggestion service returned an error.");
-              setSuggestions([]);
-            }
-          }
-          return;
+          // Surface backend detail to help debugging, but keep UI friendly
+          const detail =
+            typeof data.detail === "string"
+              ? data.detail
+              : `HTTP ${res.status}`;
+          throw new Error(detail);
         }
 
-        const data = await res.json();
-        const sug = (data.suggestions ?? []).filter(
-          (s: string) => typeof s === "string" && s.trim().length > 0
-        );
+        const rawList = Array.isArray(data.suggestions)
+          ? (data.suggestions as unknown[])
+          : [];
 
-        if (!ignore && sug.length > 0) {
-          setSuggestions(sug);
-        } else if (!ignore) {
-          setSuggestions(defaultQuestions);
+        const sug = rawList
+          .filter((s): s is string => typeof s === "string")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+
+        if (!ignore) {
+          setSuggestions(sug.length > 0 ? sug : defaultQuestions);
         }
-      } catch (err) {
+      } catch (err: unknown) {
+        // Keep console noise helpful for devs
         console.warn("Failed to fetch suggestions:", err);
         if (!ignore) {
           setError("api-error");
-          setErrorMsg(
-            "Network error while fetching suggestions. Please type your question manually."
-          );
           setSuggestions([]);
         }
       } finally {
@@ -119,20 +114,25 @@ const SuggestedQuestions: React.FC<Props> = ({
       }
     }
 
-    fetchSuggestions();
+    void fetchSuggestions();
+
     return () => {
       ignore = true;
     };
+    // NOTE: API_BASE is a module constant; no need to include in deps
   }, [domain, dataset, hasDataset, provider, model, apiKey, userId]);
 
   return (
     <div
-      className={`mt-4 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 flex flex-col gap-2 text-gray-300 ${className}`}
+      className={`mt-4 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 flex flex-col gap-2 text-gray-300 ${className ?? ""}`}
     >
       {loading ? (
         <>
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-10 rounded-lg bg-gray-700/50 animate-pulse" />
+            <div
+              key={i}
+              className="h-10 rounded-lg bg-gray-700/50 animate-pulse"
+            />
           ))}
         </>
       ) : error === "no-dataset" ? (
@@ -142,7 +142,7 @@ const SuggestedQuestions: React.FC<Props> = ({
       ) : error === "api-error" ? (
         <div className="text-center text-gray-400 text-sm py-3">
           ⚠️ Suggested questions are having problems. Please type your question
-          manually{errorMsg ? ` — ${errorMsg}` : ""}.
+          manually.
         </div>
       ) : suggestions.length > 0 ? (
         suggestions.map((q, i) => (
