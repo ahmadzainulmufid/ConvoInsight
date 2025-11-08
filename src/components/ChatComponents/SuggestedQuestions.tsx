@@ -4,13 +4,20 @@ type Props = {
   onQuestionClick: (question: string) => void;
   domain?: string;
   dataset?: string | string[];
-  className?: string;
-
-  /** NEW: forward manual creds to /suggest */
+  /** Forward manual creds ke BE supaya /suggest pakai kunci user */
   provider?: string;
   model?: string;
-  apiKey?: string | null;
+  apiKey?: string | null; // plaintext "AIza…" atau Fernet "gAAAA…"
   userId?: string | null;
+  className?: string;
+};
+
+type SuggestAPIResponse = {
+  suggestions?: unknown;
+  detail?: unknown;
+  elapsed?: number;
+  data_info?: unknown;
+  data_describe?: unknown;
 };
 
 const defaultQuestions = [
@@ -28,15 +35,16 @@ const SuggestedQuestions: React.FC<Props> = ({
   onQuestionClick,
   domain = "general",
   dataset,
-  className,
   provider,
   model,
   apiKey,
   userId,
+  className,
 }) => {
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [errText, setErrText] = useState<string>("");
 
   const hasDataset = Array.isArray(dataset)
     ? dataset.length > 0
@@ -47,66 +55,76 @@ const SuggestedQuestions: React.FC<Props> = ({
       setSuggestions([]);
       setLoading(false);
       setError("no-dataset");
+      setErrText("");
       return;
     }
 
     let ignore = false;
     setLoading(true);
     setError(null);
+    setErrText("");
 
     async function fetchSuggestions() {
       try {
-        // Build payload with only defined fields
+        // Normalisasi body
         const payload: Record<string, unknown> = {
           domain,
           dataset,
         };
         if (provider) payload.provider = provider;
         if (model) payload.model = model;
-        if (typeof apiKey === "string") payload.apiKey = apiKey;
-        if (typeof userId === "string") payload.userId = userId;
+        if (apiKey != null) payload.apiKey = apiKey;
+        if (userId != null) payload.userId = userId;
 
         const res = await fetch(`${API_BASE}/suggest`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
 
-        // Attempt to parse JSON safely
-        type SuggestResp = {
-          suggestions?: unknown;
-          detail?: unknown;
-        };
-        const data: SuggestResp = await res.json().catch(() => ({}));
+        const json: SuggestAPIResponse = await res
+          .json()
+          .catch(() => ({ detail: "Invalid JSON" }));
 
         if (!res.ok) {
-          // Surface backend detail to help debugging, but keep UI friendly
-          const detail =
-            typeof data.detail === "string"
-              ? data.detail
+          const msg =
+            typeof json.detail === "string"
+              ? json.detail
               : `HTTP ${res.status}`;
-          throw new Error(detail);
+          throw new Error(msg);
         }
 
-        const rawList = Array.isArray(data.suggestions)
-          ? (data.suggestions as unknown[])
-          : [];
+        const raw = Array.isArray(json.suggestions) ? json.suggestions : [];
+        const sug = raw.filter(
+          (s): s is string => typeof s === "string" && s.trim().length > 0
+        );
 
-        const sug = rawList
-          .filter((s): s is string => typeof s === "string")
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0);
-
-        if (!ignore) {
-          setSuggestions(sug.length > 0 ? sug : defaultQuestions);
+        if (!ignore && sug.length > 0) {
+          setSuggestions(sug);
+        } else if (!ignore) {
+          setSuggestions(defaultQuestions);
         }
       } catch (err: unknown) {
-        // Keep console noise helpful for devs
+        // tanpa any: unknown + narrowing
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore - optional chaining untuk object tidak diketahui
+        const msg: string =
+          err instanceof Error
+            ? err.message
+            : typeof err === "string"
+            ? err
+            : (() => {
+                try {
+                  return JSON.stringify(err);
+                } catch {
+                  return "Unknown error";
+                }
+              })();
+
         console.warn("Failed to fetch suggestions:", err);
         if (!ignore) {
           setError("api-error");
+          setErrText(msg || "");
           setSuggestions([]);
         }
       } finally {
@@ -114,17 +132,18 @@ const SuggestedQuestions: React.FC<Props> = ({
       }
     }
 
-    void fetchSuggestions();
-
+    fetchSuggestions();
     return () => {
       ignore = true;
     };
-    // NOTE: API_BASE is a module constant; no need to include in deps
+    // dependensi: jangan masukkan API_BASE (const stabil) biar rule exhaustive-deps nggak protes
   }, [domain, dataset, hasDataset, provider, model, apiKey, userId]);
 
   return (
     <div
-      className={`mt-4 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 flex flex-col gap-2 text-gray-300 ${className ?? ""}`}
+      className={`mt-4 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 flex flex-col gap-2 text-gray-300 ${
+        className || ""
+      }`}
     >
       {loading ? (
         <>
@@ -142,7 +161,7 @@ const SuggestedQuestions: React.FC<Props> = ({
       ) : error === "api-error" ? (
         <div className="text-center text-gray-400 text-sm py-3">
           ⚠️ Suggested questions are having problems. Please type your question
-          manually.
+          manually{errText ? ` — ${errText}` : ""}.
         </div>
       ) : suggestions.length > 0 ? (
         suggestions.map((q, i) => (
