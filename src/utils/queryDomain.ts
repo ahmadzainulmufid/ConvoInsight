@@ -38,10 +38,8 @@ type QueryOpts = {
 
   provider?: string;
   model?: string;
-  apiKey?: string | null;  // bisa terenkripsi
+  apiKey?: string | null;  // tetap opsional, tapi akan difilter
   userId?: string | null;
-
-  // pg?: { ... } // kalau nanti mau diterusin ke BE
 };
 
 export async function queryDomain({
@@ -57,6 +55,10 @@ export async function queryDomain({
   apiKey,
   userId,
 }: QueryOpts): Promise<DomainQueryResp> {
+  // Guard: kalau ada yang tak sengaja ngirim token terenkripsi, buang.
+  const cleanedApiKey =
+    typeof apiKey === "string" && apiKey.startsWith("gAAAA") ? undefined : apiKey ?? undefined;
+
   const body: Record<string, unknown> = {
     domain,
     prompt,
@@ -65,8 +67,7 @@ export async function queryDomain({
     includeInsight: includeInsight ?? true,
     provider: provider ?? undefined,
     model: model ?? undefined,
-    // penting: jangan kirim null supaya tidak jadi "apiKey": null
-    apiKey: apiKey ?? undefined,
+    apiKey: cleanedApiKey, // biasanya undefined
     userId: userId ?? undefined,
   };
 

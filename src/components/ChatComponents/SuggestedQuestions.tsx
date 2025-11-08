@@ -4,10 +4,11 @@ type Props = {
   onQuestionClick: (question: string) => void;
   domain?: string;
   dataset?: string | string[];
-  /** Forward manual creds ke BE supaya /suggest pakai kunci user */
+  /** Provider+model tetap diteruskan. */
   provider?: string;
   model?: string;
-  apiKey?: string | null; // plaintext "AIza…" atau Fernet "gAAAA…"
+  /** DEPRECATED: diabaikan, jangan kirim apiKey ke BE */
+  apiKey?: string | null;
   userId?: string | null;
   className?: string;
 };
@@ -37,7 +38,7 @@ const SuggestedQuestions: React.FC<Props> = ({
   dataset,
   provider,
   model,
-  apiKey,
+  // apiKey (ignored)
   userId,
   className,
 }) => {
@@ -66,14 +67,13 @@ const SuggestedQuestions: React.FC<Props> = ({
 
     async function fetchSuggestions() {
       try {
-        // Normalisasi body
+        // Body ke BE TANPA apiKey
         const payload: Record<string, unknown> = {
           domain,
           dataset,
         };
         if (provider) payload.provider = provider;
         if (model) payload.model = model;
-        if (apiKey != null) payload.apiKey = apiKey;
         if (userId != null) payload.userId = userId;
 
         const res = await fetch(`${API_BASE}/suggest`, {
@@ -105,9 +105,6 @@ const SuggestedQuestions: React.FC<Props> = ({
           setSuggestions(defaultQuestions);
         }
       } catch (err: unknown) {
-        // tanpa any: unknown + narrowing
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore - optional chaining untuk object tidak diketahui
         const msg: string =
           err instanceof Error
             ? err.message
@@ -136,8 +133,7 @@ const SuggestedQuestions: React.FC<Props> = ({
     return () => {
       ignore = true;
     };
-    // dependensi: jangan masukkan API_BASE (const stabil) biar rule exhaustive-deps nggak protes
-  }, [domain, dataset, hasDataset, provider, model, apiKey, userId]);
+  }, [domain, dataset, hasDataset, provider, model, userId]);
 
   return (
     <div

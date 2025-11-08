@@ -362,7 +362,7 @@ export default function NewChatPage() {
 
       setCurrentThinkingSteps([{ key: "pending", message: "Drafting plan..." }]);
 
-      // call BE
+      // call BE — TANPA apiKey
       const res = await queryDomain({
         apiBase: API_BASE,
         domain: domain!,
@@ -560,10 +560,9 @@ export default function NewChatPage() {
               }}
               domain={domain}
               dataset={selectedDatasets.length > 0 ? selectedDatasets : availableDatasets}
-              /* forward manual creds to /suggest (BE will decrypt by userId) */
+              /* forward manual creds to /suggest (BE akan resolve dari userId) */
               provider={userConfig?.provider}
               model={userConfig?.selectedModel}
-              apiKey={userConfig?.token}
               userId={user?.uid ?? null}
             />
           </div>
@@ -580,7 +579,7 @@ export default function NewChatPage() {
                         <details className="mb-10">
                           <summary className="text-sm font-semibold text-blue-400 cursor-pointer flex items-center gap-2 hover:underline">
                             <FiActivity className="text-blue-400" />
-                            Show the flow of thought
+                            Show the steps
                           </summary>
                           <div className="mt-2 space-y-1 text-sm ml-5">
                             {m.thinkingSteps.map((step) => (
@@ -889,7 +888,7 @@ export default function NewChatPage() {
               <div ref={endOfMessagesRef} />
 
               {currentThinkingSteps.length > 0 && (
-                <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-1">
+                <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl-max-w-5xl px-1">
                   <h3 className="text-sm font-semibold text-blue-400 mb-2 flex items-center gap-2">
                     <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                     Thinking process...
