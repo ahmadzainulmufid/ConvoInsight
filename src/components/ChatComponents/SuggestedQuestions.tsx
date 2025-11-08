@@ -1,21 +1,23 @@
 // src/components/ChatComponents/SuggestedQuestions.tsx
 import React, { useEffect, useState } from "react";
 
-type Props = {
-  onQuestionClick: (question: string) => void;
-  domain?: string;
-  dataset?: string | string[];
-  className?: string;
-};
-
+/** Match the shape saved in localStorage on the Configuration page */
 type UserConfig = {
   provider: string;
-  token: string | null; // encrypted or plaintext (BE accepts both)
+  token: string | null;     // can be plaintext or the encrypted token returned by /validate-key
   models: string[];
   selectedModel: string;
   verbosity?: string;
   reasoning?: string;
   seed?: number;
+  userId?: string;          // optional; we’ll include it if present
+};
+
+type Props = {
+  onQuestionClick: (question: string) => void;
+  domain?: string;
+  dataset?: string | string[];
+  className?: string;
 };
 
 const defaultQuestions = [
@@ -37,29 +39,25 @@ const SuggestedQuestions: React.FC<Props> = ({
 }) => {
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [error, setError] = useState<
-    "no-dataset" | "config-missing" | "api-error" | null
-  >(null);
-
-  const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const hasDataset = Array.isArray(dataset)
     ? dataset.length > 0
     : Boolean(dataset);
 
-  // load user_config once
-  useEffect(() => {
+  /** Safely read the user_config once per mount */
+  const readUserConfig = (): UserConfig | null => {
     try {
       const raw = localStorage.getItem("user_config");
-      if (raw) {
-        setUserConfig(JSON.parse(raw) as UserConfig);
-      } else {
-        setUserConfig(null);
-      }
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // tolerate partially saved configs
+      if (!parsed || typeof parsed !== "object") return null;
+      return parsed as UserConfig;
     } catch {
-      setUserConfig(null);
+      return null;
     }
-  }, []);
+  };
 
   useEffect(() => {
     if (!hasDataset) {
@@ -69,36 +67,40 @@ const SuggestedQuestions: React.FC<Props> = ({
       return;
     }
 
-    const provider = userConfig?.provider?.trim();
-    const model = userConfig?.selectedModel?.trim();
-    const apiKey = userConfig?.token?.trim();
-
-    if (!provider || !model || !apiKey) {
-      setSuggestions([]);
-      setLoading(false);
-      setError("config-missing");
-      return;
-    }
-
     let ignore = false;
     setLoading(true);
     setError(null);
 
     async function fetchSuggestions() {
       try {
+        const userConfig = readUserConfig();
+
+        // Build the POST body; include provider/model/apiKey/userId if we have them
+        const body: Record<string, unknown> = { domain, dataset };
+        if (userConfig?.provider) body.provider = userConfig.provider;
+        if (userConfig?.selectedModel) body.model = userConfig.selectedModel;
+        if (userConfig?.token) body.apiKey = userConfig.token; // BE accepts plaintext or its own encrypted token
+        if (userConfig?.userId) body.userId = userConfig.userId;
+
         const res = await fetch(`${API_BASE}/suggest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            domain,
-            dataset,
-            provider,
-            model,
-            apiKey, // encrypted or plaintext; BE will handle it
-          }),
+          body: JSON.stringify(body),
         });
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          // Try to surface a meaningful error from the BE
+          let detail = "api-error";
+          try {
+            const j = await res.json();
+            // BE uses {detail: "..."} for 4xx; prefer that
+            if (typeof j?.detail === "string") detail = j.detail;
+          } catch {
+            /* noop */
+          }
+          throw new Error(detail);
+        }
+
         const data = await res.json();
 
         const sug = (data.suggestions ?? []).filter(
@@ -108,6 +110,7 @@ const SuggestedQuestions: React.FC<Props> = ({
         if (!ignore && sug.length > 0) {
           setSuggestions(sug);
         } else if (!ignore) {
+          // fallback defaults if BE gave nothing
           setSuggestions(defaultQuestions);
         }
       } catch (err) {
@@ -125,7 +128,7 @@ const SuggestedQuestions: React.FC<Props> = ({
     return () => {
       ignore = true;
     };
-  }, [domain, dataset, hasDataset, userConfig]);
+  }, [domain, dataset, hasDataset]);
 
   return (
     <div
@@ -144,15 +147,11 @@ const SuggestedQuestions: React.FC<Props> = ({
         <div className="text-center text-gray-400 text-sm py-3">
           ⚠️ Please upload the dataset first to display suggested questions.
         </div>
-      ) : error === "config-missing" ? (
-        <div className="text-center text-gray-400 text-sm py-3">
-          ⚠️ AI configuration not found. Set your Provider, Model, and API Key
-          on the Configuration page.
-        </div>
       ) : error === "api-error" ? (
         <div className="text-center text-gray-400 text-sm py-3">
-          ⚠️ Suggested questions are having problems. Please type your question
-          manually.
+          ⚠️ Suggested questions are having problems. Please check your AI
+          configuration (provider, model, API key) on the Configuration page,
+          then try again.
         </div>
       ) : suggestions.length > 0 ? (
         suggestions.map((q, i) => (
