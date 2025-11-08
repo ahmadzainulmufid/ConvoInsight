@@ -1,3 +1,4 @@
+// src/components/ChatComponents/SuggestedQuestions.tsx
 import React, { useEffect, useState } from "react";
 
 type Props = {
@@ -9,7 +10,7 @@ type Props = {
 
 type UserConfig = {
   provider: string;
-  token: string | null; // encrypted token returned by /validate-key
+  token: string | null; // encrypted or plaintext (BE accepts both)
   models: string[];
   selectedModel: string;
   verbosity?: string;
@@ -46,13 +47,12 @@ const SuggestedQuestions: React.FC<Props> = ({
     ? dataset.length > 0
     : Boolean(dataset);
 
+  // load user_config once
   useEffect(() => {
-    // Load user_config (saved by Configuration page) from localStorage
     try {
       const raw = localStorage.getItem("user_config");
       if (raw) {
-        const cfg = JSON.parse(raw) as UserConfig;
-        setUserConfig(cfg);
+        setUserConfig(JSON.parse(raw) as UserConfig);
       } else {
         setUserConfig(null);
       }
@@ -62,7 +62,6 @@ const SuggestedQuestions: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
-    // Early exits for cases where we don't want to call the API
     if (!hasDataset) {
       setSuggestions([]);
       setLoading(false);
@@ -70,7 +69,6 @@ const SuggestedQuestions: React.FC<Props> = ({
       return;
     }
 
-    // Require credentials (provider, model, apiKey token) for /suggest
     const provider = userConfig?.provider?.trim();
     const model = userConfig?.selectedModel?.trim();
     const apiKey = userConfig?.token?.trim();
@@ -90,16 +88,13 @@ const SuggestedQuestions: React.FC<Props> = ({
       try {
         const res = await fetch(`${API_BASE}/suggest`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          // Send the same creds shape as /query does.
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             domain,
             dataset,
             provider,
             model,
-            apiKey, // encrypted token is fine; BE will decrypt
+            apiKey, // encrypted or plaintext; BE will handle it
           }),
         });
 
@@ -113,7 +108,6 @@ const SuggestedQuestions: React.FC<Props> = ({
         if (!ignore && sug.length > 0) {
           setSuggestions(sug);
         } else if (!ignore) {
-          // fallback defaults if API returned empty but successful
           setSuggestions(defaultQuestions);
         }
       } catch (err) {
