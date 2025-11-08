@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useAuthUser } from "../../utils/firebaseSetup";
 
 type Props = {
   onQuestionClick: (question: string) => void;
@@ -8,10 +7,9 @@ type Props = {
   className?: string;
 };
 
-// Minimal local type for reading saved user config from localStorage
 type UserConfig = {
   provider: string;
-  token: string | null; // encrypted token saved via /validate-key (DO NOT send to BE)
+  token: string | null; // encrypted token returned by /validate-key
   models: string[];
   selectedModel: string;
   verbosity?: string;
@@ -38,22 +36,23 @@ const SuggestedQuestions: React.FC<Props> = ({
 }) => {
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<
+    "no-dataset" | "config-missing" | "api-error" | null
+  >(null);
 
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
-  const { user } = useAuthUser();
 
   const hasDataset = Array.isArray(dataset)
     ? dataset.length > 0
     : Boolean(dataset);
 
-  // Read user_config once
   useEffect(() => {
+    // Load user_config (saved by Configuration page) from localStorage
     try {
       const raw = localStorage.getItem("user_config");
       if (raw) {
-        const parsed = JSON.parse(raw) as UserConfig;
-        setUserConfig(parsed);
+        const cfg = JSON.parse(raw) as UserConfig;
+        setUserConfig(cfg);
       } else {
         setUserConfig(null);
       }
@@ -63,7 +62,7 @@ const SuggestedQuestions: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
-    // If no dataset selected/available → skip calling BE and show hint
+    // Early exits for cases where we don't want to call the API
     if (!hasDataset) {
       setSuggestions([]);
       setLoading(false);
@@ -71,21 +70,17 @@ const SuggestedQuestions: React.FC<Props> = ({
       return;
     }
 
-    // If no user config or no signed-in user → don't call BE
-    if (
-      !userConfig ||
-      !userConfig.provider ||
-      !userConfig.selectedModel ||
-      !user?.uid
-    ) {
+    // Require credentials (provider, model, apiKey token) for /suggest
+    const provider = userConfig?.provider?.trim();
+    const model = userConfig?.selectedModel?.trim();
+    const apiKey = userConfig?.token?.trim();
+
+    if (!provider || !model || !apiKey) {
       setSuggestions([]);
       setLoading(false);
-      setError("no-config");
+      setError("config-missing");
       return;
     }
-
-    // From here userConfig is guaranteed by the guards above
-    const uc = userConfig!;
 
     let ignore = false;
     setLoading(true);
@@ -98,13 +93,13 @@ const SuggestedQuestions: React.FC<Props> = ({
           headers: {
             "Content-Type": "application/json",
           },
-          // ✅ DO NOT send encrypted token; let BE retrieve & decrypt using userId+provider
+          // Send the same creds shape as /query does.
           body: JSON.stringify({
             domain,
             dataset,
-            provider: uc.provider,
-            model: uc.selectedModel,
-            userId: user?.uid,
+            provider,
+            model,
+            apiKey, // encrypted token is fine; BE will decrypt
           }),
         });
 
@@ -118,7 +113,7 @@ const SuggestedQuestions: React.FC<Props> = ({
         if (!ignore && sug.length > 0) {
           setSuggestions(sug);
         } else if (!ignore) {
-          // fallback default jika kosong
+          // fallback defaults if API returned empty but successful
           setSuggestions(defaultQuestions);
         }
       } catch (err) {
@@ -136,7 +131,7 @@ const SuggestedQuestions: React.FC<Props> = ({
     return () => {
       ignore = true;
     };
-  }, [domain, dataset, hasDataset, userConfig, user?.uid]);
+  }, [domain, dataset, hasDataset, userConfig]);
 
   return (
     <div
@@ -155,10 +150,10 @@ const SuggestedQuestions: React.FC<Props> = ({
         <div className="text-center text-gray-400 text-sm py-3">
           ⚠️ Please upload the dataset first to display suggested questions.
         </div>
-      ) : error === "no-config" ? (
+      ) : error === "config-missing" ? (
         <div className="text-center text-gray-400 text-sm py-3">
-          ⚠️ AI configuration not found. Please save your API Key on the
-          Configuration page to enable suggestions.
+          ⚠️ AI configuration not found. Set your Provider, Model, and API Key
+          on the Configuration page.
         </div>
       ) : error === "api-error" ? (
         <div className="text-center text-gray-400 text-sm py-3">
