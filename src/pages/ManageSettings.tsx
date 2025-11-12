@@ -140,7 +140,7 @@ export default function ManageSettings() {
     if (!domain) return;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/domains/${domain}/datasets`);
+        const res = await fetch(`${API_BASE}/datasets?domain=${domain}`);
         if (!res.ok) throw new Error(`Failed: ${res.status}`);
         const data = await res.json();
         const apiDatasets: DatasetApiItem[] = data.datasets ?? [];
@@ -162,28 +162,33 @@ export default function ManageSettings() {
 
   // load columns from signed URLs
   const loadColumns = useCallback(async () => {
-    if (!selectedDatasetIds.length) {
+    if (!selectedDatasetIds.length || !domain) {
       setColumns({});
       return;
     }
+
     const allCols: Record<string, string[]> = {};
+
     for (const dsId of selectedDatasetIds) {
-      const dataset = datasets.find((d) => d.id === dsId);
-      if (!dataset?.signed_url) continue;
       try {
-        const res = await fetch(dataset.signed_url);
+        // ✅ Ambil header langsung dari API (bukan signed_url)
+        const encodedId = encodeURIComponent(dsId);
+        const res = await fetch(`${API_BASE}/datasets/${domain}/${encodedId}`);
         if (!res.ok) continue;
-        const text = await res.text();
-        const firstLine = text.split(/\r?\n/).find((l) => l.trim().length);
-        if (!firstLine) continue;
-        const hdrs = firstLine.split(",").map((h) => h.trim());
-        allCols[dsId] = hdrs;
-      } catch (e) {
-        console.warn("Failed to load header for", dsId, e);
+
+        const data = await res.json();
+        const records = data.records || [];
+        if (records.length === 0) continue;
+
+        const headers = Object.keys(records[0]);
+        allCols[dsId] = headers;
+      } catch (err) {
+        console.warn("Failed to load columns for", dsId, err);
       }
     }
+
     setColumns(allCols);
-  }, [selectedDatasetIds, datasets]);
+  }, [selectedDatasetIds, domain]);
 
   useEffect(() => {
     loadColumns();
@@ -333,13 +338,33 @@ export default function ManageSettings() {
       toast.error("Prompt and domain must be valid.");
       return;
     }
+
+    // Ambil konfigurasi user
+    const storedConfig = localStorage.getItem("user_config");
+    const userConfig = storedConfig ? JSON.parse(storedConfig) : null;
+
+    if (
+      !userConfig ||
+      !userConfig.provider ||
+      !userConfig.selectedModel ||
+      !auth.currentUser?.uid
+    ) {
+      toast.error(
+        "AI configuration not found. Please save your API Key on the Configuration page."
+      );
+      return;
+    }
+
     setIsExecuting(true);
     setExecutionResult(null);
     const sessionId = `${Date.now()}`;
     setCurrentSessionId(sessionId);
+
     try {
+      // Simpan pesan user
       await saveChatMessage(domainDocId, sessionId, "user", prompt);
 
+      // Panggil backend /query
       const res = await queryDomain({
         apiBase: API_BASE,
         domain,
@@ -350,52 +375,145 @@ export default function ManageSettings() {
         sessionId,
         dataset: selectedDatasetIds.length > 0 ? selectedDatasetIds : undefined,
         includeInsight,
+        provider: userConfig.provider,
+        model: userConfig.selectedModel,
+        apiKey: undefined,
+        userId: auth.currentUser?.uid,
       });
 
-      // ambil metadata chart remote agar lintas browser
-      const chartUrlFromBE =
-        res.chart_url ||
+      // Ambil chart URL
+      const chartUrl =
         res.diagram_signed_url ||
         res.diagram_public_url ||
+        res.chart_url ||
         null;
-      const diagramKind = res.diagram_kind ?? null;
-      const diagramPath = res.diagram_gs_uri ?? null;
 
-      // preview chart untuk modal saat ini
+      // Ambil chart HTML (jika ada)
       let chartHtml: string | undefined;
-      if (chartUrlFromBE) {
+      if (chartUrl) {
         try {
-          chartHtml =
-            (await fetchChartHtml(API_BASE, chartUrlFromBE)) || undefined;
+          chartHtml = await fetchChartHtml(API_BASE, chartUrl);
         } catch {
-          /* empty */
+          chartHtml = undefined;
         }
       }
 
-      const assistantResponse = cleanHtmlResponse(
-        res.response ?? "(empty response)"
-      );
+      // Bersihkan teks response dari backend
+      const cleanedResponse = cleanHtmlResponse(res.response ?? "(empty)");
 
+      // Simpan pesan asisten ke Firestore
       await saveChatMessage(
         domainDocId,
         sessionId,
         "assistant",
-        assistantResponse,
-        chartHtml, // simpan blob lokal agar cepat di browser ini
-        undefined, // thinkingSteps
-        chartUrlFromBE, // ⬅️ simpan URL remote utk browser lain
-        diagramKind,
-        diagramPath
+        cleanedResponse,
+        chartHtml,
+        undefined,
+        chartUrl,
+        res.diagram_kind ?? null,
+        res.diagram_gs_uri ?? null
       );
 
-      setExecutionResult({ text: assistantResponse, chartHtml });
-    } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "An error occurred.";
-      toast.error(`Error: ${errorMessage}`);
+      // Tampilkan hasil langsung di UI
       setExecutionResult({
-        text: `<p>⚠️ <strong>Error:</strong> ${errorMessage}</p>`,
+        text: cleanedResponse,
+        chartHtml,
       });
+
+      // Tambahkan notifikasi sukses
+      await addNotification(
+        "insight",
+        "Insight Generated",
+        "Your AI insight and chart have been generated successfully!"
+      );
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
+      toast.error(`Error executing prompt: ${errorMsg}`);
+      setExecutionResult({
+        text: `<p>⚠️ <strong>Error:</strong> ${errorMsg}</p>`,
+      });
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  const handleExecuteKpiDataset = async () => {
+    if (
+      !domainDocId ||
+      selectedDatasetIds.length === 0 ||
+      selectedColumns.length === 0
+    ) {
+      toast.error("Please select at least one dataset and column.");
+      return;
+    }
+
+    // Ambil konfigurasi user (provider + model)
+    const storedConfig = localStorage.getItem("user_config");
+    const userConfig = storedConfig ? JSON.parse(storedConfig) : null;
+    if (
+      !userConfig ||
+      !userConfig.provider ||
+      !userConfig.selectedModel ||
+      !auth.currentUser?.uid
+    ) {
+      toast.error(
+        "AI configuration not found. Please save your API Key on the Configuration page."
+      );
+      return;
+    }
+
+    // Build prompt otomatis
+    const prompt = `
+  From the datasets available for domain ${domain}, compute these KPIs:
+  ${selectedColumns.map((c) => `- ${c.split(":")[1]}`).join("\n")}
+  Return exactly one line with the format:
+  Target WL (Mn): <value>, TUR: <value>%
+  
+  Formatting rules:
+  - Use comma as decimal separator (example: 6,35)
+  - No thousands separator (example: 84000)
+  - Round to 2 decimals for non-integer numbers
+  - If a KPI cannot be derived, write N/A
+  - Output only the line, no explanations or text.
+  `;
+
+    setIsExecuting(true);
+    setExecutionResult(null);
+    const sessionId = `${Date.now()}`;
+    setCurrentSessionId(sessionId);
+
+    try {
+      const res = await queryDomain({
+        apiBase: API_BASE,
+        domain: domain!,
+        prompt,
+        sessionId,
+        dataset: selectedDatasetIds,
+        includeInsight: false,
+        provider: userConfig.provider,
+        model: userConfig.selectedModel,
+        apiKey: undefined,
+        userId: auth.currentUser?.uid,
+      });
+
+      const cleanedResponse = cleanHtmlResponse(res.response || "(empty)");
+
+      // Simpan ke Firestore agar histori tetap tersimpan
+      await saveChatMessage(domainDocId, sessionId, "user", prompt);
+      await saveChatMessage(
+        domainDocId,
+        sessionId,
+        "assistant",
+        cleanedResponse
+      );
+
+      // Tampilkan hasil di UI
+      setExecutionResult({ text: cleanedResponse });
+      toast.success("KPI generated successfully!");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : JSON.stringify(err);
+      toast.error(`Error executing KPI: ${msg}`);
+      setExecutionResult({ text: `<p>⚠️ <strong>Error:</strong> ${msg}</p>` });
     } finally {
       setIsExecuting(false);
     }
@@ -431,31 +549,39 @@ export default function ManageSettings() {
     goToStep("list");
   };
 
-  const handleSaveKpiDataset = async () => {
-    if (!domainDocId) return;
-    const newItem: DashboardItem = {
-      id: `${Date.now()}`,
-      type: "kpi",
-      includeInsight,
-      datasets: selectedDatasetIds,
-      columns: selectedColumns,
-      createdAt: Date.now(),
-      order: items?.length ?? 0,
-    };
-    await upsertDashboardItem(domainDocId, groupId, newItem);
+  // const handleSaveKpiDataset = async () => {
+  //   if (!domainDocId) return;
+  //   const prompt = `
+  //   From the datasets available for domain ${domain}, compute these KPIs:
+  //   ${selectedColumns.map((c) => `- ${c.split(":")[1]}`).join("\n")}
+  //   Return exactly one line with format: KPI_NAME: <value>, etc.
+  //   `;
 
-    // 🆕 Tambah notifikasi
-    await addNotification(
-      "dataset",
-      "New KPI from Dataset",
-      `A new KPI has been added from dataset(s): ${selectedDatasetIds.join(
-        ", "
-      )}.`
-    );
+  //   const newItem: DashboardItem = {
+  //     id: `${Date.now()}`,
+  //     type: "kpi",
+  //     prompt,
+  //     includeInsight: true,
+  //     datasets: selectedDatasetIds,
+  //     columns: selectedColumns,
+  //     createdAt: Date.now(),
+  //     order: items?.length ?? 0,
+  //   };
+  //   await upsertDashboardItem(domainDocId, groupId, newItem);
+  //   toast.success("Generated KPI from dataset");
 
-    toast.success("Saved KPI from dataset");
-    goToStep("list");
-  };
+  //   // 🆕 Tambah notifikasi
+  //   await addNotification(
+  //     "dataset",
+  //     "New KPI from Dataset",
+  //     `A new KPI has been added from dataset(s): ${selectedDatasetIds.join(
+  //       ", "
+  //     )}.`
+  //   );
+
+  //   toast.success("Saved KPI from dataset");
+  //   goToStep("list");
+  // };
 
   const handleReorder = async (reordered: DashboardItem[]) => {
     if (!domainDocId) return;
@@ -770,17 +896,33 @@ export default function ManageSettings() {
               >
                 Back
               </button>
+
               <button
                 disabled={
                   selectedDatasetIds.length === 0 ||
-                  selectedColumns.length === 0
+                  selectedColumns.length === 0 ||
+                  isExecuting
                 }
-                onClick={handleSaveKpiDataset}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded disabled:opacity-50"
+                onClick={handleExecuteKpiDataset}
+                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded disabled:opacity-50"
               >
-                Save
+                {isExecuting ? "Executing..." : "Execute"}
               </button>
             </div>
+
+            {/* ✅ Pindahkan output ke luar flex agar tidak error dan lebih rapi */}
+            {executionResult?.text && (
+              <div className="mt-6">
+                <h3 className="font-semibold text-gray-300 mb-3">Output:</h3>
+                <ManageKpiOutput
+                  kpiType="llm"
+                  datasets={datasets}
+                  selectedDatasetIds={selectedDatasetIds}
+                  selectedColumns={selectedColumns}
+                  llmResult={executionResult.text}
+                />
+              </div>
+            )}
           </motion.div>
         )}
 

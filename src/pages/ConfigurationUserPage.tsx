@@ -34,9 +34,6 @@ type ProviderItem = {
   is_active?: boolean;
   updated_at?: string;
   selectedModel?: string;
-  verbosity?: string;
-  reasoning?: string;
-  seed?: number;
 };
 
 type InstructionItem = {
@@ -50,9 +47,6 @@ type UserConfig = {
   token: string | null;
   models: string[];
   selectedModel: string;
-  verbosity: string;
-  reasoning: string;
-  seed: number;
 };
 
 const API_BASE =
@@ -69,10 +63,6 @@ export default function ConfigurationUserPage() {
   const [models, setModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [verbosity, setVerbosity] = useState("medium");
-  const [reasoning, setReasoning] = useState("medium");
-  const [seed, setSeed] = useState<number>(0);
 
   const [history, setHistory] = useState<ProviderItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -283,9 +273,6 @@ export default function ConfigurationUserPage() {
         // Jika ADA config aktif, isi state form
         setProvider(activeFromDB.provider);
         setSelectedModel(activeFromDB.selectedModel || "");
-        setVerbosity(activeFromDB.verbosity || "medium");
-        setReasoning(activeFromDB.reasoning || "medium");
-        setSeed(activeFromDB.seed || 0);
 
         // Atur UI
         setIsConfigSaved(true); // Sembunyikan form, nonaktifkan dropdown
@@ -309,9 +296,6 @@ export default function ConfigurationUserPage() {
               token: null,
               models: activeFromDB.models,
               selectedModel: activeFromDB.selectedModel ?? "",
-              verbosity: activeFromDB.verbosity ?? "medium",
-              reasoning: activeFromDB.reasoning ?? "medium",
-              seed: activeFromDB.seed ?? 0,
             });
           }
         } else {
@@ -323,9 +307,6 @@ export default function ConfigurationUserPage() {
             token: null,
             models: activeFromDB.models,
             selectedModel: activeFromDB.selectedModel ?? "",
-            verbosity: activeFromDB.verbosity ?? "medium",
-            reasoning: activeFromDB.reasoning ?? "medium",
-            seed: activeFromDB.seed ?? 0,
           });
         }
       } else {
@@ -477,9 +458,6 @@ export default function ConfigurationUserPage() {
       token: tempToken,
       models: models,
       selectedModel,
-      verbosity,
-      reasoning,
-      seed,
     };
     localStorage.setItem("user_config", JSON.stringify(newConfig));
 
@@ -493,9 +471,6 @@ export default function ConfigurationUserPage() {
           userId,
           provider,
           selectedModel,
-          verbosity,
-          reasoning,
-          seed,
         }),
       });
 
@@ -758,63 +733,10 @@ export default function ConfigurationUserPage() {
 
                 {/* Advanced Config */}
                 {selectedModel && (
-                  <div className="mt-4 space-y-4">
-                    {/* Verbosity */}
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Verbosity (Tingkat Panjang Jawaban)
-                      </label>
-                      <select
-                        value={verbosity}
-                        onChange={(e) => setVerbosity(e.target.value)}
-                        className="w-full p-2 rounded bg-gray-800 border border-gray-700"
-                      >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                      </select>
-                    </div>
-
-                    {/* Reasoning */}
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Reasoning Effort (Upaya Penalaran)
-                      </label>
-                      <select
-                        value={reasoning}
-                        onChange={(e) => setReasoning(e.target.value)}
-                        className="w-full p-2 rounded bg-gray-800 border border-gray-700"
-                      >
-                        <option value="minimum">Minimum</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                      </select>
-                    </div>
-
-                    {/* Seed */}
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Seed (Kontrol Randomisasi)
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={9999}
-                        placeholder="Misal 42"
-                        value={seed}
-                        onChange={(e) => setSeed(Number(e.target.value))}
-                        className="w-full p-2 rounded bg-gray-800 border border-gray-700"
-                      />
-                      <p className="text-xs text-gray-400 mt-1">
-                        Usually the value is between 0 and 9999
-                      </p>
-                    </div>
-
-                    {/* Save */}
+                  <div className="mt-4">
                     <button
                       onClick={handleSave}
-                      className="w-full py-2 mt-4 bg-green-600 rounded hover:bg-green-700"
+                      className="w-full py-2 bg-green-600 rounded hover:bg-green-700"
                     >
                       Save Configuration
                     </button>
