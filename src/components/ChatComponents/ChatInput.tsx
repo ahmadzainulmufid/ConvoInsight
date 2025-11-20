@@ -8,6 +8,10 @@ export function ChatInput({
   onSend,
   busy = false,
   onStop,
+  onMicClick,
+  onVoiceCancel,
+  onVoiceConfirm,
+  isRecording = false,
   placeholder = "Ask Anything",
 }: {
   value: string;
@@ -15,6 +19,10 @@ export function ChatInput({
   onSend: () => void;
   busy?: boolean;
   onStop?: () => void;
+  onMicClick?: () => void;
+  onVoiceCancel?: () => void;
+  onVoiceConfirm?: () => void;
+  isRecording?: boolean;
   placeholder?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -22,6 +30,7 @@ export function ChatInput({
 
   const [localBusy, setLocalBusy] = useState(false);
   const effectiveBusy = localBusy || !!busy;
+  const inputDisabled = effectiveBusy || isRecording;
 
   const btnBase =
     "ml-2 flex items-center justify-center w-9 h-9 rounded-md text-lg transition";
@@ -77,13 +86,51 @@ export function ChatInput({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         rows={1}
-        disabled={effectiveBusy}
+        disabled={inputDisabled}
         placeholder={placeholder}
         className="flex-1 resize-none bg-transparent outline-none 
                    text-gray-200 text-sm leading-relaxed 
                    placeholder-gray-400 px-3 py-2
                    min-h-[44px] max-h-[160px]"
       />
+
+      {isRecording ? (
+        <div className="flex items-center gap-2 mr-2">
+          <span className="flex items-center text-xs text-red-400">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse mr-1" />
+            Listening...
+          </span>
+          <button
+            type="button"
+            onClick={onVoiceCancel}
+            className="flex items-center justify-center w-8 h-8 rounded-md
+                       bg-transparent text-white opacity-80 hover:opacity-100 transition"
+            title="Cancel voice"
+          >
+            ✕
+          </button>
+          <button
+            type="button"
+            onClick={onVoiceConfirm}
+            className="flex items-center justify-center w-8 h-8 rounded-md
+                       bg-transparent text-white opacity-80 hover:opacity-100 transition"
+            title="Send voice"
+          >
+            ✓
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onMicClick}
+          className="mr-3 flex items-center justify-center w-9 h-9 
+                     rounded-md text-lg bg-transparent text-white 
+                     opacity-80 hover:opacity-100 transition"
+          title="Voice Input"
+        >
+          🎙️
+        </button>
+      )}
 
       {effectiveBusy ? (
         <button

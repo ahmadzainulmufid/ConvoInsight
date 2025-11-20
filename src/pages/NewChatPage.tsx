@@ -4,7 +4,9 @@ import { ChatComposer } from "../components/ChatComponents/ChatComposer";
 import { ChatInput } from "../components/ChatComponents/ChatInput";
 import AnimatedMessageBubble from "../components/ChatComponents/AnimatedMessageBubble";
 import { queryDomain, type DomainQueryResp } from "../utils/queryDomain";
-import ChartGallery, { type ChartItem } from "../components/ChatComponents/ChartGallery";
+import ChartGallery, {
+  type ChartItem,
+} from "../components/ChatComponents/ChartGallery";
 import { useChatHistory } from "../hooks/useChatHistory";
 import { fetchChartHtml } from "../utils/fetchChart";
 import {
@@ -78,7 +80,10 @@ const stripFences = (s: string) =>
     .replace(/```(?:[^\n`]*)?\n?([\s\S]*?)\n?```/g, "$1")
     .replace(/~~~(?:[^\n~]*)?\n?([\s\S]*?)\n?~~~/g, "$1");
 
-const pickChartFetchUrl = (apiBase: string, res?: ChartUrlFields): string | null => {
+const pickChartFetchUrl = (
+  apiBase: string,
+  res?: ChartUrlFields
+): string | null => {
   if (res?.diagram_signed_url) return res.diagram_signed_url;
   if (res?.diagram_public_url) return res.diagram_public_url;
   const p = res?.chart_url;
@@ -102,7 +107,14 @@ export default function NewChatPage() {
 
   const [domainDocId, setDomainDocId] = useState<string | null>(null);
 
-  const [openedId, setOpenedId] = useState<string | null>(searchParams.get("id"));
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  const [openedId, setOpenedId] = useState<string | null>(
+    searchParams.get("id")
+  );
   const isNewConversation = !openedId;
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -115,7 +127,9 @@ export default function NewChatPage() {
   const [selectedDatasets, setSelectedDatasets] = useState<string[]>([]);
 
   // thinking animation
-  const [currentThinkingSteps, setCurrentThinkingSteps] = useState<ThinkingStep[]>([]);
+  const [currentThinkingSteps, setCurrentThinkingSteps] = useState<
+    ThinkingStep[]
+  >([]);
   const thinkingTimeoutRef = useRef<NodeJS.Timeout[]>([]);
 
   const [inFlight, setInFlight] = useState(false);
@@ -144,10 +158,13 @@ export default function NewChatPage() {
     if (storedConfig) {
       setUserConfig(JSON.parse(storedConfig));
     } else {
-      toast.error("AI configuration not found. Please save your API Key on the Configuration page.", {
-        duration: 6000,
-        id: "config-error",
-      });
+      toast.error(
+        "AI configuration not found. Please save your API Key on the Configuration page.",
+        {
+          duration: 6000,
+          id: "config-error",
+        }
+      );
     }
   }, []);
 
@@ -188,7 +205,9 @@ export default function NewChatPage() {
     if (isGenerating === false && searchParams.get("gen") === "true") {
       const next = new URLSearchParams(searchParams);
       next.delete("gen");
-      navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, { replace: true });
+      navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, {
+        replace: true,
+      });
     }
   }, [domain, isGenerating, navigate, searchParams]);
 
@@ -231,26 +250,33 @@ export default function NewChatPage() {
       thinkingSteps?: ThinkingStep[];
     };
 
-    const unsub = listenMessages(domainDocId, openedId, (msgs: FirestoreMsg[]) => {
-      const mapped: Msg[] = msgs.map((m) => {
-        const charts: ChartItem[] | undefined = m.chartHtml
-          ? [{ html: m.chartHtml }]
-          : m.chartUrl
-          ? [{ url: m.chartUrl }]
-          : undefined;
+    const unsub = listenMessages(
+      domainDocId,
+      openedId,
+      (msgs: FirestoreMsg[]) => {
+        const mapped: Msg[] = msgs.map((m) => {
+          const charts: ChartItem[] | undefined = m.chartHtml
+            ? [{ html: m.chartHtml }]
+            : m.chartUrl
+            ? [{ url: m.chartUrl }]
+            : undefined;
 
-        return {
-          id: m.id,
-          role: m.role,
-          content: m.role === "assistant" ? cleanHtmlResponse(m.text) : stripFences(m.text),
-          charts,
-          animate: false,
-          thinkingSteps: m.thinkingSteps || undefined,
-        };
-      });
-      setMessages(mapped);
-      setTimeout(() => scrollToBottom("auto"), 0);
-    });
+          return {
+            id: m.id,
+            role: m.role,
+            content:
+              m.role === "assistant"
+                ? cleanHtmlResponse(m.text)
+                : stripFences(m.text),
+            charts,
+            animate: false,
+            thinkingSteps: m.thinkingSteps || undefined,
+          };
+        });
+        setMessages(mapped);
+        setTimeout(() => scrollToBottom("auto"), 0);
+      }
+    );
     return () => unsub();
   }, [domainDocId, openedId, searchParams]);
 
@@ -263,7 +289,9 @@ export default function NewChatPage() {
         if (res.ok) {
           const data = await res.json();
           setAvailableDatasets(
-            (data.items ?? data.datasets ?? []).map((d: DatasetApiItem) => d.filename)
+            (data.items ?? data.datasets ?? []).map(
+              (d: DatasetApiItem) => d.filename
+            )
           );
         } else {
           console.error("Failed to fetch datasets:", res.status);
@@ -295,13 +323,17 @@ export default function NewChatPage() {
     );
   }
 
-  /* ---------------------------------------------
-     Send handler
-  ---------------------------------------------- */
   const handleSend = async (prompt?: string) => {
     // guard config
-    if (!userConfig || !userConfig.provider || !userConfig.selectedModel || !user?.uid) {
-      toast.error("AI configuration not found. Please save your API Key on the Configuration page.");
+    if (
+      !userConfig ||
+      !userConfig.provider ||
+      !userConfig.selectedModel ||
+      !user?.uid
+    ) {
+      toast.error(
+        "AI configuration not found. Please save your API Key on the Configuration page."
+      );
       return;
     }
 
@@ -342,14 +374,20 @@ export default function NewChatPage() {
       const next = new URLSearchParams(searchParams);
       next.set("id", id);
       sessionStorage.setItem("activeChatGenerating", "true");
-      navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, { replace: true });
+      navigate(`/domain/${domain}/dashboard/newchat?${next.toString()}`, {
+        replace: true,
+      });
       add({
         id,
         title: text.length > 50 ? text.slice(0, 50) + "…" : text,
         section: domain!,
         createdAt: Date.now(),
       });
-      await addNotification("chat", "New Chat Started", `You started a new chat in ${domain}`);
+      await addNotification(
+        "chat",
+        "New Chat Started",
+        `You started a new chat in ${domain}`
+      );
       window.history.replaceState(
         null,
         "",
@@ -360,7 +398,9 @@ export default function NewChatPage() {
     try {
       await saveChatMessage(domainDocId, sessionId!, "user", text);
 
-      setCurrentThinkingSteps([{ key: "pending", message: "Drafting plan..." }]);
+      setCurrentThinkingSteps([
+        { key: "pending", message: "Drafting plan..." },
+      ]);
 
       // call BE — TANPA apiKey
       const res = await queryDomain({
@@ -377,22 +417,37 @@ export default function NewChatPage() {
       });
 
       const sanitizeExplainer = (s?: string) =>
-        (s || "").trim().replace(/^\s*(?:of course[.,]?\s*)+/i, "").trim();
+        (s || "")
+          .trim()
+          .replace(/^\s*(?:of course[.,]?\s*)+/i, "")
+          .trim();
 
       const buildThinkingSteps = (r: DomainQueryResp): ThinkingStep[] => {
         const steps: ThinkingStep[] = [];
         const explainer = sanitizeExplainer(r.plan_explainer);
         if (explainer) steps.push({ key: "explainer", message: explainer });
         steps.push(
-          { key: "router", message: "Routing and understanding user intent..." },
+          {
+            key: "router",
+            message: "Routing and understanding user intent...",
+          },
           { key: "orchestrator", message: "Building orchestrator plan..." }
         );
         if (r.need_manipulator)
-          steps.push({ key: "manipulator", message: "Manipulating datasets and cleaning data..." });
+          steps.push({
+            key: "manipulator",
+            message: "Manipulating datasets and cleaning data...",
+          });
         if (r.need_analyzer)
-          steps.push({ key: "analyzer", message: "Analyzing dataset patterns and relationships..." });
+          steps.push({
+            key: "analyzer",
+            message: "Analyzing dataset patterns and relationships...",
+          });
         if (r.need_visualizer)
-          steps.push({ key: "visualizer", message: "Generating visualization for insights..." });
+          steps.push({
+            key: "visualizer",
+            message: "Generating visualization for insights...",
+          });
         steps.push({ key: "compiler", message: "Preparing response..." });
         return steps;
       };
@@ -485,7 +540,12 @@ export default function NewChatPage() {
       };
       setMessages((cur) => [...cur, fallbackMsg]);
       scrollToBottom("smooth");
-      await saveChatMessage(domainDocId!, searchParams.get("id")!, "assistant", fallbackMsg.content);
+      await saveChatMessage(
+        domainDocId!,
+        searchParams.get("id")!,
+        "assistant",
+        fallbackMsg.content
+      );
 
       setSending(false);
       setIsGenerating(false);
@@ -503,6 +563,129 @@ export default function NewChatPage() {
     setShowTour(false);
   };
 
+  const handleStartRecording = async () => {
+    if (isRecording || isTranscribing || inFlight) return;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error("Browser tidak mendukung perekaman audio.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event: BlobEvent) => {
+        const data = (event as BlobEvent).data as Blob;
+        if (data && data.size > 0) {
+          audioChunksRef.current.push(data);
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Error starting recording", err);
+      toast.error(
+        "Gagal mengakses mikrofon. Pastikan izin mic sudah diizinkan."
+      );
+    }
+  };
+
+  const handleCancelRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) {
+      setIsRecording(false);
+      audioChunksRef.current = [];
+      return;
+    }
+
+    try {
+      recorder.onstop = null;
+      if (recorder.state !== "inactive") {
+        recorder.stop();
+      }
+      recorder.stream.getTracks().forEach((t) => t.stop());
+    } catch (err) {
+      console.error("Error stopping recorder", err);
+    } finally {
+      mediaRecorderRef.current = null;
+      audioChunksRef.current = [];
+      setIsRecording(false);
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleConfirmRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+
+    setIsRecording(false);
+    setIsTranscribing(true);
+
+    // ketika rekaman benar-benar selesai
+    recorder.onstop = async () => {
+      try {
+        recorder.stream.getTracks().forEach((t) => t.stop());
+      } catch {
+        // ignore
+      }
+      mediaRecorderRef.current = null;
+
+      const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      audioChunksRef.current = [];
+
+      if (!blob.size) {
+        toast.error("Tidak ada suara yang terekam.");
+        setIsTranscribing(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", blob, "voice.webm");
+
+      if (user?.uid) formData.append("userId", user.uid);
+      formData.append("language", "id");
+
+      try {
+        const res = await fetch(`${API_BASE}/speech-to-text`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const transcript = (data.transcript || "").trim();
+
+        if (!transcript) {
+          toast.error("Transkripsi kosong. Coba ulangi bicara lebih jelas.");
+          setIsTranscribing(false);
+          return;
+        }
+
+        // QUICK SEND MODE: langsung kirim ke /query
+        await handleSend(transcript);
+      } catch (err) {
+        console.error("STT error", err);
+        toast.error("Gagal mengubah suara menjadi teks.");
+      } finally {
+        setIsTranscribing(false);
+      }
+    };
+
+    if (recorder.state !== "inactive") {
+      recorder.stop();
+    }
+  };
+
   /* ---------------------------------------------
      Render
   ---------------------------------------------- */
@@ -514,14 +697,18 @@ export default function NewChatPage() {
         <div className="grid grid-cols-1 gap-6 max-w-7xl mx-auto min-h-[60vh] place-content-center">
           <div className="w-full flex flex-col items-center">
             <div className="mb-6 text-center px-2 sm:px-0">
-              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">{title}</h1>
+              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
+                {title}
+              </h1>
               <p className="mt-2 text-sm text-gray-400">{subtitle}</p>
             </div>
 
             <div className="w-full flex justify-center">
               <div className="w-full max-w-2xl md:max-w-3xl px-2 sm:px-0">
                 <div className="chat-dataset-dropdown mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">Dataset</label>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Dataset
+                  </label>
                   <MultiSelectDropdown
                     options={availableDatasets}
                     selectedOptions={selectedDatasets}
@@ -544,6 +731,10 @@ export default function NewChatPage() {
                     setCurrentThinkingSteps([]);
                   }}
                   placeholder="Ask Anything"
+                  isRecording={isRecording}
+                  onMicClick={handleStartRecording}
+                  onVoiceCancel={handleCancelRecording}
+                  onVoiceConfirm={handleConfirmRecording}
                 />
               </div>
             </div>
@@ -559,7 +750,11 @@ export default function NewChatPage() {
                 }
               }}
               domain={domain}
-              dataset={selectedDatasets.length > 0 ? selectedDatasets : availableDatasets}
+              dataset={
+                selectedDatasets.length > 0
+                  ? selectedDatasets
+                  : availableDatasets
+              }
               /* forward manual creds to /suggest (BE akan resolve dari userId) */
               provider={userConfig?.provider}
               model={userConfig?.selectedModel}
@@ -570,9 +765,15 @@ export default function NewChatPage() {
       ) : (
         <div className="grid grid-cols-1">
           <div className="flex flex-col h-[calc(100vh-3rem)] sm:h-[calc(100vh-4rem)]">
-            <div ref={chatScrollRef} className="flex-1 space-y-6 py-4 overflow-y-auto">
+            <div
+              ref={chatScrollRef}
+              className="flex-1 space-y-6 py-4 overflow-y-auto"
+            >
               {messages.map((m, i) => (
-                <div key={i} className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
+                <div
+                  key={i}
+                  className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl"
+                >
                   {m.role === "assistant" ? (
                     <div className="space-y-3 mb-20">
                       {m.thinkingSteps && (
@@ -583,16 +784,26 @@ export default function NewChatPage() {
                           </summary>
                           <div className="mt-2 space-y-1 text-sm ml-5">
                             {m.thinkingSteps.map((step) => (
-                              <div key={step.key} className="flex items-start gap-2">
-                                <FiCheck className="text-green-400 mt-0.5 flex-shrink-0" size={14} />
-                                <span className="text-gray-300">{step.message}</span>
+                              <div
+                                key={step.key}
+                                className="flex items-start gap-2"
+                              >
+                                <FiCheck
+                                  className="text-green-400 mt-0.5 flex-shrink-0"
+                                  size={14}
+                                />
+                                <span className="text-gray-300">
+                                  {step.message}
+                                </span>
                               </div>
                             ))}
                           </div>
                         </details>
                       )}
 
-                      {m.charts && m.charts.length > 0 && <ChartGallery charts={m.charts} />}
+                      {m.charts && m.charts.length > 0 && (
+                        <ChartGallery charts={m.charts} />
+                      )}
 
                       <div
                         className={[
@@ -650,14 +861,28 @@ export default function NewChatPage() {
                                 <button
                                   onClick={async () => {
                                     const edited = editText.trim();
-                                    if (!edited) return toast.error("Message can't be empty");
-                                    if (!domainDocId) return toast.error("Domain not ready");
+                                    if (!edited)
+                                      return toast.error(
+                                        "Message can't be empty"
+                                      );
+                                    if (!domainDocId)
+                                      return toast.error("Domain not ready");
                                     const sessionId = searchParams.get("id");
-                                    if (!sessionId) return toast.error("Session ID not found");
+                                    if (!sessionId)
+                                      return toast.error(
+                                        "Session ID not found"
+                                      );
 
                                     // guard config for edit flow
-                                    if (!userConfig || !userConfig.provider || !userConfig.selectedModel || !user?.uid) {
-                                      toast.error("AI configuration not found. Please save your API Key on the Configuration page.");
+                                    if (
+                                      !userConfig ||
+                                      !userConfig.provider ||
+                                      !userConfig.selectedModel ||
+                                      !user?.uid
+                                    ) {
+                                      toast.error(
+                                        "AI configuration not found. Please save your API Key on the Configuration page."
+                                      );
                                       return;
                                     }
 
@@ -665,7 +890,9 @@ export default function NewChatPage() {
                                     setEditText("");
 
                                     // reset think
-                                    thinkingTimeoutRef.current.forEach(clearTimeout);
+                                    thinkingTimeoutRef.current.forEach(
+                                      clearTimeout
+                                    );
                                     thinkingTimeoutRef.current = [];
                                     setCurrentThinkingSteps([]);
                                     if (controller) {
@@ -688,23 +915,45 @@ export default function NewChatPage() {
                                       return;
                                     }
                                     const nextAssistantId =
-                                      messages[i + 1]?.role === "assistant" ? messages[i + 1]?.id : null;
+                                      messages[i + 1]?.role === "assistant"
+                                        ? messages[i + 1]?.id
+                                        : null;
 
                                     // 1) update edited question
-                                    await updateChatMessage(domainDocId, userMsgId, { text: edited });
+                                    await updateChatMessage(
+                                      domainDocId,
+                                      userMsgId,
+                                      { text: edited }
+                                    );
                                     setMessages((prev) => {
                                       const updated = [...prev];
-                                      updated[i] = { ...updated[i], content: edited };
-                                      if (updated[i + 1]?.role === "assistant") updated.splice(i + 1, 1);
+                                      updated[i] = {
+                                        ...updated[i],
+                                        content: edited,
+                                      };
+                                      if (updated[i + 1]?.role === "assistant")
+                                        updated.splice(i + 1, 1);
                                       return updated;
                                     });
 
                                     if (i === 0) {
-                                      const newTitle = edited.length > 50 ? edited.slice(0, 50) + "…" : edited;
-                                      await updateChatSessionTitle(domainDocId, sessionId!, newTitle);
+                                      const newTitle =
+                                        edited.length > 50
+                                          ? edited.slice(0, 50) + "…"
+                                          : edited;
+                                      await updateChatSessionTitle(
+                                        domainDocId,
+                                        sessionId!,
+                                        newTitle
+                                      );
                                     }
 
-                                    setCurrentThinkingSteps([{ key: "pending", message: "Drafting plan..." }]);
+                                    setCurrentThinkingSteps([
+                                      {
+                                        key: "pending",
+                                        message: "Drafting plan...",
+                                      },
+                                    ]);
 
                                     try {
                                       const res = await queryDomain({
@@ -713,7 +962,10 @@ export default function NewChatPage() {
                                         prompt: edited,
                                         sessionId,
                                         signal: newController.signal,
-                                        dataset: selectedDatasets.length > 0 ? selectedDatasets : undefined,
+                                        dataset:
+                                          selectedDatasets.length > 0
+                                            ? selectedDatasets
+                                            : undefined,
                                         provider: userConfig?.provider,
                                         model: userConfig?.selectedModel,
                                         apiKey: undefined,
@@ -721,36 +973,77 @@ export default function NewChatPage() {
                                       });
 
                                       const sanitizeExplainer = (s?: string) =>
-                                        (s || "").trim().replace(/^\s*(?:of course[.,]?\s*)+/i, "").trim();
+                                        (s || "")
+                                          .trim()
+                                          .replace(
+                                            /^\s*(?:of course[.,]?\s*)+/i,
+                                            ""
+                                          )
+                                          .trim();
 
-                                      const buildThinkingSteps = (r: DomainQueryResp): ThinkingStep[] => {
+                                      const buildThinkingSteps = (
+                                        r: DomainQueryResp
+                                      ): ThinkingStep[] => {
                                         const steps: ThinkingStep[] = [];
-                                        const explainer = sanitizeExplainer(r.plan_explainer);
+                                        const explainer = sanitizeExplainer(
+                                          r.plan_explainer
+                                        );
                                         if (explainer)
-                                          steps.push({ key: "explainer", message: explainer });
+                                          steps.push({
+                                            key: "explainer",
+                                            message: explainer,
+                                          });
                                         steps.push(
-                                          { key: "router", message: "Routing and understanding user intent..." },
-                                          { key: "orchestrator", message: "Building orchestrator plan..." }
+                                          {
+                                            key: "router",
+                                            message:
+                                              "Routing and understanding user intent...",
+                                          },
+                                          {
+                                            key: "orchestrator",
+                                            message:
+                                              "Building orchestrator plan...",
+                                          }
                                         );
                                         if (r.need_manipulator)
-                                          steps.push({ key: "manipulator", message: "Manipulating datasets and cleaning data..." });
+                                          steps.push({
+                                            key: "manipulator",
+                                            message:
+                                              "Manipulating datasets and cleaning data...",
+                                          });
                                         if (r.need_analyzer)
-                                          steps.push({ key: "analyzer", message: "Analyzing dataset patterns and relationships..." });
+                                          steps.push({
+                                            key: "analyzer",
+                                            message:
+                                              "Analyzing dataset patterns and relationships...",
+                                          });
                                         if (r.need_visualizer)
-                                          steps.push({ key: "visualizer", message: "Generating visualization for insights..." });
-                                        steps.push({ key: "compiler", message: "Preparing response..." });
+                                          steps.push({
+                                            key: "visualizer",
+                                            message:
+                                              "Generating visualization for insights...",
+                                          });
+                                        steps.push({
+                                          key: "compiler",
+                                          message: "Preparing response...",
+                                        });
                                         return steps;
                                       };
 
                                       const steps = buildThinkingSteps(res);
 
                                       const stepInterval = 600;
-                                      thinkingTimeoutRef.current.forEach(clearTimeout);
+                                      thinkingTimeoutRef.current.forEach(
+                                        clearTimeout
+                                      );
                                       thinkingTimeoutRef.current = [];
                                       setCurrentThinkingSteps([]);
                                       steps.forEach((step, idx) => {
                                         const t = setTimeout(() => {
-                                          setCurrentThinkingSteps((prev) => [...prev, step]);
+                                          setCurrentThinkingSteps((prev) => [
+                                            ...prev,
+                                            step,
+                                          ]);
                                           scrollToBottom("smooth");
                                         }, idx * stepInterval);
                                         thinkingTimeoutRef.current.push(t);
@@ -759,11 +1052,17 @@ export default function NewChatPage() {
                                       let charts: ChartItem[] | undefined;
                                       let chartHtml: string | undefined;
 
-                                      const chartFetchUrl = pickChartFetchUrl(API_BASE, res);
+                                      const chartFetchUrl = pickChartFetchUrl(
+                                        API_BASE,
+                                        res
+                                      );
                                       const chartUrl = chartFetchUrl ?? null;
                                       if (chartFetchUrl) {
                                         try {
-                                          const html = await fetchChartHtml(API_BASE, chartFetchUrl);
+                                          const html = await fetchChartHtml(
+                                            API_BASE,
+                                            chartFetchUrl
+                                          );
                                           if (html) {
                                             chartHtml = html;
                                             charts = [{ html }];
@@ -775,11 +1074,16 @@ export default function NewChatPage() {
                                         }
                                       }
 
-                                      const cleaned = cleanHtmlResponse(res.response ?? "(empty)");
-                                      const totalStepTime = (steps.length + 1) * stepInterval + 800;
+                                      const cleaned = cleanHtmlResponse(
+                                        res.response ?? "(empty)"
+                                      );
+                                      const totalStepTime =
+                                        (steps.length + 1) * stepInterval + 800;
 
                                       setTimeout(async () => {
-                                        thinkingTimeoutRef.current.forEach(clearTimeout);
+                                        thinkingTimeoutRef.current.forEach(
+                                          clearTimeout
+                                        );
                                         thinkingTimeoutRef.current = [];
                                         setCurrentThinkingSteps([]);
 
@@ -793,7 +1097,11 @@ export default function NewChatPage() {
                                         };
                                         setMessages((prev) => {
                                           const updated = [...prev];
-                                          updated.splice(i + 1, 0, newAssistant);
+                                          updated.splice(
+                                            i + 1,
+                                            0,
+                                            newAssistant
+                                          );
                                           return updated;
                                         });
 
@@ -828,7 +1136,9 @@ export default function NewChatPage() {
                                         setEditBusy(false);
                                       }, totalStepTime);
                                     } catch {
-                                      thinkingTimeoutRef.current.forEach(clearTimeout);
+                                      thinkingTimeoutRef.current.forEach(
+                                        clearTimeout
+                                      );
                                       setCurrentThinkingSteps([]);
                                       setSending(false);
                                       setIsGenerating(false);
@@ -900,14 +1210,21 @@ export default function NewChatPage() {
                       return (
                         <li key={step.key} className="flex items-center gap-2">
                           {isDone ? (
-                            <FiCheck className="text-green-400 flex-shrink-0" size={14} />
+                            <FiCheck
+                              className="text-green-400 flex-shrink-0"
+                              size={14}
+                            />
                           ) : (
                             <div
                               className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0"
                               role="status"
                             />
                           )}
-                          <span className={`${isDone ? "text-gray-400" : "text-gray-200"} transition-colors`}>
+                          <span
+                            className={`${
+                              isDone ? "text-gray-400" : "text-gray-200"
+                            } transition-colors`}
+                          >
                             {step.message}
                           </span>
                         </li>
@@ -927,7 +1244,9 @@ export default function NewChatPage() {
             <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
               <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
                 <div className="mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">Dataset</label>
+                  <label className="block text-xs text-gray-400 mb-1">
+                    Dataset
+                  </label>
                   <MultiSelectDropdown
                     options={availableDatasets}
                     selectedOptions={selectedDatasets}
@@ -952,6 +1271,10 @@ export default function NewChatPage() {
                     thinkingTimeoutRef.current.forEach(clearTimeout);
                     setCurrentThinkingSteps([]);
                   }}
+                  isRecording={isRecording}
+                  onMicClick={handleStartRecording}
+                  onVoiceCancel={handleCancelRecording}
+                  onVoiceConfirm={handleConfirmRecording}
                 />
               </div>
             </div>

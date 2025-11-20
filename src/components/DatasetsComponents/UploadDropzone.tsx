@@ -37,7 +37,10 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
       lower.endsWith(".csv") ||
       lower.endsWith(".parquet") ||
       lower.endsWith(".xls") ||
-      lower.endsWith(".xlsx")
+      lower.endsWith(".xlsx") ||
+      lower.endsWith(".pdf") ||
+      lower.endsWith(".doc") ||
+      lower.endsWith(".docx")
     );
   };
 
@@ -73,7 +76,8 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         rejected.push({
           ...it,
           status: "skipped",
-          error: "Only .csv, .parquet, .xls, or .xlsx files are allowed.",
+          error:
+            "Only .csv, .parquet, .xls, or ,.xlsx, .pdf,.doc, or ,.docx files are allowed.",
         });
         continue;
       }
@@ -189,7 +193,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
       <h2 className="text-xl font-bold text-white">Add datasets</h2>
       <p className="text-gray-300 mt-1">
         Upload one or more <b>CSV</b>, <b>Excel</b> (<b>.xls</b>, <b>.xlsx</b>),
-        or <b>Parquet</b> files.
+        or <b>.pdf</b>, <b>.docx</b>, <b>.doc</b> files.
       </p>
 
       {/* Dropzone */}
@@ -227,7 +231,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
           ref={fileInputRef}
           type="file"
           multiple
-          accept=".csv,.xls,.xlsx,.parquet,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.apache.parquet"
+          accept=".csv,.xls,.xlsx,.parquet,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.apache.parquet,.pdf,.doc,.docx"
           className="sr-only"
           onChange={(e) => {
             const list = e.target.files;

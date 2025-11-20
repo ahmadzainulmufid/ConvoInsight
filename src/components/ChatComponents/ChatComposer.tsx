@@ -1,4 +1,3 @@
-// src/components/ChatComponents/ChatComposer.tsx
 import React, { useEffect, useRef, useState } from "react";
 
 const MAX_H = 160;
@@ -9,23 +8,31 @@ export function ChatComposer({
   onSend,
   busy = false,
   onStop,
+  onMicClick,
+  onVoiceCancel,
+  onVoiceConfirm,
+  isRecording = false,
   placeholder = "Ask Anything",
   className = "",
 }: {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
-  busy?: boolean; // ⬅️ sama seperti ChatInput
+  busy?: boolean;
   onStop?: () => void;
+  onMicClick?: () => void;
+  onVoiceCancel?: () => void;
+  onVoiceConfirm?: () => void;
+  isRecording?: boolean;
   placeholder?: string;
   className?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const hasText = value.trim().length > 0;
 
-  // sama persis dengan ChatInput
   const [localBusy, setLocalBusy] = useState(false);
-  const effectiveBusy = localBusy || !!busy;
+  const effectiveBusy = localBusy || !!busy; // hanya untuk status "generating"
+  const inputDisabled = effectiveBusy || isRecording; // disable input saat generate / recording
 
   const btnBase =
     "ml-2 flex items-center justify-center w-9 h-9 rounded-md text-lg transition";
@@ -50,8 +57,8 @@ export function ChatComposer({
     if ((e.nativeEvent as KeyboardEvent).isComposing) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!effectiveBusy && hasText) {
-        setLocalBusy(true); // ⏹ langsung muncul
+      if (!effectiveBusy && !isRecording && hasText) {
+        setLocalBusy(true);
         onSend();
       }
     }
@@ -59,8 +66,8 @@ export function ChatComposer({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (effectiveBusy || !hasText) return;
-    setLocalBusy(true); // ⏹ langsung muncul
+    if (effectiveBusy || isRecording || !hasText) return;
+    setLocalBusy(true);
     onSend();
     requestAnimationFrame(() => ref.current?.focus());
   };
@@ -81,7 +88,7 @@ export function ChatComposer({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         rows={1}
-        disabled={effectiveBusy}
+        disabled={inputDisabled}
         placeholder={placeholder}
         className="flex-1 resize-none bg-transparent outline-none 
                    text-gray-200 text-sm leading-relaxed 
@@ -89,6 +96,46 @@ export function ChatComposer({
                    min-h-[44px] max-h-[160px]"
       />
 
+      {/* === Voice UI (mirip ChatGPT) === */}
+      {isRecording ? (
+        <div className="flex items-center gap-2 mr-2">
+          <span className="flex items-center text-xs text-red-400">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse mr-1" />
+            Listening...
+          </span>
+          <button
+            type="button"
+            onClick={onVoiceCancel}
+            className="flex items-center justify-center w-8 h-8 rounded-md
+                       bg-transparent text-white opacity-80 hover:opacity-100 transition"
+            title="Cancel voice"
+          >
+            ✕
+          </button>
+          <button
+            type="button"
+            onClick={onVoiceConfirm}
+            className="flex items-center justify-center w-8 h-8 rounded-md
+                       bg-transparent text-white opacity-80 hover:opacity-100 transition"
+            title="Send voice"
+          >
+            ✓
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onMicClick}
+          className="mr-3 flex items-center justify-center w-9 h-9 
+                     rounded-md text-lg bg-transparent text-white 
+                     opacity-80 hover:opacity-100 transition"
+          title="Voice Input"
+        >
+          🎙️
+        </button>
+      )}
+
+      {/* === Stop / Send button === */}
       {effectiveBusy ? (
         <button
           type="button"
@@ -101,8 +148,10 @@ export function ChatComposer({
       ) : (
         <button
           type="submit"
-          disabled={!hasText}
-          className={`${btnBase} ${hasText ? btnActive : btnDisabled}`}
+          disabled={!hasText || isRecording}
+          className={`${btnBase} ${
+            hasText && !isRecording ? btnActive : btnDisabled
+          }`}
           title="Send"
         >
           {hasText ? "↑" : "➤"}
