@@ -2,10 +2,12 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FiMail, FiLock, FiUser, FiEye, FiEyeOff } from "react-icons/fi";
+import { FcGoogle } from "react-icons/fc";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth, db } from "../../utils/firebaseSetup";
 import toast from "react-hot-toast";
+import { signInWithGoogle, mapGoogleAuthError } from "../../utils/googleAuth";
 import { doc, setDoc } from "firebase/firestore";
 
 const RegisterForm: React.FC = () => {
@@ -18,6 +20,23 @@ const RegisterForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ [k: string]: string }>({});
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleSignUp = async () => {
+    setErrors({});
+    setGoogleLoading(true);
+    try {
+      const user = await signInWithGoogle(true);
+      toast.success(`Welcome ${user.displayName || user.email}`);
+      navigate("/home");
+    } catch (err) {
+      console.error("Google sign-up error:", err);
+      const msg = mapGoogleAuthError(err);
+      if (msg) setErrors({ form: msg });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const mapFirebaseError = (code: string) => {
     switch (code) {
@@ -233,6 +252,24 @@ const RegisterForm: React.FC = () => {
           {loading ? "Creating account..." : "Sign up"}
         </button>
       </form>
+
+      {/* Divider OR */}
+      <div className="my-5 flex items-center gap-3">
+        <div className="h-px bg-white/10 flex-1" />
+        <span className="text-xs uppercase tracking-wider text-gray-500">or</span>
+        <div className="h-px bg-white/10 flex-1" />
+      </div>
+
+      {/* Google button */}
+      <button
+        type="button"
+        onClick={handleGoogleSignUp}
+        disabled={loading || googleLoading}
+        className="w-full bg-white/5 text-gray-100 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl py-3 font-medium transition flex items-center justify-center gap-2.5 disabled:opacity-60"
+      >
+        <FcGoogle size={20} />
+        {googleLoading ? "Connecting to Google..." : "Sign up with Google"}
+      </button>
 
       <p className="mt-6 text-center text-sm text-gray-400">
         Already have an account?{" "}

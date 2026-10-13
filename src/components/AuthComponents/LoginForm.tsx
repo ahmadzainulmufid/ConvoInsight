@@ -6,10 +6,9 @@ import {
   signInWithEmailAndPassword,
   setPersistence,
   browserLocalPersistence,
-  browserSessionPersistence,
-  signInWithPopup,
 } from "firebase/auth";
-import { auth, db, googleProvider } from "../../utils/firebaseSetup";
+import { auth, db } from "../../utils/firebaseSetup";
+import { signInWithGoogle, mapGoogleAuthError } from "../../utils/googleAuth";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
@@ -29,6 +28,7 @@ const LoginForm: React.FC = () => {
     form?: string;
   }>({});
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [resetSent, setResetSent] = useState<string | null>(null);
 
   useEffect(() => {
@@ -130,31 +130,18 @@ const LoginForm: React.FC = () => {
   };
 
   const handleGoogleSignIn = async () => {
+    setErrors((prev) => ({ ...prev, form: undefined }));
+    setGoogleLoading(true);
     try {
-      await setPersistence(
-        auth,
-        remember ? browserLocalPersistence : browserSessionPersistence
-      );
-
-      const res = await signInWithPopup(auth, googleProvider);
-      const user = res.user;
-
-      const userRef = doc(db, "users", user.uid);
-      const snap = await getDoc(userRef);
-
-      if (!snap.exists()) {
-        await setDoc(userRef, {
-          email: user.email,
-          displayName: user.displayName || "",
-          hasSeenOnboarding: false,
-          createdAt: new Date(),
-        });
-      }
-      toast.success(`Welcome ${res.user.displayName || res.user.email}`);
+      const user = await signInWithGoogle(remember);
+      toast.success(`Welcome ${user.displayName || user.email}`);
       navigate("/home");
     } catch (err) {
       console.error("Google sign-in error:", err);
-      setErrors((prev) => ({ ...prev, form: "Gagal login dengan Google." }));
+      const msg = mapGoogleAuthError(err);
+      if (msg) setErrors((prev) => ({ ...prev, form: msg }));
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -286,11 +273,11 @@ const LoginForm: React.FC = () => {
       <button
         type="button"
         onClick={handleGoogleSignIn}
-        disabled={loading}
+        disabled={loading || googleLoading}
         className="w-full bg-white/5 text-gray-100 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl py-3 font-medium transition flex items-center justify-center gap-2.5 disabled:opacity-60"
       >
         <FcGoogle size={20} />
-        Continue with Google
+        {googleLoading ? "Connecting to Google..." : "Continue with Google"}
       </button>
     </div>
   );
