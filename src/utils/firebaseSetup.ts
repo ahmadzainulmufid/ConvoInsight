@@ -10,12 +10,12 @@ import { getFirestore } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBAdIonreg9_gauBx0jBl58tYC8PitOXsw",
-  authDomain: "datainsight-54ef4.firebaseapp.com",
-  projectId: "datainsight-54ef4",
-  storageBucket: "datainsight-54ef4.firebasestorage.app",
-  messagingSenderId: "960168074270",
-  appId: "1:960168074270:web:b12ebc97beb5162ba3e20f",
+  apiKey: "AIzaSyBkiIirqyybsSAxNdxyYtdBx2WZzwqV3C0",
+  authDomain: "convoinsight-8ed6b.firebaseapp.com",
+  projectId: "convoinsight-8ed6b",
+  storageBucket: "convoinsight-8ed6b.firebasestorage.app",
+  messagingSenderId: "197522659121",
+  appId: "1:197522659121:web:902af9874aacaa911c4210",
 };
 
 // ✅ Pastikan hanya 1 instance
