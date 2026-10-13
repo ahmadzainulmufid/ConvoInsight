@@ -15,15 +15,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 /**
  * Login / daftar dengan akun Google lewat popup.
  * Jika user baru, dokumen `users/{uid}` dibuat agar onboarding berjalan.
+ *
+ * PENTING: signInWithPopup harus dipanggil langsung dari klik tombol
+ * tanpa `await` apa pun sebelumnya, kalau tidak browser akan memblokir
+ * popup (auth/popup-blocked). Persistence diatur setelah login berhasil.
  */
 export async function signInWithGoogle(remember = true): Promise<User> {
-  await setPersistence(
-    auth,
-    remember ? browserLocalPersistence : browserSessionPersistence
-  );
-
   const res = await signInWithPopup(auth, googleProvider);
   const user = res.user;
+
+  if (!remember) {
+    await setPersistence(auth, browserSessionPersistence);
+  } else {
+    await setPersistence(auth, browserLocalPersistence);
+  }
 
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
