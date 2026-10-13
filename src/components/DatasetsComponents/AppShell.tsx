@@ -13,7 +13,7 @@ export default function AppShell({
 }: AppShellProps) {
   return (
     <div className="min-h-screen w-full overflow-x-hidden">
-      <div className="fixed inset-0 z-0 bg-[#1a1b1e]" />
+      <div className="fixed inset-0 z-0 bg-[#0d1017] bg-app-glow" />
       <main className="relative z-10 min-h-screen">
         <div className={`${containerClassName} ${contentPadding}`}>
           {children}

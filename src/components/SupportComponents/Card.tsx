@@ -35,7 +35,7 @@ const CardStat = ({ title, value, change, type, onClick }: CardStatProps) => {
 
   return (
     <div
-      className="bg-white dark:bg-[#1e1f23] rounded-lg p-5 shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center cursor-pointer hover:ring-2 hover:ring-indigo-400 transition"
+      className="bg-white dark:bg-[#151923] rounded-lg p-5 shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center cursor-pointer hover:ring-2 hover:ring-indigo-400 transition"
       onClick={onClick}
     >
       <div>
@@ -58,7 +58,7 @@ const CardStat = ({ title, value, change, type, onClick }: CardStatProps) => {
 
 export const InfoCard = ({ title, description }: InfoCardProps) => {
   return (
-    <div className="bg-white dark:bg-[#1e1f23] rounded-lg shadow-md p-4 flex items-start space-x-4 w-full border border-gray-200 dark:border-gray-700">
+    <div className="bg-white dark:bg-[#151923] rounded-lg shadow-md p-4 flex items-start space-x-4 w-full border border-gray-200 dark:border-gray-700">
       <div className="mt-1">
         <FiInfo className="text-blue-500 w-5 h-5" />
       </div>
@@ -76,7 +76,7 @@ export const InfoCard = ({ title, description }: InfoCardProps) => {
 
 export const CardSuggestion = ({ title }: CardSuggestionProps) => {
   return (
-    <div className="bg-gray-100 dark:bg-[#2a2b32] rounded-lg px-4 py-3 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition duration-200 cursor-pointer">
+    <div className="bg-gray-100 dark:bg-[#1b2030] rounded-lg px-4 py-3 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition duration-200 cursor-pointer">
       <p className="text-sm font-medium text-gray-800 dark:text-white">
         {title}
       </p>

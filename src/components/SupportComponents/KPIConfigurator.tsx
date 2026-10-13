@@ -175,11 +175,11 @@ export default function KPIConfigurator({
 
   /** 🧱 UI **/
   return (
-    <section className="bg-[#2A2B32] p-4 rounded-lg space-y-4 mt-8">
+    <section className="bg-[#1b2030] p-4 rounded-lg space-y-4 mt-8">
       <div className="flex justify-between items-center">
         <h2 className="text-white font-medium">KPI Configuration</h2>
         <button
-          className="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white"
+          className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition"
           onClick={() => setShowAddPanel(!showAddPanel)}
         >
           {showAddPanel ? "Close" : "+ Add KPI"}
@@ -191,7 +191,7 @@ export default function KPIConfigurator({
         {selectedKpis.map((k) => (
           <span
             key={k.key}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#343541] text-gray-200"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#242b3d] text-gray-200"
           >
             {k.label}
             <button
@@ -218,7 +218,7 @@ export default function KPIConfigurator({
           <select
             value={selectedColumn}
             onChange={(e) => setSelectedColumn(e.target.value)}
-            className="w-full rounded bg-[#1f2024] border border-[#3a3b42] px-3 py-2 text-white"
+            className="w-full rounded-lg bg-[#151923] border border-white/10 px-3 py-2 text-white"
             disabled={!columnOptions.length}
           >
             <option value="">Select Column</option>
@@ -231,7 +231,7 @@ export default function KPIConfigurator({
 
           <button
             onClick={addKPI}
-            className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 transition"
           >
             Add KPI
           </button>

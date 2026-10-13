@@ -186,12 +186,12 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
 
   return (
     <div
-      className={`bg-[#232427] rounded-2xl shadow-sm border border-[#2a2b32] p-5 md:p-6 ${
+      className={`bg-[#151923] rounded-2xl shadow-[var(--shadow-card)] border border-white/5 p-5 md:p-7 ${
         className ?? ""
       }`}
     >
-      <h2 className="text-xl font-bold text-white">Add datasets</h2>
-      <p className="text-gray-300 mt-1">
+      <h2 className="text-lg font-semibold tracking-tight text-white">Add datasets</h2>
+      <p className="text-sm text-gray-400 mt-1 [&_b]:text-gray-200 [&_b]:font-medium">
         Upload one or more <b>CSV</b>, <b>Excel</b> (<b>.xls</b>, <b>.xlsx</b>),
         or <b>.pdf</b>, <b>.docx</b>, <b>.doc</b> files.
       </p>
@@ -205,24 +205,26 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
         onDragEnter={() => setDragging(true)}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        className={`mt-5 rounded-xl border-2 border-dashed p-10 text-center transition
+        className={`group mt-5 rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-200
           ${
             dragging
-              ? "border-indigo-400 bg-[#26293a]"
-              : "border-[#3a3b42] bg-[#1f2024]"
+              ? "border-indigo-400 bg-indigo-500/10 scale-[1.01]"
+              : "border-white/10 bg-[#0d1017]/60 hover:border-indigo-500/40 hover:bg-indigo-500/[0.03]"
           }`}
       >
-        <FiUploadCloud className="mx-auto text-3xl text-gray-400" />
-        <p className="mt-3 text-gray-200">
+        <div className="mx-auto h-14 w-14 grid place-items-center rounded-2xl bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/25 text-indigo-300">
+          <FiUploadCloud className="text-2xl" />
+        </div>
+        <p className="mt-4 text-gray-200 font-medium">
           Drag & drop files here, or{" "}
           <label
             htmlFor="fileInput"
-            className="text-indigo-400 font-medium underline cursor-pointer hover:text-indigo-300"
+            className="text-indigo-400 font-semibold underline underline-offset-4 decoration-indigo-400/40 cursor-pointer hover:text-indigo-300"
           >
             click to select
           </label>
         </p>
-        <p className="text-sm text-gray-400 mt-2">
+        <p className="text-xs text-gray-500 mt-2">
           You can select multiple files • Max <b>50 MB</b> each
         </p>
 
@@ -246,7 +248,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
           {items.map((it) => (
             <div
               key={it.id}
-              className="rounded-lg border border-[#3a3b42] bg-[#1f2024] p-3"
+              className="rounded-xl border border-white/10 bg-[#0d1017]/60 p-3.5"
             >
               <div className="flex items-center justify-between">
                 <div className="text-sm text-white">{it.file.name}</div>
@@ -259,9 +261,9 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
                 </div>
               </div>
               {(it.status === "uploading" || it.status === "done") && (
-                <div className="mt-2 h-2 bg-[#2a2b32] rounded overflow-hidden">
+                <div className="mt-2.5 h-1.5 bg-white/5 rounded-full overflow-hidden">
                   <div
-                    className="h-2 bg-indigo-500 transition-all"
+                    className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 transition-all"
                     style={{ width: `${Math.floor(it.progress)}%` }}
                   />
                 </div>
@@ -276,7 +278,7 @@ const UploadDropzone: React.FC<UploadDropzoneProps> = ({
 
       {/* Error Summary */}
       {errorSummary && (
-        <div className="mt-4 flex items-start gap-2 text-red-300 bg-red-900/30 border border-red-700 rounded-lg px-3 py-2 whitespace-pre-wrap">
+        <div className="mt-4 flex items-start gap-2 text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl px-3.5 py-2.5 whitespace-pre-wrap">
           <span>⚠️</span>
           <span className="text-sm">{errorSummary}</span>
         </div>

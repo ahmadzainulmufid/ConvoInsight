@@ -53,21 +53,21 @@ export default function RightSidebar() {
   };
 
   return (
-    <aside className="fixed top-0 right-0 h-screen w-16 bg-[#202124] border-l border-gray-700 flex flex-col items-center justify-between py-4 z-50">
-      <div className="flex flex-col items-center gap-6">
+    <aside className="fixed top-0 right-0 h-screen w-16 bg-[#10131b]/90 backdrop-blur-xl border-l border-white/5 flex flex-col items-center justify-between py-4 z-50">
+      <div className="flex flex-col items-center gap-3">
         {/* Avatar */}
         <div className="relative right-sidebar-account">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-xl border-2 border-blue-400 focus:outline-none transition"
+            className="h-10 w-10 mb-3 rounded-full flex items-center justify-center text-white font-semibold text-base ring-2 ring-white/10 ring-offset-2 ring-offset-[#10131b] hover:ring-indigo-400/60 focus:outline-none transition"
             style={{ backgroundColor: avatarColor }}
           >
             {avatarLetter}
           </button>
 
           {isMenuOpen && (
-            <div className="absolute right-full mr-4 top-0 w-64 bg-[#2d2e30] rounded-lg shadow-lg p-4 border border-gray-700">
-              <div className="flex items-center gap-3 mb-4 min-w-0">
+            <div className="absolute right-full mr-4 top-0 w-72 bg-[#151923]/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/50 p-4 border border-white/10">
+              <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10 min-w-0">
                 <div
                   className="flex-shrink-0 h-10 aspect-square rounded-full flex items-center justify-center text-white font-semibold text-lg"
                   style={{ backgroundColor: avatarColor }}
@@ -83,7 +83,7 @@ export default function RightSidebar() {
               </div>
               <button
                 onClick={handleSignOut}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-md transition"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition"
               >
                 <FiLogOut />
                 Sign Out

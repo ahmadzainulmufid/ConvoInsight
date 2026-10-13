@@ -40,12 +40,12 @@ export default function OnboardingModal({
 
   return (
     <motion.div
-      className="fixed inset-0 flex items-center justify-center bg-black/80 z-50"
+      className="fixed inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-50"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
       <motion.div
-        className="bg-[#0B0C0E] text-white rounded-3xl p-10 w-[90%] max-w-4xl shadow-2xl flex flex-col items-center relative"
+        className="bg-[#151923] text-white rounded-3xl p-10 w-[90%] max-w-4xl shadow-2xl shadow-black/60 border border-white/10 flex flex-col items-center relative"
         initial={{ scale: 0.9 }}
         animate={{ scale: 1 }}
         transition={{ duration: 0.3 }}
@@ -65,7 +65,7 @@ export default function OnboardingModal({
             exit={{ opacity: 0, x: -80 }}
             transition={{ duration: 0.3 }}
           >
-            <h2 className="text-3xl font-bold mb-6">{slides[step].title}</h2>
+            <h2 className="text-3xl font-semibold tracking-tight mb-6">{slides[step].title}</h2>
 
             <video
               src={slides[step].video}
@@ -73,7 +73,7 @@ export default function OnboardingModal({
               loop
               muted
               playsInline
-              className="rounded-xl mb-6 w-full max-h-[400px] object-cover border border-gray-700"
+              className="rounded-2xl mb-6 w-full max-h-[400px] object-cover border border-white/10"
             />
 
             <p className="text-gray-300 mb-10 text-base leading-relaxed max-w-2xl">
@@ -81,12 +81,12 @@ export default function OnboardingModal({
             </p>
 
             {/* Indikator */}
-            <div className="flex justify-center mb-10 space-x-3">
+            <div className="flex justify-center items-center mb-10 space-x-2">
               {slides.map((_, i) => (
                 <div
                   key={i}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    i === step ? "bg-indigo-500 scale-110" : "bg-gray-600"
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    i === step ? "w-8 bg-indigo-500" : "w-2 bg-white/20"
                   }`}
                 />
               ))}
@@ -115,7 +115,7 @@ export default function OnboardingModal({
                 </button>
                 <button
                   onClick={next}
-                  className="bg-indigo-600 hover:bg-indigo-700 py-2 px-6 rounded-lg font-semibold text-white"
+                  className="bg-indigo-600 hover:bg-indigo-500 py-2 px-6 rounded-lg font-semibold text-white shadow-lg shadow-indigo-600/20 transition"
                 >
                   {step < slides.length - 1 ? "Next" : "Start Tour"}
                 </button>

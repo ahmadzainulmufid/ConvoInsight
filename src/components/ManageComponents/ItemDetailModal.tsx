@@ -28,25 +28,25 @@ export default function ItemDetailModal({ item, onClose }: Props) {
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.2 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#2A2B32] border border-[#3a3b42] rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col"
+        className="bg-[#151923] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 w-full max-w-5xl max-h-[90vh] flex flex-col animate-fade-in"
       >
-        <div className="p-4 border-b border-[#3a3b42] flex justify-between items-center">
-          <h2 className="text-lg font-semibold capitalize text-indigo-400">
+        <div className="px-6 py-4 border-b border-white/5 flex justify-between items-center">
+          <h2 className="text-lg font-semibold tracking-tight capitalize text-white">
             {item.type} Detail
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl leading-none"
+            className="h-9 w-9 grid place-items-center rounded-lg text-gray-400 hover:text-white hover:bg-white/10 text-2xl leading-none transition"
           >
             &times;
           </button>
         </div>
 
-        <div className="px-4 py-3 overflow-y-auto space-y-3">
+        <div className="px-6 py-5 overflow-y-auto space-y-5">
           {item.prompt && (
             <div>
-              <h3 className="font-semibold text-gray-400 mb-1">Prompt</h3>
-              <p className="text-gray-200 bg-black/20 p-2 rounded-md text-sm leading-relaxed">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Prompt</h3>
+              <p className="text-gray-200 bg-[#0d1017]/70 border border-white/5 px-4 py-3 rounded-xl text-sm leading-relaxed">
                 {item.prompt}
               </p>
             </div>
@@ -54,7 +54,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
 
           {item.result && (
             <div>
-              <h3 className="font-semibold text-gray-400 mb-1">Output</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Output</h3>
 
               {item.type === "kpi" ? (
                 <ManageKpiOutput
@@ -67,7 +67,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
               ) : (
                 <div className="space-y-2">
                   {item.result.chartHtml && (
-                    <div className="overflow-hidden rounded-md bg-gray-800/20">
+                    <div className="overflow-hidden rounded-xl bg-black/20">
                       <iframe
                         srcDoc={item.result.chartHtml}
                         title="chart-detail"
@@ -83,7 +83,7 @@ export default function ItemDetailModal({ item, onClose }: Props) {
                   )}
                   {item.result.text && (
                     <div
-                      className="text-gray-200 leading-relaxed text-sm [&_p]:my-1 [&_table]:w-full [&_td]:border [&_td]:p-1.5"
+                      className="text-gray-200 leading-relaxed text-sm [&_p]:my-1 [&_table]:w-full [&_td]:border [&_td]:border-white/10 [&_td]:p-1.5"
                       dangerouslySetInnerHTML={{
                         __html: formatMarkdown(item.result.text),
                       }}

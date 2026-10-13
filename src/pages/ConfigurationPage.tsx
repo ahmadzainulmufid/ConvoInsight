@@ -230,7 +230,7 @@ export default function ConfigurationUserPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex bg-[#1a1b1e] text-white">
+    <div className="relative min-h-screen flex text-white">
       {/* 🟣 Step 5: Domain Configuration Tour */}
       {showTour && (
         <ConfigurationTour
@@ -244,25 +244,48 @@ export default function ConfigurationUserPage() {
         />
       )}
 
-      <Toaster position="top-right" />
-      <main className="flex-1 overflow-y-auto pb-20 px-6 md:px-10 py-8">
-        <h2 className="text-lg font-semibold mb-8">Configuration Domain</h2>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: "#151923",
+            color: "#eef1f6",
+            border: "1px solid #272e3f",
+            borderRadius: "12px",
+            fontSize: "14px",
+          },
+        }}
+      />
+      <main className="flex-1 overflow-y-auto pb-20 px-6 md:px-10 py-10 animate-fade-in">
+        <div className="max-w-5xl">
+        <h2 className="text-2xl font-semibold tracking-tight mb-1">
+          Configuration Domain
+        </h2>
+        <p className="text-sm text-gray-400 mb-8">
+          Give the AI extra context about this domain.
+        </p>
 
-        <label className="block text-sm font-medium mb-2">
+        <div className="bg-[#151923] border border-white/5 rounded-2xl p-6 shadow-[var(--shadow-card)]">
+        <label className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-3">
           Domain Instruction
+          {instructionDoc?.is_active && (
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
+              Active
+            </span>
+          )}
         </label>
 
         {/* Input Section */}
-        <section className="space-y-4 max-w-7xl mr-auto">
+        <section className="space-y-4">
           <textarea
             ref={textareaRef}
             placeholder="Add instructions to make AI better understand your context..."
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            className={`instruction-textarea w-full p-3 rounded text-white resize-none overflow-hidden transition-all duration-300 ${
+            className={`instruction-textarea w-full px-4 py-3 rounded-xl text-gray-100 placeholder:text-gray-500 leading-relaxed resize-none overflow-hidden outline-none focus:ring-4 focus:ring-indigo-500/15 transition-all duration-300 ${
               instructionDoc?.is_active
-                ? "bg-gray-800 border-2 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]"
-                : "bg-gray-800 border border-gray-700"
+                ? "bg-[#0d1017]/70 border border-emerald-500/50 shadow-[0_0_24px_-6px_rgba(16,185,129,0.35)]"
+                : "bg-[#0d1017]/70 border border-white/10 focus:border-indigo-500/60"
             } ${
               instructionDoc && !isEditing
                 ? "pointer-events-none select-none opacity-70"
@@ -277,7 +300,7 @@ export default function ConfigurationUserPage() {
               <button
                 onClick={handleSaveOrUpdate}
                 disabled={loading}
-                className="instruction-save-btn px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
+                className="instruction-save-btn px-4 py-2.5 rounded-xl text-sm font-medium text-white transition bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 disabled:opacity-60"
               >
                 Save Instruction
               </button>
@@ -285,14 +308,14 @@ export default function ConfigurationUserPage() {
               <button
                 onClick={handleSaveOrUpdate}
                 disabled={loading}
-                className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-white transition bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 disabled:opacity-60"
               >
                 Save Instruction
               </button>
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-4 py-2 bg-yellow-600 rounded hover:bg-yellow-700"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-white transition bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10"
               >
                 Update Instruction
               </button>
@@ -306,7 +329,7 @@ export default function ConfigurationUserPage() {
                     setInstruction(instructionDoc.text);
                   }}
                   disabled={loading}
-                  className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
+                  className="px-4 py-2.5 rounded-xl text-sm font-medium text-white transition bg-white/5 hover:bg-white/10"
                 >
                   Cancel
                 </button>
@@ -314,10 +337,10 @@ export default function ConfigurationUserPage() {
                 <button
                   onClick={toggleActiveInstruction}
                   disabled={loading}
-                  className={`px-4 py-2 rounded ${
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition ${
                     instructionDoc.is_active
-                      ? "bg-gray-600 hover:bg-gray-500"
-                      : "bg-blue-600 hover:bg-blue-700"
+                      ? "text-rose-300 bg-rose-500/10 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/20"
+                      : "text-emerald-300 bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/20"
                   }`}
                 >
                   {instructionDoc.is_active ? "Deactivate" : "Activate"}
@@ -325,6 +348,8 @@ export default function ConfigurationUserPage() {
               ))}
           </div>
         </section>
+        </div>
+        </div>
       </main>
     </div>
   );

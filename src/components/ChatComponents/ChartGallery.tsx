@@ -27,7 +27,7 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
           return (
             <div
               key={key}
-              className="w-full overflow-hidden rounded-xl bg-gray-800/30"
+              className="w-full overflow-hidden rounded-2xl bg-[#151923] border border-white/10 shadow-[var(--shadow-card)]"
             >
               <iframe
                 srcDoc={c.html}
@@ -47,7 +47,7 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
           return (
             <div
               key={key}
-              className="w-full overflow-hidden rounded-xl bg-gray-800/30"
+              className="w-full overflow-hidden rounded-2xl bg-[#151923] border border-white/10 shadow-[var(--shadow-card)]"
             >
               <iframe
                 src={c.url}
@@ -66,7 +66,7 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
           return (
             <div
               key={key}
-              className="w-full overflow-hidden rounded-xl bg-gray-800/30"
+              className="w-full overflow-hidden rounded-2xl bg-[#151923] border border-white/10 shadow-[var(--shadow-card)]"
             >
               <Plot
                 data={p.data}
@@ -91,7 +91,7 @@ export default function ChartGallery({ charts }: { charts: ChartItem[] }) {
           return (
             <div
               key={key}
-              className="w-full overflow-hidden rounded-xl bg-gray-800/30"
+              className="w-full overflow-hidden rounded-2xl bg-[#151923] border border-white/10 shadow-[var(--shadow-card)]"
             >
               <img
                 src={c.data_uri}

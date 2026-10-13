@@ -35,7 +35,7 @@ export default function DashboardItemCard({
       style={style}
       {...attributes}
       onClick={onView}
-      className="flex flex-col gap-2 bg-[#1F2024] border border-[#3a3b42] rounded-lg p-3 cursor-pointer hover:border-indigo-500 transition-colors"
+      className="flex flex-col gap-2 bg-[#151923] border border-white/5 rounded-xl p-4 cursor-pointer hover:border-indigo-500/40 hover:bg-[#1b2030] transition-colors"
     >
       <div className="flex items-center justify-between">
         <span
@@ -45,13 +45,15 @@ export default function DashboardItemCard({
         >
           ⠿
         </span>
-        <span className="font-semibold capitalize">{item.type}</span>
+        <span className="rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-semibold capitalize text-indigo-300 ring-1 ring-inset ring-indigo-500/25">
+          {item.type}
+        </span>
         <button
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
-          className="px-2 py-1 text-sm rounded bg-red-600 hover:bg-red-700"
+          className="px-2.5 py-1 text-sm font-medium rounded-lg text-rose-400 hover:bg-rose-500/10 transition"
         >
           Delete
         </button>

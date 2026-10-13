@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiSearch } from "react-icons/fi";
+import {
+  FiSearch,
+  FiPlus,
+  FiSettings,
+  FiArrowRight,
+  FiLayout,
+  FiMessageSquare,
+} from "react-icons/fi";
 import ProjectCard from "./ProjectCard";
 import { db, useAuthUser } from "../../utils/firebaseSetup";
 import { useDomains } from "../../hooks/useDomains";
@@ -147,12 +154,14 @@ export default function HomeContent() {
       desc: "Add your domain to start managing datasets and building apps",
       to: "/domain/new",
       className: "home-create-domain",
+      icon: FiPlus,
     },
     {
       title: "Configuration User",
       desc: "Configure your user settings, preferences, and account details to personalize your experience",
       to: "/configuser",
       className: "home-config-user",
+      icon: FiSettings,
     },
   ];
 
@@ -160,26 +169,33 @@ export default function HomeContent() {
     domains.length === 0 && !lastDashboard && allChats.length === 0;
 
   return (
-    <main className="min-h-screen text-gray-100 transition-all duration-300 px-6 md:px-12 mt-24 md:mt-20">
-      <div className="flex flex-col space-y-12">
+    <main className="w-full max-w-6xl min-h-screen text-gray-100 transition-all duration-300 px-6 md:px-12 pt-10 md:pt-14 pb-16">
+      <div className="flex flex-col space-y-10 animate-fade-in">
         <header>
           {!loading ? (
             <>
-              <h1 className="text-3xl font-bold text-gray-100">
-                Hello, <span className="text-indigo-400">{userName}</span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/25 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                Dashboard
+              </span>
+              <h1 className="mt-4 text-3xl md:text-4xl font-semibold tracking-tight text-gray-100">
+                Hello, <span className="text-gradient">{userName}</span>
               </h1>
               <p className="text-gray-400 mt-2 text-base">
                 Welcome back to ConvoInsight!
               </p>
             </>
           ) : (
-            <div className="h-8 w-40 bg-gray-800 animate-pulse rounded"></div>
+            <div className="h-9 w-56 bg-gray-800 animate-pulse rounded-lg"></div>
           )}
         </header>
 
         {isNewUser ? (
-          <section className="flex flex-col items-center justify-center text-center mt-20">
-            <h2 className="text-2xl font-semibold text-white mb-2">
+          <section className="relative overflow-hidden flex flex-col items-center justify-center text-center mt-6 rounded-3xl border border-white/10 bg-[#151923]/80 bg-grid px-6 py-16 shadow-[var(--shadow-card)]">
+            <div className="mb-6 h-14 w-14 grid place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white shadow-lg shadow-indigo-500/30">
+              <FiPlus size={26} />
+            </div>
+            <h2 className="text-2xl font-semibold tracking-tight text-white mb-2">
               Let’s get started!
             </h2>
             <p className="text-gray-400 max-w-md mb-6">
@@ -188,46 +204,55 @@ export default function HomeContent() {
             </p>
             <button
               onClick={() => navigate("/domain/new")}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg transition"
+              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-indigo-600/25 transition"
             >
+              <FiPlus />
               Create New Domain
             </button>
           </section>
         ) : (
           <>
             <section>
-              <div className="grid grid-cols-1 md:grid-cols-2 items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">
-                  Get started
-                </h2>
-                <h2 className="text-xl font-semibold text-white ml-5">
-                  Domains
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                    Get started
+                  </h2>
                   {getStartedItems.map((item) => (
                     <div
                       key={item.title}
                       onClick={() => navigate(item.to)}
-                      className={`${item.className} bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg hover:bg-[#2A2A2A] cursor-pointer transition`}
+                      className={`${item.className} group flex items-start gap-4 bg-[#151923] border border-white/5 p-5 rounded-2xl hover:border-indigo-500/40 hover:bg-[#1b2030] hover:-translate-y-0.5 cursor-pointer transition-all duration-200 shadow-[var(--shadow-card)]`}
                     >
-                      <h3 className="font-semibold text-white">{item.title}</h3>
-                      <p className="text-sm text-gray-400 mt-1">{item.desc}</p>
+                      <div className="h-11 w-11 shrink-0 grid place-items-center rounded-xl bg-indigo-500/10 text-indigo-300 ring-1 ring-inset ring-indigo-500/25 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                        <item.icon size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-white">
+                          {item.title}
+                        </h3>
+                        <p className="text-sm text-gray-400 mt-1 leading-relaxed">
+                          {item.desc}
+                        </p>
+                      </div>
+                      <FiArrowRight className="mt-1 text-gray-600 group-hover:text-indigo-300 group-hover:translate-x-0.5 transition" />
                     </div>
                   ))}
                 </div>
 
-                <div className="home-domains bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg">
-                  <div className="flex items-center gap-2 mb-5 border-b border-gray-700 pb-2">
-                    <FiSearch className="text-gray-400" />
+                <div className="space-y-4">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                  Domains
+                </h2>
+                <div className="home-domains bg-[#151923] border border-white/5 p-4 rounded-2xl shadow-[var(--shadow-card)]">
+                  <div className="flex items-center gap-2 mb-4 rounded-xl border border-white/10 bg-[#0d1017] px-3 py-2.5 focus-within:border-indigo-500/60 focus-within:ring-2 focus-within:ring-indigo-500/20 transition">
+                    <FiSearch className="text-gray-500" />
                     <input
                       type="text"
                       placeholder="Search all domains"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="bg-transparent flex-1 outline-none text-gray-300 placeholder-gray-500"
+                      className="bg-transparent flex-1 outline-none text-sm text-gray-200 placeholder-gray-500 transition"
                     />
                   </div>
 
@@ -236,7 +261,7 @@ export default function HomeContent() {
                       Please log in to view your domains
                     </p>
                   ) : filtered.length > 0 ? (
-                    <div className="space-y-3 overflow-y-auto max-h-[240px] pr-2 custom-scrollbar">
+                    <div className="space-y-2 overflow-y-auto max-h-[240px] pr-1 custom-scrollbar">
                       {filtered.map((d) => (
                         <ProjectCard key={d.id} name={d.name} />
                       ))}
@@ -247,17 +272,18 @@ export default function HomeContent() {
                     </p>
                   )}
                 </div>
+                </div>
               </div>
             </section>
 
             <section className="home-history mb-16 pb-8">
-              <h2 className="text-xl font-semibold mb-4 text-white">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-4">
                 History ConvoInsight in Domains
               </h2>
 
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {loadingDash ? (
-                  <p className="text-sm text-gray-500 text-center py-3">
+                  <p className="text-sm text-gray-500 text-center py-8 rounded-2xl border border-dashed border-white/10">
                     Loading dashboard history…
                   </p>
                 ) : lastDashboard ? (
@@ -269,14 +295,18 @@ export default function HomeContent() {
                         }/dashboard`
                       )
                     }
-                    className="bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg hover:bg-[#2A2A2A] cursor-pointer transition"
+                    className="group flex items-start gap-4 bg-[#151923] border border-white/5 p-5 rounded-2xl hover:border-indigo-500/40 hover:bg-[#1b2030] cursor-pointer transition-all duration-200 shadow-[var(--shadow-card)]"
                   >
-                    <h3 className="font-semibold text-white">
+                    <div className="h-10 w-10 shrink-0 grid place-items-center rounded-xl bg-sky-500/10 text-sky-300 ring-1 ring-inset ring-sky-500/25">
+                      <FiLayout size={18} />
+                    </div>
+                    <div className="min-w-0">
+                    <h3 className="font-semibold text-white line-clamp-2">
                       {lastDashboard.prompt
                         ? lastDashboard.prompt.slice(0, 80) + "..."
                         : "Recent dashboard update"}
                     </h3>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500 mt-1.5">
                       Last updated:{" "}
                       {lastDashboard.createdAt
                         ? new Date(lastDashboard.createdAt).toLocaleString(
@@ -285,9 +315,10 @@ export default function HomeContent() {
                           )
                         : "Recently"}
                     </p>
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 text-center py-3">
+                  <p className="text-sm text-gray-500 text-center py-8 rounded-2xl border border-dashed border-white/10">
                     No dashboard activity yet
                   </p>
                 )}
@@ -301,21 +332,26 @@ export default function HomeContent() {
                         }/dashboard/newchat?id=${lastChat.id}`
                       )
                     }
-                    className="bg-[#1E1E1E] border border-gray-800 p-5 rounded-lg hover:bg-[#2A2A2A] cursor-pointer transition"
+                    className="group flex items-start gap-4 bg-[#151923] border border-white/5 p-5 rounded-2xl hover:border-indigo-500/40 hover:bg-[#1b2030] cursor-pointer transition-all duration-200 shadow-[var(--shadow-card)]"
                   >
-                    <h3 className="font-semibold text-white">
+                    <div className="h-10 w-10 shrink-0 grid place-items-center rounded-xl bg-emerald-500/10 text-emerald-300 ring-1 ring-inset ring-emerald-500/25">
+                      <FiMessageSquare size={18} />
+                    </div>
+                    <div className="min-w-0">
+                    <h3 className="font-semibold text-white truncate">
                       {lastChat.title || "Untitled Chat"}
                     </h3>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500 mt-1.5">
                       Last updated:{" "}
                       {new Date(lastChat.createdAt).toLocaleString("id-ID", {
                         dateStyle: "medium",
                         timeStyle: "short",
                       })}
                     </p>
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 text-center py-3">
+                  <p className="text-sm text-gray-500 text-center py-8 rounded-2xl border border-dashed border-white/10">
                     No chat history yet
                   </p>
                 )}

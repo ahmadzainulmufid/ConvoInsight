@@ -183,14 +183,20 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#1a1b1e] text-white">
-      <div className="p-6 pr-[100px]">
-        <h2 className="text-2xl font-bold mb-6">Dashboard {domain}</h2>
+    <div className="relative min-h-screen text-white">
+      <div className="p-6 md:p-10 pr-[150px] md:pr-[150px] animate-fade-in">
+        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-8">
+          Dashboard <span className="text-gradient">{domain}</span>
+        </h2>
 
         {loading ? (
-          <p className="text-gray-400">No dashboard groups yet.</p>
+          <p className="text-gray-500 py-16 text-center rounded-2xl border border-dashed border-white/10">
+            No dashboard groups yet.
+          </p>
         ) : group.length === 0 ? (
-          <p className="text-gray-400">Loading Dashboard...</p>
+          <p className="text-gray-500 py-16 text-center rounded-2xl border border-dashed border-white/10">
+            Loading Dashboard...
+          </p>
         ) : (
           group.map((g) => {
             const items = hydratedItems[g.id] ?? [];
@@ -200,12 +206,15 @@ export default function DashboardPage() {
 
             return (
               <section key={g.id} className="mb-12">
-                <h3 className="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">
+                <h3 className="flex items-center gap-3 text-lg font-semibold tracking-tight mb-5 text-gray-100">
+                  <span className="h-5 w-1 rounded-full bg-gradient-to-b from-indigo-400 to-fuchsia-500" />
                   {g.name}
                 </h3>
 
                 {items.length === 0 ? (
-                  <p className="text-gray-500">No items yet.</p>
+                  <p className="text-gray-500 text-sm py-8 text-center rounded-2xl border border-dashed border-white/10">
+                    No items yet.
+                  </p>
                 ) : (
                   <>
                     {/* KPI container */}
@@ -229,9 +238,9 @@ export default function DashboardPage() {
 
                     {/* Chart / Table container */}
                     {otherItems.map((item) => (
-                      <div key={item.id} className="space-y-4 mb-10">
+                      <div key={item.id} className="space-y-4 mb-8 rounded-2xl border border-white/5 bg-[#151923] p-4 md:p-5 shadow-[var(--shadow-card)]">
                         {item.result?.chartHtml && (
-                          <div className="w-full overflow-hidden rounded-lg bg-black/10">
+                          <div className="w-full overflow-hidden rounded-xl bg-black/20">
                             <iframe
                               srcDoc={item.result.chartHtml}
                               title={`chart-${item.id}`}
@@ -243,7 +252,7 @@ export default function DashboardPage() {
 
                         {item.includeInsight && item.result?.text && (
                           <div
-                            className="text-gray-200 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2"
+                            className="text-gray-300 leading-relaxed [&_p]:my-2 [&_strong]:font-semibold [&_strong]:text-white [&_em]:italic [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-white/10 [&_td]:p-2 [&_th]:border [&_th]:border-white/10 [&_th]:bg-white/5 [&_th]:p-2"
                             dangerouslySetInnerHTML={{
                               __html: cleanHtmlResponse(item.result.text),
                             }}
@@ -262,17 +271,17 @@ export default function DashboardPage() {
 
         <button
           onClick={reloadDashboard}
-          className="fixed top-6 right-[140px] p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white shadow-md transition"
+          className="fixed top-6 h-10 w-10 grid place-items-center rounded-xl bg-[#151923]/90 backdrop-blur border border-white/10 text-gray-300 hover:text-white hover:border-indigo-500/40 hover:bg-[#1b2030] shadow-lg shadow-black/30 transition z-30 right-[136px]"
           title="Refresh Dashboard"
         >
-          <FiRefreshCw size={20} className="animate-spin-once" />
+          <FiRefreshCw size={18} className="animate-spin-once" />
         </button>
 
         <button
           onClick={handleDashboardSettings}
-          className="fixed top-6 right-[80px] p-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white shadow-md transition"
+          className="fixed top-6 h-10 w-10 grid place-items-center rounded-xl bg-[#151923]/90 backdrop-blur border border-white/10 text-gray-300 hover:text-white hover:border-indigo-500/40 hover:bg-[#1b2030] shadow-lg shadow-black/30 transition z-30 right-[84px]"
         >
-          <FiSettings size={20} />
+          <FiSettings size={18} />
         </button>
       </div>
     </div>

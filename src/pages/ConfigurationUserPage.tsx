@@ -598,7 +598,7 @@ export default function ConfigurationUserPage() {
         <p className="mb-4">You are not logged in</p>
         <a
           href="/login"
-          className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg"
+          className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg shadow-lg shadow-indigo-600/20 transition"
         >
           Login Now
         </a>
@@ -615,11 +615,11 @@ export default function ConfigurationUserPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex bg-[#1a1b1e] text-white">
+    <div className="relative min-h-screen flex text-white">
       {showHint && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-[#111216] border border-indigo-500 text-white p-8 rounded-2xl shadow-[0_0_40px_rgba(79,70,229,0.3)] max-w-xl text-center">
-            <h2 className="text-2xl font-bold mb-4">
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#151923] border border-indigo-500/40 text-white p-8 rounded-3xl shadow-[0_0_60px_rgba(79,70,229,0.25)] max-w-xl text-center animate-fade-in">
+            <h2 className="text-2xl font-semibold tracking-tight mb-4">
               ✨ Step 2: Configure AI Provider
             </h2>
             <p className="text-gray-300 mb-6 text-lg leading-relaxed">
@@ -627,31 +627,51 @@ export default function ConfigurationUserPage() {
             </p>
             <button
               onClick={handleGotIt}
-              className="bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-lg font-semibold text-lg"
+              className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl font-semibold text-base shadow-lg shadow-indigo-600/20 transition"
             >
               Got it
             </button>
           </div>
         </div>
       )}
-      <Toaster position="top-right" />
-      <main className="flex-1 overflow-y-auto px-6 md:px-12 py-8 mr-20 lg:mr-24">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg font-semibold">Configuration User</h2>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: "#151923",
+            color: "#eef1f6",
+            border: "1px solid #272e3f",
+            borderRadius: "12px",
+            fontSize: "14px",
+          },
+        }}
+      />
+      <main className="flex-1 overflow-y-auto px-6 md:px-12 py-10 animate-fade-in">
+        <div className="max-w-6xl mx-auto">
+        <div className="flex items-start justify-between gap-4 mb-8">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
+              Configuration User
+            </h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Manage your AI provider, API keys and global instruction.
+            </p>
+          </div>
           <button
             onClick={() => navigate("/home")}
-            className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition"
+            className="shrink-0 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:bg-white/10 hover:text-white transition"
           >
             Back to Home
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left: Configuration Form */}
-          <div className="space-y-6">
+          <div className="space-y-6 bg-[#151923] border border-white/5 rounded-2xl p-6 shadow-[var(--shadow-card)]">
+            <h3 className="text-base font-semibold tracking-tight">AI Provider</h3>
             {/* Provider */}
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Select Provider
               </label>
               <select
@@ -666,7 +686,7 @@ export default function ConfigurationUserPage() {
                   setTempToken(null);
                   setIsConfigSaved(false);
                 }}
-                className="w-full p-2 rounded bg-gray-800 border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">-- Choose --</option>
                 {providerList.map((prov) => (
@@ -683,7 +703,7 @@ export default function ConfigurationUserPage() {
                 {/* API Key Input */}
                 {provider && (
                   <div className="mt-4">
-                    <label className="block text-sm font-medium mb-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
                       Input API Key
                     </label>
                     <div className="flex space-x-2">
@@ -692,15 +712,15 @@ export default function ConfigurationUserPage() {
                         placeholder="API Key"
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        className="flex-1 p-2 rounded bg-gray-800 border border-gray-700"
+                        className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
                       />
                       <button
                         disabled={loading}
                         onClick={handleValidate}
-                        className={`px-4 py-2 rounded ${
+                        className={`px-4 py-2.5 rounded-xl text-sm ${
                           loading
-                            ? "bg-gray-700 cursor-not-allowed"
-                            : "bg-blue-600 hover:bg-blue-700"
+                            ? "bg-white/5 text-gray-400 cursor-not-allowed"
+                            : "bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg shadow-indigo-600/20 transition"
                         }`}
                       >
                         {loading ? "Validating..." : "Validate"}
@@ -712,13 +732,13 @@ export default function ConfigurationUserPage() {
                 {/* Model List */}
                 {validated && models.length > 0 && (
                   <div className="mt-4">
-                    <label className="block text-sm font-medium mb-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
                       Select Model
                     </label>
                     <select
                       value={selectedModel}
                       onChange={(e) => setSelectedModel(e.target.value)}
-                      className="w-full p-2 rounded bg-gray-800 border border-gray-700"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
                     >
                       <option value="">-- Select Model --</option>
                       {models.map((m) => (
@@ -735,7 +755,7 @@ export default function ConfigurationUserPage() {
                   <div className="mt-4">
                     <button
                       onClick={handleSave}
-                      className="w-full py-2 bg-green-600 rounded hover:bg-green-700"
+                      className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg shadow-indigo-600/20 transition"
                     >
                       Save Configuration
                     </button>
@@ -746,12 +766,12 @@ export default function ConfigurationUserPage() {
           </div>
 
           {/* Right: API Key History */}
-          <div>
-            <h3 className="text-base font-semibold mb-4">API Key History</h3>
+          <div className="bg-[#151923] border border-white/5 rounded-2xl p-6 shadow-[var(--shadow-card)]">
+            <h3 className="text-base font-semibold tracking-tight mb-4">API Key History</h3>
             {loadingHistory ? (
               <p className="text-gray-400">Loading...</p>
             ) : history.length === 0 ? (
-              <p className="text-gray-500 text-sm">
+              <p className="text-gray-500 text-sm py-8 text-center rounded-xl border border-dashed border-white/10">
                 There is no API key saved yet
               </p>
             ) : (
@@ -768,14 +788,21 @@ export default function ConfigurationUserPage() {
                   return (
                     <div
                       key={item.id}
-                      className={`flex items-center justify-between bg-gray-800 p-3 rounded border ${
+                      className={`flex items-center justify-between gap-3 p-4 rounded-xl border transition ${
                         // Beri highlight jika ini adalah config yg aktif
-                        isActive ? "border-green-500" : "border-gray-700"
+                        isActive
+                          ? "border-emerald-500/40 bg-emerald-500/[0.06]"
+                          : "border-white/5 bg-white/[0.02]"
                       }`}
                     >
-                      <div>
-                        <p className="font-medium">{item.provider}</p>
-                        <p className="text-xs text-gray-400">
+                      <div className="min-w-0">
+                        <p className="font-medium flex items-center gap-2">
+                          {item.provider}
+                          {isActive && (
+                            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">
                           {/* Tampilkan model yang benar */}
                           {displayModelText}
                         </p>
@@ -783,13 +810,13 @@ export default function ConfigurationUserPage() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleUpdate(item.provider)}
-                          className="px-3 py-1 text-sm bg-yellow-600 rounded hover:bg-yellow-700"
+                          className="px-3 py-1.5 text-sm rounded-lg bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10 text-gray-200 font-medium transition"
                         >
                           Update
                         </button>
                         <button
                           onClick={() => handleDelete(item.provider)}
-                          className="px-3 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
+                          className="px-3 py-1.5 text-sm rounded-lg text-rose-400 hover:bg-rose-500/10 font-medium transition"
                         >
                           Delete
                         </button>
@@ -804,8 +831,8 @@ export default function ConfigurationUserPage() {
 
         {/* --- Global Instruction Section (Full Width) --- */}
         {history.length > 0 && (
-          <section className="mt-10 space-y-4">
-            <h3 className="text-base font-semibold">Global Instruction</h3>
+          <section className="mt-6 space-y-4 bg-[#151923] border border-white/5 rounded-2xl p-6 shadow-[var(--shadow-card)]">
+            <h3 className="text-base font-semibold tracking-tight">Global Instruction</h3>
 
             {instructionLoading ? (
               <p className="text-gray-400">Loading instruction...</p>
@@ -816,10 +843,10 @@ export default function ConfigurationUserPage() {
                   placeholder="Add instructions so the AI better understands your context..."
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
-                  className={`w-full p-3 rounded text-white resize-none overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed ${
+                  className={`w-full px-4 py-3 rounded-xl text-gray-100 placeholder:text-gray-500 leading-relaxed resize-none overflow-hidden outline-none focus:ring-4 focus:ring-indigo-500/15 transition disabled:opacity-70 disabled:cursor-not-allowed ${
                     globalInstruction?.is_active
-                      ? "bg-gray-800 border-2 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]"
-                      : "bg-gray-800 border border-gray-700"
+                      ? "bg-[#0d1017]/70 border border-emerald-500/50 shadow-[0_0_24px_-6px_rgba(16,185,129,0.35)]"
+                      : "bg-[#0d1017]/70 border border-white/10 focus:border-indigo-500/60"
                   }`}
                   style={{ minHeight: "3rem" }}
                   disabled={!isEditingInstruction}
@@ -830,7 +857,7 @@ export default function ConfigurationUserPage() {
                     <>
                       <button
                         onClick={handleSaveInstruction}
-                        className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+                        className="px-4 py-2.5 rounded-xl text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg shadow-indigo-600/20 transition"
                       >
                         Save Instruction
                       </button>
@@ -840,7 +867,7 @@ export default function ConfigurationUserPage() {
                             setIsEditingInstruction(false);
                             setInstruction(globalInstruction.text);
                           }}
-                          className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
+                          className="px-4 py-2.5 rounded-xl text-sm bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10 text-gray-200 font-medium transition"
                         >
                           Cancel
                         </button>
@@ -850,21 +877,21 @@ export default function ConfigurationUserPage() {
                     <>
                       <button
                         onClick={() => setIsEditingInstruction(true)}
-                        className="px-4 py-2 bg-yellow-600 rounded hover:bg-yellow-700"
+                        className="px-4 py-2.5 rounded-xl text-sm bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10 text-gray-200 font-medium transition"
                       >
                         Update Instruction
                       </button>
                       {globalInstruction.is_active ? (
                         <button
                           onClick={() => handleToggleInstructionActive(false)}
-                          className="px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                          className="px-4 py-2.5 rounded-xl text-sm text-rose-300 bg-rose-500/10 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/20 font-medium transition"
                         >
                           Deactivate
                         </button>
                       ) : (
                         <button
                           onClick={() => handleToggleInstructionActive(true)}
-                          className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+                          className="px-4 py-2.5 rounded-xl text-sm text-emerald-300 bg-emerald-500/10 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/20 font-medium transition"
                         >
                           Activate
                         </button>
@@ -876,10 +903,11 @@ export default function ConfigurationUserPage() {
             )}
           </section>
         )}
+        </div>
       </main>
       {showUpdateModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
-          <div className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-md border border-gray-700">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">
+          <div className="bg-[#151923] p-6 rounded-2xl shadow-2xl shadow-black/50 w-full max-w-md border border-white/10 animate-fade-in">
             <h3 className="text-lg font-semibold mb-4 text-white">
               Update API Key ({updateProvider})
             </h3>
@@ -888,12 +916,12 @@ export default function ConfigurationUserPage() {
               placeholder="Enter new API Key..."
               value={newApiKey}
               onChange={(e) => setNewApiKey(e.target.value)}
-              className="w-full p-2 rounded bg-gray-800 border border-gray-700 text-white mb-4"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition mb-4"
             />
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowUpdateModal(false)}
-                className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600"
+                className="px-4 py-2 rounded-lg text-sm bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10 text-gray-200 font-medium transition"
                 disabled={updating}
               >
                 Cancel
@@ -901,7 +929,7 @@ export default function ConfigurationUserPage() {
               <button
                 onClick={submitUpdate}
                 disabled={updating}
-                className="px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-700 disabled:opacity-60"
+                className="px-4 py-2 rounded-lg text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg shadow-indigo-600/20 transition disabled:opacity-60"
               >
                 {updating ? "Saving..." : "Update"}
               </button>

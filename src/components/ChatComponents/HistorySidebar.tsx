@@ -98,22 +98,22 @@ export default function HistorySidebar({
   return (
     <aside
       className={[
-        "fixed top-0 right-0 h-screen w-72 bg-[#202123] text-white z-40",
-        "border-l border-[#2F3038]",
+        "fixed top-0 right-0 h-screen w-72 bg-[#10131b] text-white z-40",
+        "border-l border-[#242b3d]",
         "transition-transform duration-300",
         open ? "translate-x-0" : "translate-x-full",
       ].join(" ")}
       aria-label="Chat History"
     >
       {/* HEADER */}
-      <div className="h-12 px-2 border-b border-[#2F3038] flex items-center justify-between gap-2">
+      <div className="h-12 px-2 border-b border-[#242b3d] flex items-center justify-between gap-2">
         <span className="text-sm font-semibold px-1">History</span>
 
         <div className="ml-auto flex items-center gap-1">
           {/* New Chat (+) */}
           <button
             onClick={handleNewChat}
-            className="p-2 rounded hover:bg-[#2A2B32]"
+            className="p-2 rounded-lg hover:bg-[#1b2030]"
             title="New chat"
             aria-label="New chat"
           >
@@ -133,7 +133,7 @@ export default function HistorySidebar({
         {items.map((it) => (
           <div
             key={it.id}
-            className="rounded-md border border-[#3a3b42] p-2 bg-[#1f2026] relative"
+            className="rounded-lg border border-white/10 p-2 bg-[#151923] relative"
           >
             <div className="flex items-center gap-2">
               <button
@@ -153,7 +153,7 @@ export default function HistorySidebar({
                     e.stopPropagation();
                     setMenuOpenId((prev) => (prev === it.id ? null : it.id));
                   }}
-                  className="px-2 py-1 rounded hover:bg-[#2A2B32]"
+                  className="px-2 py-1 rounded-lg hover:bg-[#1b2030]"
                   aria-haspopup="menu"
                   aria-expanded={menuOpenId === it.id}
                   title="Actions"
@@ -164,7 +164,7 @@ export default function HistorySidebar({
                 {menuOpenId === it.id && (
                   <div
                     role="menu"
-                    className="absolute right-0 mt-1 w-40 rounded-md border border-[#3a3b42] bg-[#2A2B32] shadow-lg z-10"
+                    className="absolute right-0 mt-1 w-40 rounded-lg border border-white/10 bg-[#1b2030] shadow-lg z-10"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
@@ -176,7 +176,7 @@ export default function HistorySidebar({
                         alert("✅ Link copied to clipboard!");
                         setMenuOpenId(null);
                       }}
-                      className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541]"
+                      className="w-full text-left text-sm px-3 py-2 hover:bg-[#242b3d]"
                     >
                       Copy Link
                     </button>
@@ -184,7 +184,7 @@ export default function HistorySidebar({
                     <button
                       role="menuitem"
                       onClick={() => handleExportPdf(it.id)}
-                      className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541]"
+                      className="w-full text-left text-sm px-3 py-2 hover:bg-[#242b3d]"
                     >
                       Export to PDF
                     </button>
@@ -192,7 +192,7 @@ export default function HistorySidebar({
                     <button
                       role="menuitem"
                       onClick={() => handleDelete(it.id)}
-                      className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541] text-red-400"
+                      className="w-full text-left text-sm px-3 py-2 hover:bg-[#242b3d] text-rose-400"
                     >
                       Delete
                     </button>

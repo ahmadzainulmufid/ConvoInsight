@@ -31,15 +31,24 @@ export default function Layout() {
     location.pathname.includes("/datasets/") &&
     location.pathname.endsWith("/edit");
 
-  const primaryWidth = collapsed ? 64 : 256;
   const secondaryWidth = 224;
   const thirdWidth = collapsed ? 64 : 256;
 
   let paddingLeft = 0; // default 0 untuk halaman /home
 
-  if (inDomainRoot) paddingLeft = primaryWidth + secondaryWidth;
+  if (inDomainRoot) paddingLeft = secondaryWidth;
   else if (inDomainSection) paddingLeft = thirdWidth;
   else if (showPrimaryLayout) paddingLeft = 0;
+
+  // Ruang untuk RightSidebar (w-16) agar konten tidak tertutup
+  const showRightSidebar =
+    showPrimaryLayout ||
+    (inDomainSection &&
+      !isDashboardSetting &&
+      !isManageSetting &&
+      !isDatasetDetail &&
+      !isDatasetEdit);
+  const paddingRight = showRightSidebar ? 64 : 0;
 
   // 🔹 Reset collapsed saat keluar dari domain
   useEffect(() => {
@@ -49,8 +58,8 @@ export default function Layout() {
   }, [inDomainRoot, inDomainSection, location.pathname]);
 
   return (
-    <div className={`min-h-screen w-screen flex flex-col`}>
-      <div className="bg-white dark:bg-[#202123] text-black dark:text-[#ECECF1] flex-1 flex flex-col">
+    <div className={`min-h-screen w-full flex flex-col`}>
+      <div className="bg-[#0d1017] text-gray-100 flex-1 flex flex-col">
         {showPrimaryLayout && (
           <>
             <Navbar />
@@ -60,7 +69,7 @@ export default function Layout() {
         )}
 
         {inDomainRoot && !isManageDomain && (
-          <SecondarySidebar open leftOffset={primaryWidth} />
+          <SecondarySidebar open leftOffset={0} />
         )}
 
         {inDomainSection && (
@@ -77,9 +86,10 @@ export default function Layout() {
         )}
 
         <main
-          className="flex-1 overflow-x-hidden transition-[padding] duration-300 bg-[#1a1b1e]"
+          className="flex-1 overflow-x-hidden transition-[padding] duration-300 bg-[#0d1017] bg-app-glow"
           style={{
             paddingLeft,
+            paddingRight,
             paddingTop: showPrimaryLayout ? 64 : 0,
           }}
         >

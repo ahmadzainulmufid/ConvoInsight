@@ -56,11 +56,11 @@ const MultiSelectDropdown: React.FC<Props> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center rounded-md bg-[#1f2024] border border-[#2a2b32] text-gray-100 text-sm px-3 py-2 focus:outline-none focus:border-indigo-500"
+        className="w-full flex justify-between items-center rounded-xl bg-[#0d1017]/70 border border-white/10 hover:border-white/20 text-gray-100 text-sm px-3.5 py-2.5 transition focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10"
       >
         <span className="truncate">{getDisplayText()}</span>
         <FiChevronDown
-          className={`h-4 w-4 transition-transform ${
+          className={`h-4 w-4 text-gray-400 transition-transform ${
             isOpen ? "rotate-180" : ""
           }`}
         />
@@ -104,22 +104,22 @@ const DropdownMenu = ({
 
   return (
     <div
-      className={`absolute z-10 w-full rounded-md bg-[#1f2024] border border-[#2a2b32] shadow-lg max-h-60 overflow-y-auto ${
+      className={`absolute z-10 w-full rounded-xl bg-[#151923]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/50 max-h-60 overflow-y-auto p-1 ${
         openUp ? "bottom-full mb-1" : "mt-1"
       }`}
     >
-      <ul className="py-1">
+      <ul className="space-y-0.5">
         {options.map((option) => (
           <li
             key={option}
             onClick={() => handleOptionClick(option)}
-            className="px-3 py-2 text-sm text-gray-200 cursor-pointer hover:bg-gray-700 flex items-center"
+            className="px-3 py-2 rounded-lg text-sm text-gray-200 cursor-pointer hover:bg-white/5 flex items-center transition-colors"
           >
             <input
               type="checkbox"
               checked={selectedOptions.includes(option)}
               readOnly
-              className="h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-600 focus:ring-indigo-500 mr-3"
+              className="h-4 w-4 rounded-lg border-gray-500 bg-gray-800 accent-indigo-500 focus:ring-indigo-500 mr-3"
             />
             <span>{option}</span>
           </li>

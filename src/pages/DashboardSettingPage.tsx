@@ -45,7 +45,7 @@ function SortableItem({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className="flex items-center justify-between rounded border border-[#3a3b42] px-3 py-2 bg-[#2e2f36]"
+      className="flex items-center justify-between rounded-xl border border-white/5 px-4 py-3 bg-white/[0.02] hover:bg-white/[0.04] transition"
     >
       <span
         {...listeners}
@@ -54,18 +54,18 @@ function SortableItem({
         ⠿
       </span>
 
-      <span className="flex-1">{name}</span>
+      <span className="flex-1 font-medium text-gray-100">{name}</span>
 
       <div className="flex gap-2">
         <button
           onClick={onManage}
-          className="px-3 py-1.5 text-sm rounded bg-blue-600 hover:bg-blue-700"
+          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white/5 text-gray-200 ring-1 ring-inset ring-white/10 hover:bg-white/10 transition"
         >
           Manage
         </button>
         <button
           onClick={onDelete}
-          className="px-3 py-1.5 text-sm rounded bg-red-600 hover:bg-red-700"
+          className="px-3 py-1.5 text-sm font-medium rounded-lg text-rose-400 hover:bg-rose-500/10 transition"
         >
           Delete
         </button>
@@ -155,12 +155,14 @@ export default function DashboardSettingPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-6 md:p-10 space-y-6 animate-fade-in">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Manage Dashboard Setting</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-white">
+          Manage Dashboard Setting
+        </h1>
         <NavLink
           to={`/domain/${domainDocId}/dashboard`}
-          className="px-3 py-1.5 rounded bg-[#2A2B32] hover:bg-[#343541] text-sm"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm font-medium text-gray-200 transition"
         >
           Back to Dashboard
         </NavLink>
@@ -168,30 +170,32 @@ export default function DashboardSettingPage() {
 
       <form
         onSubmit={handleAdd}
-        className="bg-[#2A2B32] p-4 rounded-lg space-y-3"
+        className="bg-[#151923] border border-white/5 p-6 rounded-2xl shadow-[var(--shadow-card)] space-y-4"
       >
-        <label className="block text-sm text-gray-300">New Group Name</label>
+        <label className="block text-sm font-medium text-gray-300">New Group Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="mis. Program Summary, Trend Daily, Daily Transaction Achievement"
-          className="dashboard-group-name w-full rounded border border-[#3a3b42] bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          className="dashboard-group-name w-full rounded-xl border border-white/10 bg-[#0d1017]/70 px-3.5 py-2.5 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
         />
         <button
           type="submit"
           disabled={!uid}
-          className="dashboard-create-btn px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50"
+          className="dashboard-create-btn px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium disabled:opacity-50 shadow-lg shadow-indigo-600/20 transition"
         >
           Create Group
         </button>
       </form>
 
-      <section className="bg-[#2A2B32] p-4 rounded-lg">
-        <h2 className="dashboard-group-list text-sm text-gray-300 mb-3">
+      <section className="bg-[#151923] border border-white/5 p-6 rounded-2xl shadow-[var(--shadow-card)]">
+        <h2 className="dashboard-group-list text-sm font-semibold text-gray-200 mb-4">
           Current Group Dashboard
         </h2>
         {group.length === 0 ? (
-          <p className="text-gray-400 text-sm">There is no group yet</p>
+          <p className="text-gray-500 text-sm py-6 text-center rounded-xl border border-dashed border-white/10">
+            There is no group yet
+          </p>
         ) : (
           <DndContext
             sensors={sensors}
@@ -231,8 +235,8 @@ export default function DashboardSettingPage() {
       {showTour && <DashboardSettingTour onFinish={handleFinishTour} />}
 
       {groupToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-[#151923] text-white p-6 rounded-2xl shadow-2xl shadow-black/40 border border-white/10 w-full max-w-sm space-y-4">
             <h2 className="text-lg font-semibold">Delete Domain?</h2>
             <p className="text-sm text-gray-300">
               Are you sure you want to delete{" "}
@@ -244,13 +248,13 @@ export default function DashboardSettingPage() {
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setGroupToDelete(null)}
-                className="px-4 py-1.5 text-sm rounded-md bg-white/10 hover:bg-white/20"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 hover:bg-white/10 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-4 py-1.5 text-sm rounded-md bg-red-600 hover:bg-red-500 text-white"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20 transition"
               >
                 Delete
               </button>

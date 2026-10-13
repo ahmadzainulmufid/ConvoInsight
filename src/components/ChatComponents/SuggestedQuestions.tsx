@@ -137,7 +137,7 @@ const SuggestedQuestions: React.FC<Props> = ({
 
   return (
     <div
-      className={`mt-4 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 flex flex-col gap-2 text-gray-300 ${
+      className={`mt-6 w-full max-w-2xl md:max-w-3xl px-2 sm:px-0 grid grid-cols-1 sm:grid-cols-2 gap-3 text-gray-300 ${
         className || ""
       }`}
     >
@@ -146,16 +146,16 @@ const SuggestedQuestions: React.FC<Props> = ({
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="h-10 rounded-lg bg-gray-700/50 animate-pulse"
+              className="h-16 rounded-xl bg-white/5 animate-pulse"
             />
           ))}
         </>
       ) : error === "no-dataset" ? (
-        <div className="text-center text-gray-400 text-sm py-3">
+        <div className="sm:col-span-2 text-center text-gray-400 text-sm py-4 px-4 rounded-xl border border-dashed border-white/10">
           ⚠️ Please upload the dataset first to display suggested questions.
         </div>
       ) : error === "api-error" ? (
-        <div className="text-center text-gray-400 text-sm py-3">
+        <div className="sm:col-span-2 text-center text-gray-400 text-sm py-4 px-4 rounded-xl border border-dashed border-white/10">
           ⚠️ Suggested questions are having problems. Please type your question
           manually{errText ? ` — ${errText}` : ""}.
         </div>
@@ -164,13 +164,13 @@ const SuggestedQuestions: React.FC<Props> = ({
           <button
             key={i}
             onClick={() => onQuestionClick(q)}
-            className="p-3 bg-gray-700/50 rounded-lg text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+            className="group p-4 bg-[#151923]/70 border border-white/5 rounded-xl text-left text-sm leading-relaxed text-gray-300 hover:text-white hover:border-indigo-500/40 hover:bg-[#1b2030] hover:-translate-y-0.5 transition-all duration-200"
           >
             {q}
           </button>
         ))
       ) : (
-        <div className="text-center text-gray-400 text-sm py-3">
+        <div className="sm:col-span-2 text-center text-gray-400 text-sm py-4 px-4 rounded-xl border border-dashed border-white/10">
           There are no suggested questions at this time.
         </div>
       )}

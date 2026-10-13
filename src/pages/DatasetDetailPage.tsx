@@ -128,28 +128,28 @@ const DatasetDetailPage: React.FC<Props> = ({ userName }) => {
       contentPadding="px-4 md:px-6 py-4"
     >
       {/* Breadcrumb */}
-      <div className="text-sm text-gray-400 mb-3 flex items-center justify-between gap-2">
+      <div className="text-sm text-gray-500 mb-4 flex items-center justify-between gap-2">
         <div>
           <button
             onClick={() => navigate(`/domain/${section}/datasets`)}
-            className="hover:underline hover:text-gray-300"
+            className="px-2 py-1 -ml-2 rounded-md text-gray-400 hover:text-white hover:bg-white/5 transition"
           >
             datasets
           </button>{" "}
           /{" "}
-          <span className="text-gray-300 break-all">{id || "new-dataset"}</span>
+          <span className="text-gray-100 font-medium break-all">{id || "new-dataset"}</span>
         </div>
 
         {/* Badge kecil di kanan: jenis preview */}
-        <span className="inline-flex items-center rounded-full border border-[#3a3b42] bg-[#1f2024] px-3 py-1 text-xs text-gray-300">
+        <span className="inline-flex items-center rounded-full border border-indigo-500/25 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-300">
           {kind === "tabular" ? "Table preview" : "Document text preview"}
         </span>
       </div>
 
       {loading ? (
-        <div className="text-gray-300">Loading preview…</div>
+        <div className="text-gray-400 py-16 text-center">Loading preview…</div>
       ) : warn ? (
-        <div className="text-red-400">{warn}</div>
+        <div className="text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl px-4 py-3">{warn}</div>
       ) : kind === "tabular" ? (
         // 📊 TABULAR VIEW
         <div className="w-full">
@@ -157,8 +157,8 @@ const DatasetDetailPage: React.FC<Props> = ({ userName }) => {
         </div>
       ) : (
         // 📄 TEXT VIEW UNTUK PDF/DOCX/DOC
-        <div className="w-full bg-[#18191c] border border-[#2a2b32] rounded-xl p-4 max-h-[70vh] overflow-auto">
-          <pre className="whitespace-pre-wrap text-sm text-gray-100">
+        <div className="w-full bg-[#151923] border border-white/10 rounded-2xl p-5 max-h-[70vh] overflow-auto shadow-[var(--shadow-card)]">
+          <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-200 font-mono">
             {rawText || "(No text extracted from this file.)"}
           </pre>
         </div>

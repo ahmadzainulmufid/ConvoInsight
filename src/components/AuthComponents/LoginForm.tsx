@@ -159,19 +159,19 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-md bg-white/95 rounded-2xl shadow-xl border border-gray-100 p-8">
-      <header className="mb-6 text-center">
-        <h2 className="text-gray-900 text-3xl font-bold">Welcome Back!</h2>
-        <p className="text-gray-600 mt-1">Sign in to your account</p>
+    <div className="w-full max-w-md bg-[#151923]/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-black/40 border border-white/10 p-8 sm:p-10 animate-fade-in">
+      <header className="mb-8 text-center">
+        <h2 className="text-white text-3xl font-semibold tracking-tight">Welcome Back!</h2>
+        <p className="text-gray-400 mt-2">Sign in to your account</p>
       </header>
 
       {errors.form && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
+        <div className="mb-5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 px-3.5 py-2.5 text-sm">
           {errors.form}
         </div>
       )}
       {resetSent && (
-        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 text-green-700 px-3 py-2 text-sm">
+        <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 px-3.5 py-2.5 text-sm">
           {resetSent}
         </div>
       )}
@@ -179,47 +179,45 @@ const LoginForm: React.FC = () => {
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         {/* Email */}
         <div>
-          <label className="text-sm text-gray-700 block mb-1" htmlFor="email">
+          <label className="text-sm font-medium text-gray-300 block mb-1.5" htmlFor="email">
             Email address
           </label>
           <div className="relative">
-            <FiMail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <FiMail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={`w-full rounded-lg border pl-10 pr-3 py-2.5 text-gray-900 placeholder:text-gray-400
-                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                ${errors.email ? "border-red-400" : "border-gray-300"}`}
+              className={`w-full rounded-xl border pl-10 pr-3 py-3 bg-[#0d1017] text-gray-100 placeholder:text-gray-500 transition focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15
+                ${errors.email ? "border-rose-500/70" : "border-white/10"}`}
               placeholder="Input your email address"
               autoComplete="email"
               disabled={loading}
             />
           </div>
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+            <p className="mt-1.5 text-xs text-rose-400">{errors.email}</p>
           )}
         </div>
 
         {/* Password */}
         <div>
           <label
-            className="text-sm text-gray-700 block mb-1"
+            className="text-sm font-medium text-gray-300 block mb-1.5"
             htmlFor="password"
           >
             Password
           </label>
           <div className="relative">
-            <FiLock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <FiLock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
               id="password"
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={`w-full rounded-lg border pl-10 pr-10 py-2.5 text-gray-900 placeholder:text-gray-400
-                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-                ${errors.password ? "border-red-400" : "border-gray-300"}`}
+              className={`w-full rounded-xl border pl-10 pr-10 py-3 bg-[#0d1017] text-gray-100 placeholder:text-gray-500 transition focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15
+                ${errors.password ? "border-rose-500/70" : "border-white/10"}`}
               placeholder="Input your password"
               autoComplete="current-password"
               disabled={loading}
@@ -227,7 +225,7 @@ const LoginForm: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 grid place-items-center text-gray-500"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 grid place-items-center text-gray-500 hover:text-gray-200 transition-colors"
               style={{
                 background: "transparent",
                 border: "none",
@@ -240,16 +238,16 @@ const LoginForm: React.FC = () => {
             </button>
           </div>
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+            <p className="mt-1.5 text-xs text-rose-400">{errors.password}</p>
           )}
         </div>
 
         {/* Remember + Forgot */}
         <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-gray-700 text-sm select-none">
+          <label className="flex items-center gap-2 text-gray-400 text-sm select-none cursor-pointer">
             <input
               type="checkbox"
-              className="rounded border-gray-300 accent-indigo-600 focus:ring-2 focus:ring-indigo-500"
+              className="h-4 w-4 rounded-lg border-white/20 accent-indigo-500 focus:ring-2 focus:ring-indigo-500"
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
               disabled={loading}
@@ -261,27 +259,27 @@ const LoginForm: React.FC = () => {
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition rounded-lg text-white py-2.5 font-semibold shadow"
+          className="mt-2 w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all rounded-xl text-white py-3 font-semibold shadow-lg shadow-indigo-600/25"
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-gray-400">
         Don’t have an account?{" "}
         <Link
           to="/register"
-          className="text-indigo-600 hover:text-indigo-800 font-medium"
+          className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
         >
           Sign up
         </Link>
       </p>
 
       {/* Divider OR */}
-      <div className="my-4 flex items-center gap-3">
-        <div className="h-px bg-gray-300 flex-1" />
-        <span className="text-xs text-gray-500">or</span>
-        <div className="h-px bg-gray-300 flex-1" />
+      <div className="my-5 flex items-center gap-3">
+        <div className="h-px bg-white/10 flex-1" />
+        <span className="text-xs uppercase tracking-wider text-gray-500">or</span>
+        <div className="h-px bg-white/10 flex-1" />
       </div>
 
       {/* Google button */}
@@ -289,7 +287,7 @@ const LoginForm: React.FC = () => {
         type="button"
         onClick={handleGoogleSignIn}
         disabled={loading}
-        className="w-full !bg-white !text-gray-700 border border-gray-300 hover:!bg-gray-50 rounded-lg py-2.5 font-semibold shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
+        className="w-full bg-white/5 text-gray-100 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-xl py-3 font-medium transition flex items-center justify-center gap-2.5 disabled:opacity-60"
       >
         <FcGoogle size={20} />
         Continue with Google

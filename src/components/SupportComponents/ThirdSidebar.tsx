@@ -48,12 +48,14 @@ function SidebarItem({
         [
           baseItem,
           collapsed ? "justify-center px-0 gap-0" : "justify-start px-3 gap-3",
-          isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]",
+          isActive
+            ? "bg-indigo-500/10 text-white ring-1 ring-inset ring-indigo-500/25 [&_svg]:text-indigo-300"
+            : "text-gray-400 hover:text-white hover:bg-white/5",
         ].join(" ")
       }
     >
       <div className={collapsed ? "w-6 flex justify-center" : ""}>
-        <Icon className="shrink-0" />
+        <Icon className="shrink-0 text-[17px]" />
       </div>
       <span className={labelClass}>{label}</span>
     </NavLink>
@@ -83,7 +85,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }`;
 
   const baseItem =
-    "flex items-center h-10 rounded-md text-sm transition-colors";
+    "flex items-center h-10 rounded-lg text-sm font-medium transition-all duration-200";
 
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const historyContainerRef = useRef<HTMLDivElement>(null);
@@ -187,21 +189,21 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   return (
     <aside
-      className={`fixed left-0 top-0 z-40 h-screen bg-[#202123] text-white flex flex-col transition-[width] duration-300 ${
+      className={`fixed left-0 top-0 z-40 h-screen bg-[#10131b] border-r border-white/5 text-white flex flex-col transition-[width] duration-300 ${
         collapsed ? "w-16" : "w-64"
       }`}
     >
-      <div className="shrink-0 border-b border-[#202123]">
+      <div className="shrink-0 border-b border-white/5 p-2">
         <button
           onClick={onToggle}
           aria-label="Toggle sidebar"
-          className={`flex items-center w-full h-12 px-3 ${
+          className={`flex items-center w-full h-11 px-3 rounded-lg text-gray-400 hover:text-white ${
             collapsed ? "justify-center" : "justify-between"
-          } bg-[#2A2B32] hover:bg-[#2F3038] focus:outline-none focus:ring-2 focus:ring-white/20`}
+          } bg-transparent hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40 transition-colors`}
         >
           <span
             onClick={() => navigate("/home")}
-            className={`font-semibold text-lg cursor-pointer hover:underline hover:text-gray-300 transition-colors ${textTransition} ${
+            className={`font-semibold text-base tracking-tight text-white cursor-pointer hover:text-indigo-300 transition-colors ${textTransition} ${
               collapsed ? "opacity-0 max-w-0" : "opacity-100 max-w-[10rem]"
             }`}
             title="Back to Home"
@@ -211,8 +213,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <HiOutlineMenu size={20} />
         </button>
       </div>
-      <nav ref={historyContainerRef} className="flex-1 overflow-y-auto p-2">
-        <div className="space-y-2">
+      <nav ref={historyContainerRef} className="flex-1 overflow-y-auto p-3">
+        <div className="space-y-1">
           {mainNav.map((item) => (
             <SidebarItem
               key={item.to}
@@ -222,7 +224,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               labelClass={labelClass}
             />
           ))}
-          <hr className="border-[#2A2B32] my-2" />
+          <hr className="border-white/5 my-3" />
           {extraNav.map((item) => (
             <SidebarItem
               key={item.to}
@@ -234,11 +236,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           ))}
           {isNewChatPage && (
             <>
-              <hr className="border-[#2A2B32] my-2" />
+              <hr className="border-white/5 my-3" />
 
               {!collapsed && (
                 <div className="flex items-center justify-between px-3 py-2">
-                  <span className="text-xs font-semibold text-gray-400 block">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block">
                     History
                   </span>
                   <button
@@ -246,16 +248,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       navigate(`/domain/${section}/dashboard/newchat`)
                     }
                     title="New Chat"
-                    className="chat-add-btn p-1 rounded text-gray-400 hover:text-white hover:bg-[#2A2B32]"
+                    className="chat-add-btn p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
                   >
                     <HiOutlinePlus size={16} />
                   </button>
                 </div>
               )}
 
-              <div className="chat-history-list">
+              <div className="chat-history-list space-y-0.5">
                 {historyItems.length === 0 && !collapsed && (
-                  <span className="px-3 py-1 text-sm text-gray-500 italic">
+                  <span className="block px-3 py-1 text-sm text-gray-500">
                     No history yet
                   </span>
                 )}
@@ -263,10 +265,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 {historyItems.map((item) => (
                   <div
                     key={item.id}
-                    className={`relative group flex items-center py-2 rounded-md text-sm transition-colors ${
+                    className={`relative group flex items-center py-2 rounded-lg text-sm transition-colors ${
                       openedId === item.id
-                        ? "bg-[#343541]"
-                        : "hover:bg-[#2A2B32]"
+                        ? "bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/25"
+                        : "hover:bg-white/5"
                     }`}
                   >
                     <NavLink
@@ -281,14 +283,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       <div
                         className={collapsed ? "w-6 flex justify-center" : ""}
                       >
-                        <HiOutlineChat className="shrink-0" />
+                        <HiOutlineChat className="shrink-0 text-gray-400" />
                       </div>
 
                       <div className={`${labelClass} flex flex-col min-w-0`}>
-                        <span className="truncate text-sm text-white">
+                        <span className="truncate text-sm text-gray-200">
                           {item.title}
                         </span>
-                        <span className="truncate text-[11px] text-gray-400">
+                        <span className="truncate text-[11px] text-gray-500">
                           {new Date(item.createdAt).toLocaleString()}
                         </span>
                       </div>
@@ -303,7 +305,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                               prev === item.id ? null : item.id
                             );
                           }}
-                          className="px-2 py-1 rounded hover:bg-[#343541] opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          className="mr-1 p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition"
                           aria-haspopup="menu"
                           aria-expanded={menuOpenId === item.id}
                           title="Actions"
@@ -314,7 +316,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         {menuOpenId === item.id && (
                           <div
                             role="menu"
-                            className="absolute right-0 bottom-full mb-1 w-40 rounded-md border border-[#3a3b42] bg-[#2A2B32] shadow-lg z-20"
+                            className="absolute right-0 bottom-full mb-1 w-44 p-1 rounded-xl border border-white/10 bg-[#1b2030]/95 backdrop-blur-xl shadow-2xl shadow-black/50 z-20"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <button
@@ -326,7 +328,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                                 toast.success("✅ Link copied to clipboard!");
                                 setMenuOpenId(null);
                               }}
-                              className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541] rounded-t-md"
+                              className="w-full text-left text-sm px-3 py-2 rounded-lg text-gray-200 hover:bg-white/5"
                             >
                               Copy Link
                             </button>
@@ -334,7 +336,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                             <button
                               role="menuitem"
                               onClick={() => handleExportPdf(item.id)}
-                              className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541]"
+                              className="w-full text-left text-sm px-3 py-2 rounded-lg text-gray-200 hover:bg-white/5"
                             >
                               Export to PDF
                             </button>
@@ -342,7 +344,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                             <button
                               role="menuitem"
                               onClick={() => handleDelete(item.id)}
-                              className="w-full text-left text-sm px-3 py-2 hover:bg-[#343541] text-red-400 rounded-b-md"
+                              className="w-full text-left text-sm px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10"
                             >
                               Delete
                             </button>

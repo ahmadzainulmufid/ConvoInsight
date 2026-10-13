@@ -126,81 +126,81 @@ export default function ConnectPage() {
   return (
     <AppShell userName={user?.email || "User"}>
       <div className="flex flex-col items-center justify-center min-h-[80vh] text-white px-4">
-        <div className="bg-[#1f2024] border border-[#3a3b42] rounded-xl p-8 w-full max-w-lg space-y-5 shadow-xl">
-          <h2 className="text-xl font-semibold text-center mb-4">
+        <div className="bg-[#151923] border border-white/10 rounded-3xl p-8 w-full max-w-lg space-y-5 shadow-2xl shadow-black/40 animate-fade-in">
+          <h2 className="text-xl font-semibold tracking-tight text-center mb-6">
             Connect to PostgreSQL Database
           </h2>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400">Host</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">Host</label>
               <input
                 type="text"
                 name="host"
                 value={form.host}
                 onChange={handleChange}
-                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
                 placeholder="e.g. aws-1-ap-southeast-1.pooler.supabase.com"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400">Port</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">Port</label>
               <input
                 type="text"
                 name="port"
                 value={form.port}
                 onChange={handleChange}
-                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
                 placeholder="e.g. 5432"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400">Database</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">Database</label>
               <input
                 type="text"
                 name="dbname"
                 value={form.dbname}
                 onChange={handleChange}
-                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
                 placeholder="e.g. postgres"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400">User</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">User</label>
               <input
                 type="text"
                 name="user"
                 value={form.user}
                 onChange={handleChange}
-                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
                 placeholder="e.g. postgres.user"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400">Password</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
               <input
                 type="password"
                 name="password"
                 value={form.password}
                 onChange={handleChange}
-                className="w-full p-2 rounded-md bg-[#2a2b32] border border-gray-700 text-white"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
                 placeholder="Enter your password"
               />
             </div>
           </div>
 
-          <div className="flex justify-between mt-6">
+          <div className="flex justify-between gap-3 pt-2">
             <button
               onClick={handleTest}
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-medium"
+              className="flex-1 px-4 py-2.5 bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10 rounded-xl text-sm font-medium transition"
             >
               {loading ? "Testing..." : "Test Connection"}
             </button>
             <button
               onClick={handleSave}
               disabled={loading}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-sm font-medium"
+              className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-medium shadow-lg shadow-indigo-600/20 transition"
             >
               {loading ? "Saving..." : "Save Connection"}
             </button>
@@ -209,12 +209,14 @@ export default function ConnectPage() {
 
         {connections.length > 0 && (
           <div className="mt-10 w-full max-w-lg">
-            <h3 className="text-lg font-semibold mb-3">Saved Connections</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">
+              Saved Connections
+            </h3>
             <ul className="space-y-2">
               {connections.map((c) => (
                 <li
                   key={c.id}
-                  className="bg-[#2a2b32] p-3 rounded-md border border-[#3a3b42]"
+                  className="bg-[#151923] p-4 rounded-2xl border border-white/5 hover:border-indigo-500/30 transition"
                 >
                   <p className="font-medium text-white">{c.name}</p>
                   <p className="text-sm text-gray-400">

@@ -14,13 +14,13 @@ export default function HelpPopover({
     <div className="relative">
       <button
         onClick={onToggle}
-        className={`p-3 rounded-xl transition-colors duration-200 ${
+        className={`h-10 w-10 grid place-items-center rounded-xl transition-all duration-200 ${
           open
-            ? "bg-blue-800/60 text-white shadow-inner shadow-blue-900/30"
-            : "bg-[#2B2C31] text-gray-400 hover:text-white hover:bg-[#35363b]"
+            ? "bg-indigo-500/15 text-indigo-300 ring-1 ring-indigo-500/40"
+            : "text-gray-400 hover:text-white hover:bg-white/5"
         }`}
       >
-        <FiHelpCircle size={22} />
+        <FiHelpCircle size={19} />
       </button>
 
       <AnimatePresence>
@@ -32,9 +32,9 @@ export default function HelpPopover({
             exit={{ opacity: 0, x: 40 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="absolute right-full mr-4 top-0 w-[460px] max-h-[80vh] overflow-y-auto 
-                       bg-[#2d2e30] rounded-lg shadow-lg border border-gray-700 p-5 text-gray-300 z-50"
+                       bg-[#151923]/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/50 border border-white/10 p-6 text-gray-300 z-50"
           >
-            <h2 className="text-lg font-semibold text-white mb-4">
+            <h2 className="text-lg font-semibold text-white mb-5 pb-4 border-b border-white/10 tracking-tight">
               How to Use ConvoInsight
             </h2>
 

@@ -13,25 +13,25 @@ const pill = (v: string) => {
   const val = (v ?? "").toLowerCase();
   if (["yes", "true"].includes(val))
     return (
-      <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-900/40 text-emerald-300 border border-emerald-700/40">
+      <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 font-medium">
         Yes
       </span>
     );
   if (["no", "false"].includes(val))
     return (
-      <span className="px-2 py-0.5 rounded-full text-xs bg-rose-900/40 text-rose-300 border border-rose-700/40">
+      <span className="px-2 py-0.5 rounded-full text-xs bg-rose-500/10 text-rose-300 border border-rose-500/25 font-medium">
         No
       </span>
     );
   if (val === "male")
     return (
-      <span className="px-2 py-0.5 rounded-full text-xs bg-sky-900/40 text-sky-300 border border-sky-700/40">
+      <span className="px-2 py-0.5 rounded-full text-xs bg-sky-500/10 text-sky-300 border border-sky-500/25 font-medium">
         Male
       </span>
     );
   if (val === "female")
     return (
-      <span className="px-2 py-0.5 rounded-full text-xs bg-pink-900/40 text-pink-300 border border-pink-700/40">
+      <span className="px-2 py-0.5 rounded-full text-xs bg-pink-500/10 text-pink-300 border border-pink-500/25 font-medium">
         Female
       </span>
     );
@@ -71,15 +71,15 @@ const DataTable: React.FC<DataTableProps> = ({
 
   return (
     <div
-      className={`bg-[#232427] rounded-2xl border border-[#2a2b32] ${
+      className={`bg-[#151923] rounded-2xl border border-white/10 shadow-[var(--shadow-card)] ${
         className || ""
       }`}
     >
-      <div className="p-4 border-b border-[#2a2b32]">
-        <h2 className="text-lg font-semibold text-white">Table view</h2>
+      <div className="px-5 py-4 border-b border-white/5">
+        <h2 className="text-base font-semibold tracking-tight text-white">Table view</h2>
       </div>
 
-      <div className="p-4">
+      <div className="p-5">
         {/* Search */}
         <div className="mb-4">
           <input
@@ -89,19 +89,19 @@ const DataTable: React.FC<DataTableProps> = ({
               setPage(1);
             }}
             placeholder="Search in table…"
-            className="w-full rounded-md bg-[#1f2024] border border-[#2a2b32] text-gray-100 placeholder:text-gray-500 px-3 py-2 focus:outline-none focus:border-indigo-500"
+            className="w-full rounded-xl bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 px-3 py-2 focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 transition"
           />
         </div>
 
         {/* Table */}
-        <div className="rounded-md border border-[#2a2b32] overflow-auto">
+        <div className="rounded-xl border border-white/10 overflow-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-[#1f2024] text-gray-300">
+            <thead className="sticky top-0 bg-[#1b2030] text-gray-400 text-xs uppercase tracking-wider">
               <tr>
                 {headers.map((h) => (
                   <th
                     key={h}
-                    className="text-left font-medium px-3 py-2 border-b border-[#2a2b32]"
+                    className="text-left font-semibold px-3 py-2.5 border-b border-white/10 whitespace-nowrap"
                   >
                     {h}
                   </th>
@@ -124,14 +124,14 @@ const DataTable: React.FC<DataTableProps> = ({
                 slice.map((r, i) => (
                   <tr
                     key={i}
-                    className="even:bg-[#2a2b32]/30 hover:bg-[#2a2b32]/60 transition-colors"
+                    className="even:bg-white/[0.02] hover:bg-indigo-500/5 transition-colors"
                   >
                     {headers.map((h) => {
                       const val = formatValue(r[h]);
                       return (
                         <td
                           key={h}
-                          className="px-3 py-2 border-b border-[#2a2b32] max-w-[200px] truncate hover:whitespace-normal hover:bg-[#2a2b32]/40 transition"
+                          className="px-3 py-2 border-b border-white/5 max-w-[200px] truncate hover:whitespace-normal transition"
                           title={val}
                         >
                           {pill(val)}
@@ -146,7 +146,7 @@ const DataTable: React.FC<DataTableProps> = ({
         </div>
 
         {/* Footer / pagination */}
-        <div className="mt-3 flex items-center justify-between text-sm text-gray-300">
+        <div className="mt-4 flex flex-wrap gap-3 items-center justify-between text-sm text-gray-400">
           <div className="flex items-center gap-2">
             <select
               value={perPage}
@@ -155,7 +155,7 @@ const DataTable: React.FC<DataTableProps> = ({
                 setPerPage(n);
                 setPage(1);
               }}
-              className="bg-[#1f2024] border border-[#2a2b32] rounded-md px-2 py-1"
+              className="bg-[#0d1017]/70 border border-white/10 rounded-lg px-2 py-1 text-gray-200 focus:outline-none focus:border-indigo-500/60"
             >
               {[10, 25, 50, 100].map((n) => (
                 <option key={n} value={n}>
@@ -173,14 +173,14 @@ const DataTable: React.FC<DataTableProps> = ({
             <button
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1 rounded-md border border-[#2a2b32] bg-[#1f2024] hover:bg-[#2a2b32] disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-200 hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-white/5 transition"
             >
               Previous
             </button>
             <button
               disabled={page >= pages}
               onClick={() => setPage((p) => Math.min(pages, p + 1))}
-              className="px-3 py-1 rounded-md border border-[#2a2b32] bg-[#1f2024] hover:bg-[#2a2b32] disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-200 hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-white/5 transition"
             >
               Next
             </button>

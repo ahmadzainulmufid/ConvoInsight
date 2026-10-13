@@ -47,12 +47,17 @@ const DatasetList: React.FC<Props> = ({
       <div className="mt-6">
         {/* Header sejajar */}
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-lg font-semibold text-white">Your datasets</h3>
+          <h3 className="text-lg font-semibold tracking-tight text-white">
+            Your datasets{" "}
+            <span className="ml-1 rounded-full bg-white/5 px-2 py-0.5 text-xs font-medium text-gray-400">
+              {items.length}
+            </span>
+          </h3>
 
           {onDeleteAll && (
             <button
               onClick={() => setConfirmAll(true)}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-sm font-medium text-white rounded-md"
+              className="px-3 py-1.5 bg-rose-500/10 text-rose-300 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/20 text-sm font-medium rounded-lg transition"
             >
               Delete All
             </button>
@@ -64,12 +69,16 @@ const DatasetList: React.FC<Props> = ({
           {items.map((d) => (
             <li
               key={d.id}
-              className="bg-[#232427] border border-[#2a2b32] rounded-xl p-4 flex items-center justify-between"
+              className="group bg-[#151923] border border-white/5 hover:border-indigo-500/30 rounded-2xl p-4 flex items-center justify-between gap-4 transition"
             >
-              <div>
-                <p className="font-medium text-white">{d.name}</p>
+              <div className="flex items-center gap-3 min-w-0">
+              <div className="h-10 w-10 shrink-0 grid place-items-center rounded-xl bg-emerald-500/10 text-emerald-300 ring-1 ring-inset ring-emerald-500/25 text-[10px] font-bold uppercase">
+                {(d.name.split(".").pop() || "file").slice(0, 4)}
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium text-white truncate">{d.name}</p>
                 {(d.size > 0 || (d.uploadedAt && d.uploadedAt !== "-")) && (
-                  <p className="text-sm text-gray-400">
+                  <p className="text-xs text-gray-500 mt-0.5">
                     {d.size > 0 && <>{humanSize(d.size)}</>}
                     {d.size > 0 &&
                       d.uploadedAt &&
@@ -81,12 +90,13 @@ const DatasetList: React.FC<Props> = ({
                   </p>
                 )}
               </div>
+              </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-1.5 shrink-0">
                 {onEdit && (
                   <button
                     onClick={() => onEdit(d)}
-                    className="text-indigo-400 text-sm hover:underline"
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition"
                   >
                     Edit
                   </button>
@@ -94,7 +104,7 @@ const DatasetList: React.FC<Props> = ({
                 {onView && (
                   <button
                     onClick={() => onView(d)}
-                    className="text-indigo-400 text-sm hover:underline"
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition"
                   >
                     View
                   </button>
@@ -102,7 +112,7 @@ const DatasetList: React.FC<Props> = ({
                 {onDelete && (
                   <button
                     onClick={() => setSelected(d)}
-                    className="text-red-400 text-sm hover:underline"
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-500/10 transition"
                   >
                     Delete
                   </button>
@@ -115,8 +125,8 @@ const DatasetList: React.FC<Props> = ({
 
       {/* 🔸 Modal konfirmasi delete satu dataset */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-[#151923] text-white p-6 rounded-2xl shadow-2xl shadow-black/40 border border-white/10 w-full max-w-sm space-y-4 animate-fade-in">
             <h2 className="text-lg font-semibold">Delete Dataset?</h2>
             <p className="text-sm text-gray-300">
               Are you sure you want to delete the dataset{" "}
@@ -128,13 +138,13 @@ const DatasetList: React.FC<Props> = ({
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setSelected(null)}
-                className="px-4 py-1.5 text-sm rounded-md bg-white/10 hover:bg-white/20"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 hover:bg-white/10 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-4 py-1.5 text-sm rounded-md bg-red-600 hover:bg-red-500 text-white"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20 transition"
               >
                 Delete
               </button>
@@ -145,8 +155,8 @@ const DatasetList: React.FC<Props> = ({
 
       {/* 🔸 Modal konfirmasi delete ALL datasets */}
       {confirmAll && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-[#1f2024] text-white p-6 rounded-xl shadow-lg border border-[#3a3b42] w-full max-w-sm space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-[#151923] text-white p-6 rounded-2xl shadow-2xl shadow-black/40 border border-white/10 w-full max-w-sm space-y-4 animate-fade-in">
             <h2 className="text-lg font-semibold">Delete All Datasets?</h2>
             <p className="text-sm text-gray-300">
               Are you sure you want to delete{" "}
@@ -158,13 +168,13 @@ const DatasetList: React.FC<Props> = ({
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setConfirmAll(false)}
-                className="px-4 py-1.5 text-sm rounded-md bg-white/10 hover:bg-white/20"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-white/5 hover:bg-white/10 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteAll}
-                className="px-4 py-1.5 text-sm rounded-md bg-red-600 hover:bg-red-500 text-white"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20 transition"
               >
                 Delete All
               </button>

@@ -601,12 +601,12 @@ export default function ManageSettings() {
   };
 
   return (
-    <div className="p-6 text-white min-h-screen bg-[#1a1b1e]">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">Manage Settings</h1>
+    <div className="max-w-5xl mx-auto p-6 md:p-10 text-white min-h-screen">
+      <div className="flex items-center justify-between gap-4 mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight">Manage Settings</h1>
         <NavLink
           to={`/domain/${domain}/dashboard/dashboardSetting`}
-          className="px-3 py-1.5 rounded bg-[#2A2B32] hover:bg-[#343541]"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm font-medium text-gray-200 transition"
         >
           Back to Dashboard Settings
         </NavLink>
@@ -620,15 +620,19 @@ export default function ManageSettings() {
             </p>
             <button
               onClick={() => goToStep("select-type")}
-              className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 font-medium"
+              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-medium shadow-lg shadow-indigo-600/20 transition"
             >
               ➕ Add Item
             </button>
 
             {isLoadingItems ? (
-              <p className="text-gray-400 text-sm italic">Loading items...</p>
+              <p className="text-gray-500 text-sm py-8 text-center rounded-2xl border border-dashed border-white/10">
+                Loading items...
+              </p>
             ) : items.length === 0 ? (
-              <p className="text-gray-400 text-sm italic">No items yet.</p>
+              <p className="text-gray-500 text-sm py-8 text-center rounded-2xl border border-dashed border-white/10">
+                No items yet.
+              </p>
             ) : (
               <DashboardGroupOutput
                 items={hydratedItems}
@@ -642,13 +646,15 @@ export default function ManageSettings() {
 
         {step === "select-type" && (
           <motion.div key="select-type" {...variants} className="space-y-6">
-            <h2 className="text-lg font-semibold">Select Item Type</h2>
+            <h2 className="text-lg font-semibold tracking-tight">Select Item Type</h2>
             <div className="flex flex-col gap-3">
               {(["chart", "table", "kpi"] as ItemType[]).map((t) => (
                 <label
                   key={t}
-                  className={`flex items-center gap-3 border border-[#3a3b42] px-4 py-2 rounded cursor-pointer ${
-                    itemType === t ? "bg-[#2A2B32]" : "hover:bg-[#2A2B32]"
+                  className={`flex items-center gap-3 border px-4 py-3.5 rounded-xl cursor-pointer transition accent-indigo-500 ${
+                    itemType === t
+                      ? "border-indigo-500/50 bg-indigo-500/10"
+                      : "border-white/10 bg-[#151923] hover:bg-[#1b2030]"
                   }`}
                 >
                   <input
@@ -657,14 +663,14 @@ export default function ManageSettings() {
                     checked={itemType === t}
                     onChange={() => setItemType(t)}
                   />
-                  <span className="capitalize">{t}</span>
+                  <span className="capitalize font-medium">{t}</span>
                 </label>
               ))}
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => goToStep("list")}
-                className="px-4 py-2 bg-white/10 rounded"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10 text-gray-200 transition"
               >
                 Back
               </button>
@@ -677,7 +683,7 @@ export default function ManageSettings() {
                       : (itemType as "chart" | "table")
                   )
                 }
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded disabled:opacity-50"
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-medium disabled:opacity-50 shadow-lg shadow-indigo-600/20 transition"
               >
                 Next
               </button>
@@ -687,7 +693,7 @@ export default function ManageSettings() {
 
         {["chart", "table", "kpi-llm"].includes(step) && (
           <motion.div key="prompt-step" {...variants} className="space-y-5">
-            <h2 className="text-lg font-semibold capitalize">
+            <h2 className="text-lg font-semibold tracking-tight capitalize">
               {itemType} Prompt
             </h2>
 
@@ -696,10 +702,10 @@ export default function ManageSettings() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder={`Enter prompt for ${itemType}`}
               rows={4}
-              className="w-full rounded bg-[#2A2B32] border border-[#3a3b42] p-3 outline-none"
+              className="w-full rounded-xl bg-[#151923] border border-white/10 px-4 py-3 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
             />
 
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 accent-indigo-500 cursor-pointer">
               <input
                 type="checkbox"
                 checked={includeInsight}
@@ -713,7 +719,7 @@ export default function ManageSettings() {
                 onClick={() =>
                   goToStep(itemType === "kpi" ? "kpi-type" : "select-type")
                 }
-                className="px-4 py-2 bg-white/10 rounded"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10 text-gray-200 transition"
               >
                 Back
               </button>
@@ -721,7 +727,7 @@ export default function ManageSettings() {
               <button
                 disabled={!prompt.trim() || isExecuting}
                 onClick={handleExecutePrompt}
-                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-indigo-200 bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/30 hover:bg-indigo-500/20 transition disabled:opacity-50"
               >
                 {isExecuting
                   ? "Executing..."
@@ -733,7 +739,7 @@ export default function ManageSettings() {
               {executionResult && (
                 <button
                   onClick={handleSaveItem}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded"
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-medium shadow-lg shadow-indigo-600/20 transition"
                 >
                   Save Item
                 </button>
@@ -748,11 +754,11 @@ export default function ManageSettings() {
               )}
 
               {executionResult && (
-                <div className="p-4 border border-gray-700 rounded-lg bg-black/20 space-y-4">
-                  <h3 className="font-semibold text-gray-300">Output:</h3>
+                <div className="p-5 border border-white/5 rounded-2xl bg-[#151923] space-y-4 shadow-[var(--shadow-card)]">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Output:</h3>
 
                   {executionResult.chartHtml && (
-                    <div className="w-full overflow-hidden rounded-xl bg-gray-800/30">
+                    <div className="w-full overflow-hidden rounded-xl bg-black/20">
                       <iframe
                         srcDoc={executionResult.chartHtml}
                         title="chart-preview"
@@ -764,7 +770,7 @@ export default function ManageSettings() {
 
                   {includeInsight && executionResult.text && (
                     <div
-                      className="text-gray-200 leading-relaxed space-y-2 [&_p]:my-2 [&_table]:w-full [&_td]:border [&_td]:p-2"
+                      className="text-gray-300 leading-relaxed space-y-2 [&_p]:my-2 [&_strong]:text-white [&_table]:w-full [&_td]:border [&_td]:border-white/10 [&_td]:p-2"
                       dangerouslySetInnerHTML={{ __html: executionResult.text }}
                     />
                   )}
@@ -791,9 +797,9 @@ export default function ManageSettings() {
 
         {step === "kpi-type" && (
           <motion.div key="kpi-type" {...variants} className="space-y-5">
-            <h2 className="text-lg font-semibold">Select KPI Source</h2>
+            <h2 className="text-lg font-semibold tracking-tight">Select KPI Source</h2>
             <div className="flex flex-col gap-3">
-              <label className="flex items-center gap-3 border border-[#3a3b42] px-4 py-2 rounded hover:bg-[#2A2B32]">
+              <label className="flex items-center gap-3 border border-white/10 bg-[#151923] px-4 py-3.5 rounded-xl hover:bg-[#1b2030] cursor-pointer accent-indigo-500 transition">
                 <input
                   type="radio"
                   name="kpiType"
@@ -802,7 +808,7 @@ export default function ManageSettings() {
                 />
                 <span>From Dataset</span>
               </label>
-              <label className="flex items-center gap-3 border border-[#3a3b42] px-4 py-2 rounded hover:bg-[#2A2B32]">
+              <label className="flex items-center gap-3 border border-white/10 bg-[#151923] px-4 py-3.5 rounded-xl hover:bg-[#1b2030] cursor-pointer accent-indigo-500 transition">
                 <input
                   type="radio"
                   name="kpiType"
@@ -815,7 +821,7 @@ export default function ManageSettings() {
             <div className="flex gap-3">
               <button
                 onClick={() => goToStep("select-type")}
-                className="px-4 py-2 bg-white/10 rounded"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10 text-gray-200 transition"
               >
                 Back
               </button>
@@ -824,7 +830,7 @@ export default function ManageSettings() {
                 onClick={() =>
                   goToStep(kpiType === "dataset" ? "kpi-dataset" : "kpi-llm")
                 }
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded disabled:opacity-50"
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-sm font-medium disabled:opacity-50 shadow-lg shadow-indigo-600/20 transition"
               >
                 Next
               </button>
@@ -834,16 +840,16 @@ export default function ManageSettings() {
 
         {step === "kpi-dataset" && (
           <motion.div key="kpi-dataset" {...variants} className="space-y-5">
-            <h2 className="text-lg font-semibold">Select Dataset & Columns</h2>
+            <h2 className="text-lg font-semibold tracking-tight">Select Dataset & Columns</h2>
 
             <div className="flex flex-wrap gap-2">
               {datasets.map((d) => (
                 <label
                   key={d.id}
-                  className={`flex items-center gap-2 bg-[#2A2B32] px-3 py-1 rounded cursor-pointer ${
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm cursor-pointer border transition accent-indigo-500 ${
                     selectedDatasetIds.includes(d.id)
-                      ? "ring-2 ring-indigo-500"
-                      : "hover:bg-[#343541]"
+                      ? "border-indigo-500/50 bg-indigo-500/10 text-white"
+                      : "border-white/10 bg-[#151923] hover:bg-[#1b2030]"
                   }`}
                 >
                   <input
@@ -864,12 +870,12 @@ export default function ManageSettings() {
 
             {Object.keys(columns).length > 0 && (
               <div>
-                <p className="text-sm mb-2 text-gray-300">Select Columns:</p>
+                <p className="text-sm font-medium mb-2 text-gray-300">Select Columns:</p>
                 <div className="flex flex-wrap gap-2">
                   {allColumnOptions.map((c) => (
                     <label
                       key={c.value}
-                      className="flex items-center gap-2 bg-[#2A2B32] px-2 py-1 rounded"
+                      className="flex items-center gap-2 bg-[#151923] border border-white/10 px-3 py-1.5 rounded-lg text-sm accent-indigo-500"
                     >
                       <input
                         type="checkbox"
@@ -892,7 +898,7 @@ export default function ManageSettings() {
             <div className="flex gap-3">
               <button
                 onClick={() => goToStep("kpi-type")}
-                className="px-4 py-2 bg-white/10 rounded"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-white/5 ring-1 ring-inset ring-white/10 hover:bg-white/10 text-gray-200 transition"
               >
                 Back
               </button>
@@ -904,7 +910,7 @@ export default function ManageSettings() {
                   isExecuting
                 }
                 onClick={handleExecuteKpiDataset}
-                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-indigo-200 bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/30 hover:bg-indigo-500/20 transition disabled:opacity-50"
               >
                 {isExecuting ? "Executing..." : "Execute"}
               </button>

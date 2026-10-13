@@ -120,12 +120,12 @@ export default function CreateDomainPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-6 md:p-10 space-y-6 animate-fade-in">
       {/* ✨ Hint Overlay */}
       {showHint && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-[#111216] border border-indigo-500 text-white p-8 rounded-2xl shadow-[0_0_40px_rgba(79,70,229,0.3)] max-w-2xl text-center">
-            <h2 className="text-2xl font-bold mb-4">
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#151923] border border-indigo-500/40 text-white p-8 rounded-3xl shadow-[0_0_60px_rgba(79,70,229,0.25)] max-w-2xl text-center animate-fade-in">
+            <h2 className="text-2xl font-semibold tracking-tight mb-4">
               ✨ Step 1: Create Your First Domain
             </h2>
             <p className="text-gray-300 mb-6 text-lg leading-relaxed">
@@ -134,7 +134,7 @@ export default function CreateDomainPage() {
             </p>
             <button
               onClick={handleGotIt}
-              className="bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-lg font-semibold text-lg"
+              className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl font-semibold text-base shadow-lg shadow-indigo-600/20 transition"
             >
               Got it
             </button>
@@ -143,10 +143,12 @@ export default function CreateDomainPage() {
       )}
 
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Manage Domains</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-white">
+          Manage Domains
+        </h1>
         <NavLink
           to="/home"
-          className="px-3 py-1.5 rounded bg-[#2A2B32] hover:bg-[#343541] text-sm"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm font-medium text-gray-200 transition"
         >
           Back to Home
         </NavLink>
@@ -155,19 +157,21 @@ export default function CreateDomainPage() {
       {/* ➕ Form tambah domain */}
       <form
         onSubmit={handleAdd}
-        className="bg-[#2A2B32] p-4 rounded-lg space-y-3"
+        className="bg-[#151923] border border-white/5 p-6 rounded-2xl shadow-[var(--shadow-card)] space-y-4"
       >
-        <label className="block text-sm text-gray-300">New Domain Name</label>
+        <label className="block text-sm font-medium text-gray-300">
+          New Domain Name
+        </label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="mis. Sales, Marketing, Finance"
-          className="w-full rounded border border-[#3a3b42] bg-transparent px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full rounded-xl border border-white/10 bg-[#0d1017]/70 px-3.5 py-2.5 text-gray-100 placeholder:text-gray-500 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
         />
         <button
           type="submit"
           disabled={!uid}
-          className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-medium disabled:opacity-50"
+          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium disabled:opacity-50 shadow-lg shadow-indigo-600/20 transition"
         >
           Create Domain
         </button>
@@ -175,18 +179,23 @@ export default function CreateDomainPage() {
 
       {/* 📋 Daftar domain */}
       {domains.length > 0 && (
-        <section className="bg-[#2A2B32] p-4 rounded-lg mb-6">
-          <h2 className="text-sm text-gray-300 mb-3">Current Domain</h2>
-          <div className="flex flex-col space-y-3">
+        <section className="bg-[#151923] border border-white/5 p-6 rounded-2xl shadow-[var(--shadow-card)] mb-6">
+          <h2 className="text-sm font-semibold text-gray-200 mb-4">Current Domain</h2>
+          <div className="flex flex-col space-y-2">
             {domains.map((d) => (
               <div
                 key={d.id}
-                className="flex items-center justify-between border border-[#3a3b42] px-3 py-2 rounded"
+                className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] px-4 py-3 transition"
               >
-                <span>{d.name}</span>
+                <span className="flex items-center gap-3 font-medium text-gray-100">
+                  <span className="h-8 w-8 grid place-items-center rounded-lg bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/20 text-sm font-semibold text-indigo-200">
+                    {d.name.charAt(0).toUpperCase()}
+                  </span>
+                  {d.name}
+                </span>
                 <button
                   onClick={() => handleDeleteDomain(d.id, d.name)}
-                  className="text-red-400 hover:text-red-500 font-medium transition"
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-500/10 transition"
                 >
                   Delete
                 </button>

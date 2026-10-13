@@ -19,12 +19,12 @@ export default function AnimatedMessageBubble({
   return (
     <div
       className={`
-        px-3 py-2 text-sm whitespace-pre-wrap
+        px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap shadow-sm
         ${fullWidth ? "w-full max-w-none" : "max-w-[80%]"}
         ${
           isUser
-            ? "rounded-lg bg-gray-600 text-white ml-auto"
-            : "rounded-md bg-[#24252c] text-gray-100 border border-[#2F3038]"
+            ? "rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-600 to-violet-600 text-white ml-auto w-fit shadow-indigo-900/30"
+            : "rounded-2xl rounded-bl-md bg-[#151923] text-gray-100 border border-white/10"
         }
       `}
     >

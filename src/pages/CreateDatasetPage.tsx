@@ -69,19 +69,19 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
   return (
     <AppShell userName={userName}>
       <div className="w-full max-w-2xl mx-auto">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="h-8 w-8 grid place-items-center rounded-lg bg-indigo-100">
-            <span className="text-indigo-600 text-xl">›_</span>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-10 w-10 grid place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-lg shadow-indigo-500/25">
+            <span className="text-white text-base font-semibold">›_</span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-semibold text-white">
+          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-white">
             Create new dataset
           </h2>
         </div>
 
-        <div className="bg-[#232427] rounded-2xl shadow-sm border border-[#2a2b32] p-5 md:p-6 space-y-5">
-          <div className="border-2 border-dashed border-[#3a3b42] bg-[#1f2024] rounded-lg p-3">
+        <div className="bg-[#151923] rounded-2xl shadow-[var(--shadow-card)] border border-white/5 p-5 md:p-6 space-y-5">
+          <div className="border-2 border-dashed border-[#272e3f] bg-[#151923] rounded-lg p-3">
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#2a2b32] text-gray-200 text-sm">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-[#1b2030] text-gray-200 text-sm">
                 {fileName}
               </span>
 
@@ -98,7 +98,7 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
           </div>
 
           <div>
-            <label className="block text-gray-300 text-sm mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">
               Name{" "}
               <span className="text-gray-500">(URL-friendly identifier)</span>
             </label>
@@ -106,7 +106,7 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., customer-feedback-data"
-              className="w-full px-3 py-2 rounded-md bg-[#1f2024] border border-[#2a2b32] text-gray-100 placeholder:text-gray-500 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 transition"
             />
             <p className="text-xs text-gray-500 mt-1">
               Slug: <span className="text-gray-300">{slugify(name)}</span>
@@ -114,7 +114,7 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
           </div>
 
           <div>
-            <label className="block text-gray-300 text-sm mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">
               Description
             </label>
             <textarea
@@ -122,14 +122,14 @@ const CreateDatasetPage: React.FC<Props> = ({ userName }) => {
               onChange={(e) => setDesc(e.target.value)}
               rows={4}
               placeholder="Describe the purpose and contents of your dataset…"
-              className="w-full px-3 py-2 rounded-md bg-[#1f2024] border border-[#2a2b32] text-gray-100 placeholder:text-gray-500 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-[#0d1017]/70 border border-white/10 text-gray-100 placeholder:text-gray-500 focus:outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/10 transition"
             />
           </div>
 
           <div className="flex justify-end">
             <button
               onClick={handleCreate}
-              className="px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-lg shadow-indigo-600/20 transition"
             >
               Create Dataset
             </button>

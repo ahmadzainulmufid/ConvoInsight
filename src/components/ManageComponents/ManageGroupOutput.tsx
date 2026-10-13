@@ -35,8 +35,8 @@ export default function DashboardGroupOutput({
   };
 
   return (
-    <section className="bg-[#2A2B32] p-4 rounded-lg space-y-3">
-      <h2 className="text-sm text-gray-300 mb-3">Current Group Dashboard</h2>
+    <section className="bg-[#151923] border border-white/5 p-6 rounded-2xl space-y-3 shadow-[var(--shadow-card)]">
+      <h2 className="text-sm font-semibold text-gray-200 mb-4">Current Group Dashboard</h2>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

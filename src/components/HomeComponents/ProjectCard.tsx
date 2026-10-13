@@ -11,9 +11,17 @@ export default function ProjectCard({ name }: { name: string }) {
   return (
     <div
       onClick={handleClick}
-      className="bg-[#2A2A2A] p-3 rounded-lg hover:bg-[#333333] cursor-pointer transition"
+      className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 cursor-pointer transition"
     >
-      <p className="text-blue-400 font-semibold">{name}</p>
+      <span className="h-8 w-8 shrink-0 grid place-items-center rounded-lg bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/20 text-sm font-semibold text-indigo-200">
+        {name.charAt(0).toUpperCase()}
+      </span>
+      <p className="flex-1 truncate text-sm font-medium text-gray-200 group-hover:text-white">
+        {name}
+      </p>
+      <span className="text-gray-600 group-hover:text-indigo-300 transition">
+        →
+      </span>
     </div>
   );
 }

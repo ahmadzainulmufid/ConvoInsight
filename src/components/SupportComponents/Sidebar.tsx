@@ -36,7 +36,7 @@ function SidebarItem({
         [
           baseItem,
           collapsed ? "justify-center px-0 gap-0" : "justify-start px-3 gap-3",
-          isActive ? "bg-[#343541]" : "hover:bg-[#2A2B32]",
+          isActive ? "bg-[#242b3d]" : "hover:bg-[#1b2030]",
         ].join(" ")
       }
     >
@@ -97,7 +97,7 @@ export default function Sidebar({
   }`;
 
   const baseItem =
-    "flex items-center h-10 rounded-md text-sm transition-colors";
+    "flex items-center h-10 rounded-lg text-sm transition-colors";
 
   const handleSignOut = async () => {
     try {
@@ -121,11 +121,11 @@ export default function Sidebar({
   return (
     <aside
       ref={asideRef}
-      className={`fixed left-0 top-0 z-40 h-screen bg-[#202123] text-white flex flex-col transition-[width] duration-300 ${
+      className={`fixed left-0 top-0 z-40 h-screen bg-[#10131b] text-white flex flex-col transition-[width] duration-300 ${
         collapsed ? "w-16" : "w-64"
       }`}
     >
-      <div className="shrink-0 border-b border-[#202123]">
+      <div className="shrink-0 border-b border-[#10131b]">
         <button
           onClick={onToggle}
           aria-label="Toggle sidebar"
@@ -169,12 +169,12 @@ export default function Sidebar({
         </div>
       </nav>
 
-      <div className="shrink-0 border-t border-[#2A2B32] bg-[#2A2B32]">
+      <div className="shrink-0 border-t border-[#1b2030] bg-[#1b2030]">
         <button
           ref={profileBtnRef}
           onClick={() => setMenuOpen((v) => !v)}
           className={[
-            "flex items-center w-full h-12 text-sm text-white hover:bg-[#2F3038] px-3",
+            "flex items-center w-full h-12 text-sm text-white hover:bg-[#242b3d] px-3",
             collapsed ? "justify-center gap-0" : "justify-start gap-3",
           ].join(" ")}
           title={userName}
@@ -189,11 +189,11 @@ export default function Sidebar({
       {menuOpen && (
         <div
           ref={menuRef}
-          className="absolute bottom-16 left-2 right-2 rounded-md border border-[#3a3b42] bg-[#2A2B32] shadow-xl p-1"
+          className="absolute bottom-16 left-2 right-2 rounded-lg border border-white/10 bg-[#1b2030] shadow-xl p-1"
         >
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-[#343541] text-sm"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#242b3d] text-sm"
           >
             <FiLogOut />
             <span className={labelClass.replace("max-w-[12rem]", "max-w-none")}>

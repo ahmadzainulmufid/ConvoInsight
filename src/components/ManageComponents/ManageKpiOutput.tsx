@@ -209,7 +209,7 @@ export default function ManageKpiOutput({
     })();
   }, [kpiType, llmResult, datasets, selectedDatasetIds, selectedColumns]);
 
-  if (loading) return <p className="text-gray-400">Loading KPI...</p>; // Dataset KPI
+  if (loading) return <p className="text-gray-400 text-sm">Loading KPI...</p>; // Dataset KPI
 
   if (kpiType === "dataset") {
     return (
@@ -247,5 +247,5 @@ export default function ManageKpiOutput({
     );
   }
 
-  return <p className="text-gray-500">No KPI data to display.</p>;
+  return <p className="text-gray-500 text-sm">No KPI data to display.</p>;
 }

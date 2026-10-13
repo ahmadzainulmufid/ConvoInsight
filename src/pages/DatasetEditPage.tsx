@@ -138,47 +138,49 @@ const DatasetEditPage: React.FC<{ userName: string }> = ({ userName }) => {
       containerClassName="max-w-none"
       contentPadding="px-4 md:px-6 py-4"
     >
-      <div className="text-sm text-gray-400 mb-3">
+      <div className="text-sm text-gray-500 mb-4">
         <button
           onClick={() => navigate(`/domain/${section}/datasets`)}
-          className="hover:underline hover:text-gray-300"
+          className="px-2 py-1 -ml-2 rounded-md text-gray-400 hover:text-white hover:bg-white/5 transition"
         >
           datasets
         </button>{" "}
-        / <span className="text-gray-300">{id}</span> /{" "}
-        <span className="text-indigo-400">edit</span>
+        / <span className="text-gray-200 font-medium">{id}</span> /{" "}
+        <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-300 ring-1 ring-inset ring-indigo-500/25">
+          edit
+        </span>
       </div>
 
-      <h2 className="text-2xl text-white font-semibold mb-6">
+      <h2 className="text-2xl md:text-3xl text-white font-semibold tracking-tight mb-8">
         Edit Dataset (Opsional)
       </h2>
 
       {loading ? (
-        <p className="text-gray-400">Loading dataset structure…</p>
+        <p className="text-gray-400 py-16 text-center">Loading dataset structure…</p>
       ) : (
-        <div className="space-y-6 max-w-4xl">
+        <div className="space-y-6 max-w-4xl animate-fade-in">
           {/* Dataset Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">
               Dataset Name
             </label>
             <input
               value={id || ""}
               disabled
-              className="w-full px-3 py-2 bg-[#1f2024] border border-[#2a2b32] rounded-md text-gray-400 cursor-not-allowed"
+              className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-white/5 rounded-xl text-gray-500 cursor-not-allowed"
             />
           </div>
 
           {/* Dataset Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">
               Description
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter dataset description..."
-              className="w-full min-h-[100px] px-3 py-2 bg-[#1f2024] border border-[#2a2b32] rounded-md text-white focus:ring-1 focus:ring-indigo-500"
+              className="w-full min-h-[100px] px-3.5 py-2.5 bg-[#0d1017]/70 border border-white/10 rounded-xl text-gray-100 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
             />
           </div>
 
@@ -192,24 +194,24 @@ const DatasetEditPage: React.FC<{ userName: string }> = ({ userName }) => {
               {columns.map((col) => (
                 <div
                   key={col.name}
-                  className="p-4 rounded-lg bg-[#232427] border border-[#2a2b32]"
+                  className="p-5 rounded-2xl bg-[#151923] border border-white/5 shadow-[var(--shadow-card)]"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                     {/* Column Name */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">
+                      <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1.5">
                         Column Name
                       </label>
                       <input
                         value={col.name}
                         disabled
-                        className="w-full px-3 py-2 bg-[#1f2024] border border-[#2a2b32] rounded-md text-gray-400 cursor-not-allowed"
+                        className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-white/5 rounded-xl text-gray-500 cursor-not-allowed"
                       />
                     </div>
 
                     {/* Column Type */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">
+                      <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1.5">
                         Type
                       </label>
                       <select
@@ -217,7 +219,7 @@ const DatasetEditPage: React.FC<{ userName: string }> = ({ userName }) => {
                         onChange={(e) =>
                           updateColumn(col.name, "type", e.target.value)
                         }
-                        className="w-full px-3 py-2 bg-[#1f2024] border border-[#2a2b32] rounded-md text-white focus:ring-1 focus:ring-indigo-500"
+                        className="w-full px-3.5 py-2.5 bg-[#0d1017]/70 border border-white/10 rounded-xl text-gray-100 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
                       >
                         {DATA_TYPES.map((t) => (
                           <option key={t} value={t}>
@@ -229,7 +231,7 @@ const DatasetEditPage: React.FC<{ userName: string }> = ({ userName }) => {
 
                     {/* Column Description */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">
+                      <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1.5">
                         Description
                       </label>
                       <input
@@ -239,7 +241,7 @@ const DatasetEditPage: React.FC<{ userName: string }> = ({ userName }) => {
                           updateColumn(col.name, "description", e.target.value)
                         }
                         placeholder="Describe this column..."
-                        className="w-full px-3 py-2 bg-[#1f2024] border border-[#2a2b32] rounded-md text-white focus:ring-1 focus:ring-indigo-500"
+                        className="w-full px-3.5 py-2.5 bg-[#0d1017]/70 border border-white/10 rounded-xl text-gray-100 outline-none focus:border-indigo-500/60 focus:ring-4 focus:ring-indigo-500/15 transition"
                       />
                     </div>
                   </div>
@@ -252,13 +254,13 @@ const DatasetEditPage: React.FC<{ userName: string }> = ({ userName }) => {
           <div className="flex justify-end gap-3 pt-4">
             <button
               onClick={() => navigate(`/domain/${section}/datasets`)}
-              className="px-4 py-2 rounded-md bg-white/10 hover:bg-white/20 text-sm text-gray-300"
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm font-medium text-gray-200 transition"
             >
               Back
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-sm text-white"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-medium text-white shadow-lg shadow-indigo-600/20 transition"
             >
               Save Metadata
             </button>

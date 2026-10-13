@@ -197,7 +197,7 @@ const DatasetsPage: React.FC<Props> = () => {
 
   // --- Render UI ---
   return (
-    <div className="min-h-screen w-full bg-[#1a1b1e] text-white px-6 md:px-10 py-10">
+    <div className="min-h-screen w-full text-white px-6 md:px-10 py-10">
       {showTour && (
         <DatasetTour
           onFinish={async () => {
@@ -209,14 +209,19 @@ const DatasetsPage: React.FC<Props> = () => {
           }}
         />
       )}
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 grid place-items-center rounded-lg bg-indigo-100">
-            <span className="text-indigo-600 text-xl">›_</span>
+      <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 grid place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-lg shadow-indigo-500/25">
+            <span className="text-white text-lg font-semibold">›_</span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-semibold">
-            Getting started with ConvoInsight
-          </h2>
+          <div>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">
+              Getting started with ConvoInsight
+            </h2>
+            <p className="text-sm text-gray-400 mt-0.5 capitalize">
+              {section.replace(/%20/g, " ")}
+            </p>
+          </div>
         </div>
 
         <UploadDropzone
@@ -265,9 +270,11 @@ const DatasetsPage: React.FC<Props> = () => {
         <ConnectorsRow className="dataset-connectors-row" />
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading datasets…</p>
+          <p className="text-sm text-gray-400 py-6 text-center">Loading datasets…</p>
         ) : items.length === 0 ? (
-          <p className="text-sm text-gray-400">No datasets uploaded yet.</p>
+          <p className="text-sm text-gray-500 py-8 text-center rounded-2xl border border-dashed border-white/10">
+            No datasets uploaded yet.
+          </p>
         ) : (
           <DatasetList
             items={items}

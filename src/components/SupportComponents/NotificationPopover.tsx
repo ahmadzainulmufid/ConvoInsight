@@ -42,15 +42,15 @@ export default function NotificationPopover({
     <div className="relative">
       <button
         onClick={onToggle}
-        className={`relative p-3 rounded-xl transition-colors duration-200 ${
+        className={`relative h-10 w-10 grid place-items-center rounded-xl transition-all duration-200 ${
           open
-            ? "bg-blue-800/60 text-white shadow-inner shadow-blue-900/30"
-            : "bg-[#2B2C31] text-gray-400 hover:text-white hover:bg-[#35363b]"
+            ? "bg-indigo-500/15 text-indigo-300 ring-1 ring-indigo-500/40"
+            : "text-gray-400 hover:text-white hover:bg-white/5"
         }`}
       >
-        <FiBell size={22} />
+        <FiBell size={19} />
         {unreadCount > 0 && (
-          <span className="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse"></span>
+          <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-rose-500 ring-2 ring-[#10131b] animate-pulse"></span>
         )}
       </button>
 
@@ -62,10 +62,10 @@ export default function NotificationPopover({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 40 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="absolute right-full mr-4 top-0 w-80 bg-[#2d2e30] rounded-lg 
-                       shadow-lg border border-gray-700 p-3 text-gray-300 z-50"
+            className="absolute right-full mr-4 top-0 w-80 bg-[#151923]/95 backdrop-blur-xl rounded-2xl 
+                       shadow-2xl shadow-black/50 border border-white/10 p-4 text-gray-300 z-50"
           >
-            <h3 className="font-semibold text-white mb-2 text-sm">
+            <h3 className="font-semibold text-white mb-3 text-sm tracking-tight">
               Notifications
             </h3>
 
@@ -77,7 +77,7 @@ export default function NotificationPopover({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="p-2 rounded bg-[#1f2022] hover:bg-[#2a2b2d] transition"
+                    className="p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition"
                   >
                     <p className="text-sm text-gray-200 font-medium">
                       {n.title}
@@ -90,7 +90,7 @@ export default function NotificationPopover({
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-gray-500 text-sm italic"
+                className="text-gray-500 text-sm py-6 text-center"
               >
                 No notifications yet
               </motion.p>

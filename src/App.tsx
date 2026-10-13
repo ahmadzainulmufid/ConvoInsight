@@ -51,9 +51,12 @@ const App: React.FC = () => {
           reverseOrder={false}
           toastOptions={{
             style: {
-              background: "#2A2B32",
-              color: "#fff",
-              border: "1px solid #3a3b42",
+              background: "#151923",
+              color: "#eef1f6",
+              border: "1px solid #272e3f",
+              borderRadius: "12px",
+              fontSize: "14px",
+              boxShadow: "0 12px 32px -12px rgba(0,0,0,0.7)",
             },
           }}
         />
@@ -131,7 +134,12 @@ const App: React.FC = () => {
 
             <Route
               path="*"
-              element={<div className="p-6 text-white">404 Not Found</div>}
+              element={<div className="min-h-[70vh] grid place-items-center p-6 text-center">
+                  <div>
+                    <p className="text-6xl font-bold text-gradient">404</p>
+                    <p className="mt-2 text-gray-400">Not Found</p>
+                  </div>
+                </div>}
             />
           </Route>
         </Routes>

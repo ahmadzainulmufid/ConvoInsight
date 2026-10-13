@@ -316,8 +316,8 @@ export default function NewChatPage() {
     return (
       <div className="flex items-center justify-center min-h-screen text-gray-400">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-          <span>Preparing domain connection...</span>
+          <div className="w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Preparing domain connection...</span>
         </div>
       </div>
     );
@@ -694,19 +694,22 @@ export default function NewChatPage() {
       {showTour && <ChatTour onFinish={handleFinishChatTour} />}
 
       {isNewConversation ? (
-        <div className="grid grid-cols-1 gap-6 max-w-7xl mx-auto min-h-[60vh] place-content-center">
+        <div className="grid grid-cols-1 gap-6 max-w-7xl mx-auto min-h-[85vh] place-content-center animate-fade-in">
           <div className="w-full flex flex-col items-center">
-            <div className="mb-6 text-center px-2 sm:px-0">
-              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
+            <div className="mb-8 text-center px-2 sm:px-0">
+              <div className="mx-auto mb-5 h-14 w-14 grid place-items-center rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-lg shadow-indigo-500/30">
+                <FiActivity className="text-white" size={24} />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gradient">
                 {title}
               </h1>
-              <p className="mt-2 text-sm text-gray-400">{subtitle}</p>
+              <p className="mt-3 text-sm text-gray-400">{subtitle}</p>
             </div>
 
             <div className="w-full flex justify-center">
               <div className="w-full max-w-2xl md:max-w-3xl px-2 sm:px-0">
                 <div className="chat-dataset-dropdown mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">
+                  <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1.5">
                     Dataset
                   </label>
                   <MultiSelectDropdown
@@ -775,21 +778,21 @@ export default function NewChatPage() {
                   className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl"
                 >
                   {m.role === "assistant" ? (
-                    <div className="space-y-3 mb-20">
+                    <div className="space-y-4 mb-16 animate-fade-in">
                       {m.thinkingSteps && (
-                        <details className="mb-10">
-                          <summary className="text-sm font-semibold text-blue-400 cursor-pointer flex items-center gap-2 hover:underline">
-                            <FiActivity className="text-blue-400" />
+                        <details className="mb-6 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 [&[open]>summary]:mb-1">
+                          <summary className="text-sm font-medium text-indigo-300 cursor-pointer flex items-center gap-2 hover:text-indigo-200 select-none">
+                            <FiActivity className="text-indigo-400" />
                             Show the steps
                           </summary>
-                          <div className="mt-2 space-y-1 text-sm ml-5">
+                          <div className="mt-2 space-y-1.5 text-sm ml-6">
                             {m.thinkingSteps.map((step) => (
                               <div
                                 key={step.key}
                                 className="flex items-start gap-2"
                               >
                                 <FiCheck
-                                  className="text-green-400 mt-0.5 flex-shrink-0"
+                                  className="text-emerald-400 mt-0.5 flex-shrink-0"
                                   size={14}
                                 />
                                 <span className="text-gray-300">
@@ -807,27 +810,28 @@ export default function NewChatPage() {
 
                       <div
                         className={[
-                          "text-gray-200 leading-relaxed",
+                          "text-gray-200 text-[15px] leading-7",
                           "space-y-2",
                           "[&_p]:my-2",
                           "[&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6",
                           "[&_li]:my-1",
-                          "[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-4",
-                          "[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-3",
-                          "[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-2",
-                          "[&_blockquote]:border-l-4 [&_blockquote]:border-gray-600 [&_blockquote]:pl-3 [&_blockquote]:italic",
-                          "[&_code]:rounded [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:bg-gray-800",
-                          "[&_pre]:bg-gray-800 [&_pre]:rounded [&_pre]:p-3 [&_pre]:overflow-auto",
-                          "[&_table]:w-full [&_table]:border-collapse",
-                          "[&_th]:border [&_th]:border-gray-700 [&_th]:px-2 [&_th]:py-1 [&_th]:text-left",
-                          "[&_td]:border [&_td]:border-gray-700 [&_td]:px-2 [&_td]:py-1",
-                          "[&_a]:underline [&_a]:underline-offset-2",
+                          "[&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-white [&_h1]:mt-4",
+                          "[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-white [&_h2]:mt-3",
+                          "[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-white [&_h3]:mt-2",
+                          "[&_strong]:text-white [&_strong]:font-semibold",
+                          "[&_blockquote]:border-l-4 [&_blockquote]:border-indigo-500/60 [&_blockquote]:bg-indigo-500/5 [&_blockquote]:rounded-r-lg [&_blockquote]:py-1 [&_blockquote]:pl-4 [&_blockquote]:text-gray-300",
+                          "[&_code]:rounded-lg [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:bg-white/10 [&_code]:text-indigo-200 [&_code]:text-[13px]",
+                          "[&_pre]:bg-[#0b0e15] [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-xl [&_pre]:p-4 [&_pre]:overflow-auto",
+                          "[&_table]:w-full [&_table]:border-collapse [&_table]:text-sm",
+                          "[&_th]:border [&_th]:border-white/10 [&_th]:bg-white/5 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-gray-100",
+                          "[&_td]:border [&_td]:border-white/10 [&_td]:px-3 [&_td]:py-2",
+                          "[&_a]:text-indigo-300 [&_a]:underline [&_a]:underline-offset-2",
                         ].join(" ")}
                         dangerouslySetInnerHTML={{ __html: m.content }}
                       />
                     </div>
                   ) : (
-                    <div className="mb-8 relative group">
+                    <div className="mb-8 relative group animate-fade-in">
                       {editingIndex === i ? (
                         <div className="flex flex-col gap-2">
                           <textarea
@@ -845,13 +849,13 @@ export default function NewChatPage() {
                               el.style.height = el.scrollHeight + "px";
                             }}
                             disabled={editBusy}
-                            className="w-full rounded-lg border border-gray-600 bg-[#1f2026] text-gray-200 p-2 text-sm resize-none overflow-hidden transition-all duration-200 ease-in-out"
+                            className="w-full rounded-xl border border-indigo-500/40 bg-[#151923] text-gray-100 px-4 py-3 text-[15px] resize-none overflow-hidden outline-none ring-4 ring-indigo-500/10 transition-all duration-200 ease-in-out"
                           />
                           <div className="flex gap-2 justify-end text-sm">
                             {editBusy ? (
                               <button
                                 onClick={stopAll}
-                                className="px-2 py-1 rounded bg-gray-600 hover:bg-gray-500 text-white flex items-center gap-1"
+                                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white flex items-center gap-1.5 transition"
                                 title="Stop generating"
                               >
                                 ⏹ Stop
@@ -1146,7 +1150,7 @@ export default function NewChatPage() {
                                       setEditBusy(false);
                                     }
                                   }}
-                                  className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center gap-1.5 transition shadow-lg shadow-indigo-600/20"
                                 >
                                   <FiCheck size={14} /> Save
                                 </button>
@@ -1154,7 +1158,7 @@ export default function NewChatPage() {
                                 <button
                                   onClick={() => setEditingIndex(null)}
                                   disabled={editBusy}
-                                  className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-white flex items-center gap-1 disabled:opacity-50"
+                                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200 flex items-center gap-1.5 transition disabled:opacity-50"
                                 >
                                   <FiX size={14} /> Cancel
                                 </button>
@@ -1168,13 +1172,13 @@ export default function NewChatPage() {
                             message={{ role: m.role, content: m.content }}
                             animate={m.animate ?? false}
                           />
-                          <div className="flex justify-end gap-2 mt-2 opacity-0 group-hover:opacity-100 transition">
+                          <div className="flex justify-end gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition">
                             <button
                               onClick={() => {
                                 navigator.clipboard.writeText(m.content);
                                 toast.success("Message copied!");
                               }}
-                              className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
+                              className="text-gray-500 hover:text-gray-200 hover:bg-white/5 rounded-lg p-1.5 transition"
                             >
                               <FiCopy size={12} />
                             </button>
@@ -1183,7 +1187,7 @@ export default function NewChatPage() {
                                 setEditingIndex(i);
                                 setEditText(m.content);
                               }}
-                              className="text-gray-500 hover:text-gray-300 bg-transparent p-1"
+                              className="text-gray-500 hover:text-gray-200 hover:bg-white/5 rounded-lg p-1.5 transition"
                             >
                               <FiEdit2 size={12} />
                             </button>
@@ -1198,25 +1202,26 @@ export default function NewChatPage() {
               <div ref={endOfMessagesRef} />
 
               {currentThinkingSteps.length > 0 && (
-                <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl-max-w-5xl px-1">
-                  <h3 className="text-sm font-semibold text-blue-400 mb-2 flex items-center gap-2">
-                    <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl px-1">
+                  <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 px-4 py-3">
+                  <h3 className="text-sm font-medium text-indigo-300 mb-2 flex items-center gap-2">
+                    <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
                     Thinking process...
                   </h3>
 
-                  <ul className="space-y-1 text-sm ml-5">
+                  <ul className="space-y-1.5 text-sm ml-6">
                     {currentThinkingSteps.map((step, index) => {
                       const isDone = index < currentThinkingSteps.length - 1;
                       return (
                         <li key={step.key} className="flex items-center gap-2">
                           {isDone ? (
                             <FiCheck
-                              className="text-green-400 flex-shrink-0"
+                              className="text-emerald-400 flex-shrink-0"
                               size={14}
                             />
                           ) : (
                             <div
-                              className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0"
+                              className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0"
                               role="status"
                             />
                           )}
@@ -1231,20 +1236,21 @@ export default function NewChatPage() {
                       );
                     })}
                   </ul>
+                  </div>
                 </div>
               )}
 
               {messages.length === 0 && (
-                <div className="text-gray-400 text-sm pl-4 w-full max-w-3xl px-2 sm:px-0">
+                <div className="mx-auto text-gray-500 text-sm text-center w-full max-w-3xl px-2 sm:px-0 py-10">
                   No Message Yet
                 </div>
               )}
             </div>
 
-            <div className="bg-[#1a1b1e] px-2 sm:px-0 py-4">
+            <div className="bg-gradient-to-t from-[#0d1017] via-[#0d1017] to-transparent px-2 sm:px-0 pt-6 pb-4">
               <div className="mx-auto w-full max-w-3xl md:max-w-4xl xl:max-w-5xl">
                 <div className="mb-3">
-                  <label className="block text-xs text-gray-400 mb-1">
+                  <label className="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-1.5">
                     Dataset
                   </label>
                   <MultiSelectDropdown

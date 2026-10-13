@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { FiArrowUp, FiCheck, FiMic, FiSquare, FiX } from "react-icons/fi";
 
 const MAX_H = 160;
 
@@ -35,10 +36,10 @@ export function ChatComposer({
   const inputDisabled = effectiveBusy || isRecording; // disable input saat generate / recording
 
   const btnBase =
-    "ml-2 flex items-center justify-center w-9 h-9 rounded-md text-lg transition";
+    "ml-1 mb-1 shrink-0 flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200";
   const btnActive =
-    "bg-transparent text-white opacity-80 hover:opacity-100 cursor-pointer";
-  const btnDisabled = "bg-transparent text-white opacity-40 cursor-not-allowed";
+    "bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-600/30 hover:scale-105 cursor-pointer";
+  const btnDisabled = "bg-white/5 text-gray-500 cursor-not-allowed";
 
   useEffect(() => {
     if (!busy) setLocalBusy(false);
@@ -80,7 +81,7 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className={`w-full flex items-center rounded-xl bg-gray-700 px-4 py-3 ${className}`}
+      className={`w-full flex items-end gap-1 rounded-2xl bg-[#151923] border border-white/10 pl-3 pr-2 py-2 shadow-xl shadow-black/30 transition focus-within:border-indigo-500/50 focus-within:ring-4 focus-within:ring-indigo-500/10 ${className}`}
     >
       <textarea
         ref={ref}
@@ -91,47 +92,47 @@ export function ChatComposer({
         disabled={inputDisabled}
         placeholder={placeholder}
         className="flex-1 resize-none bg-transparent outline-none 
-                   text-gray-200 text-sm leading-relaxed 
-                   placeholder-gray-400 px-3 py-2
-                   min-h-[44px] max-h-[160px]"
+                   text-gray-100 text-[15px] leading-relaxed 
+                   placeholder-gray-500 px-2 py-2.5
+                   min-h-[44px] max-h-[160px] disabled:opacity-60 transition"
       />
 
       {/* === Voice UI (mirip ChatGPT) === */}
       {isRecording ? (
-        <div className="flex items-center gap-2 mr-2">
-          <span className="flex items-center text-xs text-red-400">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse mr-1" />
+        <div className="flex items-center gap-2 mr-1 mb-0.5">
+          <span className="flex items-center text-xs font-medium text-rose-300 bg-rose-500/10 px-2.5 py-1 rounded-full">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse mr-1.5" />
             Listening...
           </span>
           <button
             type="button"
             onClick={onVoiceCancel}
-            className="flex items-center justify-center w-8 h-8 rounded-md
-                       bg-transparent text-white opacity-80 hover:opacity-100 transition"
+            className="flex items-center justify-center w-8 h-8 rounded-full
+                       bg-white/5 text-gray-300 hover:text-white hover:bg-white/10 transition"
             title="Cancel voice"
           >
-            ✕
+            <FiX size={16} />
           </button>
           <button
             type="button"
             onClick={onVoiceConfirm}
-            className="flex items-center justify-center w-8 h-8 rounded-md
-                       bg-transparent text-white opacity-80 hover:opacity-100 transition"
+            className="flex items-center justify-center w-8 h-8 rounded-full
+                       bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 transition"
             title="Send voice"
           >
-            ✓
+            <FiCheck size={16} />
           </button>
         </div>
       ) : (
         <button
           type="button"
           onClick={onMicClick}
-          className="mr-3 flex items-center justify-center w-9 h-9 
-                     rounded-md text-lg bg-transparent text-white 
-                     opacity-80 hover:opacity-100 transition"
+          className="shrink-0 mb-1 flex items-center justify-center w-9 h-9 
+                     rounded-full bg-transparent text-gray-400 
+                     hover:text-white hover:bg-white/10 transition"
           title="Voice Input"
         >
-          🎙️
+          <FiMic size={18} />
         </button>
       )}
 
@@ -143,7 +144,7 @@ export function ChatComposer({
           className={`${btnBase} ${btnActive}`}
           title="Stop generating"
         >
-          ⏹
+          <FiSquare size={13} className="fill-current" />
         </button>
       ) : (
         <button
@@ -154,7 +155,7 @@ export function ChatComposer({
           }`}
           title="Send"
         >
-          {hasText ? "↑" : "➤"}
+          <FiArrowUp size={18} />
         </button>
       )}
     </form>
